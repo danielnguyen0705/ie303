@@ -1,4 +1,7 @@
 package com.ie303.uifive.dto.res;
 
-public class GradeResponse {
-}
+public record GradeResponse(
+        Long id,
+        String name,
+        String description
+) {}

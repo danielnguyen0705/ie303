@@ -19,7 +19,7 @@ public class UserQuestionHistory {
     private String selectedAnswer;
 
     @Column(name = "is_correct")
-    private boolean isCorrect;
+    private boolean correct;
 
     @Column(name = "attempt_count")
     private int attemptCount;
