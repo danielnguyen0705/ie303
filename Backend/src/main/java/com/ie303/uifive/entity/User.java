@@ -18,7 +18,9 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_name")
     private String username;
+
     private String email;
     private String password;
 
@@ -36,6 +38,7 @@ public class User {
     private LocalDateTime vipExpiredAt;
 
     @CreationTimestamp
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
