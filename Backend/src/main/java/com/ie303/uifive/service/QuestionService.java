@@ -4,8 +4,10 @@ import com.ie303.uifive.dto.req.QuestionRequest;
 import com.ie303.uifive.dto.res.QuestionResponse;
 import com.ie303.uifive.entity.Lesson;
 import com.ie303.uifive.entity.Question;
+import com.ie303.uifive.entity.QuestionGroup;
 import com.ie303.uifive.mapper.QuestionMapper;
 import com.ie303.uifive.repo.LessonRepo;
+import com.ie303.uifive.repo.QuestionGroupRepo;
 import com.ie303.uifive.repo.QuestionRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,38 +20,38 @@ public class QuestionService {
 
     private final QuestionRepo questionRepo;
     private final LessonRepo lessonRepo;
+    private final QuestionGroupRepo questionGroupRepo;
     private final QuestionMapper questionMapper;
 
     public QuestionResponse create(QuestionRequest request) {
         Question question = questionMapper.toEntity(request);
 
-        Lesson lesson = lessonRepo.findById(request.lessonId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
+        if (request.lessonId() != null) {
+            Lesson lesson = lessonRepo.findById(request.lessonId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
+            question.setLesson(lesson);
+        }
 
-        question.setLesson(lesson);
+        if (request.questionGroupId() != null) {
+            QuestionGroup questionGroup = questionGroupRepo.findById(request.questionGroupId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionGroup với id = " + request.questionGroupId()));
+            question.setQuestionGroup(questionGroup);
+        }
 
         question = questionRepo.save(question);
-
-        QuestionResponse response = questionMapper.toResponse(question);
-        return response;
+        return questionMapper.toResponse(question);
     }
 
     public QuestionResponse getById(Long id) {
         Question question = questionRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Question với id = " + id));
-
-        QuestionResponse response = questionMapper.toResponse(question);
-        return response;
+        return questionMapper.toResponse(question);
     }
 
     public List<QuestionResponse> getAll() {
-        List<Question> questions = questionRepo.findAll();
-
-        List<QuestionResponse> responses = questions.stream()
+        return questionRepo.findAll().stream()
                 .map(questionMapper::toResponse)
                 .toList();
-
-        return responses;
     }
 
     public QuestionResponse update(Long id, QuestionRequest request) {
@@ -58,22 +60,30 @@ public class QuestionService {
 
         questionMapper.updateEntityFromRequest(request, question);
 
-        Lesson lesson = lessonRepo.findById(request.lessonId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
+        if (request.lessonId() != null) {
+            Lesson lesson = lessonRepo.findById(request.lessonId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
+            question.setLesson(lesson);
+        } else {
+            question.setLesson(null);
+        }
 
-        question.setLesson(lesson);
+        if (request.questionGroupId() != null) {
+            QuestionGroup questionGroup = questionGroupRepo.findById(request.questionGroupId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionGroup với id = " + request.questionGroupId()));
+            question.setQuestionGroup(questionGroup);
+        } else {
+            question.setQuestionGroup(null);
+        }
 
         question = questionRepo.save(question);
-
-        QuestionResponse response = questionMapper.toResponse(question);
-        return response;
+        return questionMapper.toResponse(question);
     }
 
     public void delete(Long id) {
         if (!questionRepo.existsById(id)) {
             throw new RuntimeException("Không tìm thấy Question với id = " + id);
         }
-
         questionRepo.deleteById(id);
     }
 }

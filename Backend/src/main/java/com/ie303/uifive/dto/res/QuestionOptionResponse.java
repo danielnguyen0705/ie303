@@ -2,8 +2,9 @@ package com.ie303.uifive.dto.res;
 
 public record QuestionOptionResponse(
         Long id,
-        String optionText,
-        boolean correct,
+        String optionKey,
+        String content,
+        boolean isCorrect,
         Long questionId
 ) {
 }

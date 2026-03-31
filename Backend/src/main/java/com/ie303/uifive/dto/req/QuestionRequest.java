@@ -8,12 +8,13 @@ public record QuestionRequest(
         QuestionType questionType,
 
         String content,
+        String instruction,
         String audioUrl,
         String imageUrl,
-        String correctAnswer,
+        String questionData,
         String explanation,
 
-        @NotNull(message = "lessonId không được để trống")
-        Long lessonId
+        Long lessonId,
+        Long questionGroupId
 ) {
 }

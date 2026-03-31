@@ -23,6 +23,8 @@ public class User {
 
     private String email;
     private String password;
+    private String avatar;
+
 
     @Enumerated(EnumType.STRING)
     private Role role;
@@ -30,6 +32,11 @@ public class User {
     private int coin;
     private int score;
     private int streak;
+    private boolean verified = false;
+
+    @Column(name = "verification_token",length = 255)
+    private String verificationToken;
+    private LocalDateTime verificationExpiry;
 
     @Column(name = "last_study_date")
     private LocalDate lastStudyDate;
@@ -44,4 +51,5 @@ public class User {
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<UserLessonProgress> lessonProgresses;
+
 }

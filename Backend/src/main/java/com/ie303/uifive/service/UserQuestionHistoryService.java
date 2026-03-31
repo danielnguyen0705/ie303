@@ -35,20 +35,12 @@ public class UserQuestionHistoryService {
                     UserQuestionHistory entity = mapper.toEntity(request);
                     entity.setUser(user);
                     entity.setQuestion(question);
-                    entity.setAttemptCount(0);
                     return entity;
                 });
 
         mapper.updateEntityFromRequest(request, history);
         history.setUser(user);
         history.setQuestion(question);
-
-        boolean correct = request.selectedAnswer() != null
-                && question.getCorrectAnswer() != null
-                && request.selectedAnswer().trim().equalsIgnoreCase(question.getCorrectAnswer().trim());
-
-        history.setCorrect(correct);
-        history.setAttemptCount(history.getAttemptCount() + 1);
 
         history = repo.save(history);
 

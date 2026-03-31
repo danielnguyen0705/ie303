@@ -13,32 +13,32 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GradeController {
 
-    private final GradeService service;
+    private final GradeService gradeService;
 
     @PostMapping
     public GradeResponse create(@RequestBody GradeRequest request) {
-        return service.create(request);
+        return gradeService.create(request);
     }
 
     @GetMapping("/{id}")
     public GradeResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+        return gradeService.getById(id);
     }
 
     @GetMapping
     public List<GradeResponse> getAll() {
-        return service.getAll();
+        return gradeService.getAll();
     }
 
     @PutMapping("/{id}")
     public GradeResponse update(@PathVariable Long id,
                                 @RequestBody GradeRequest request) {
-        return service.update(id, request);
+        return gradeService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     public String delete(@PathVariable Long id) {
-        service.delete(id);
+        gradeService.delete(id);
         return "Deleted grade";
     }
 }

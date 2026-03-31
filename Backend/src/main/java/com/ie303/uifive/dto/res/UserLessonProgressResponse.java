@@ -7,7 +7,9 @@ public record UserLessonProgressResponse(
         boolean completed,
         double score,
         double accuracy,
+        double progressPercent,
         int coinsEarned,
+        LocalDateTime lastAccessedAt,
         LocalDateTime completedAt,
         Long userId,
         Long lessonId

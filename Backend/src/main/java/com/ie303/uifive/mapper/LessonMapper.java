@@ -15,9 +15,13 @@ public interface LessonMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "section", ignore = true)
+    @Mapping(target = "questions", ignore = true)
+    @Mapping(target = "questionGroups", ignore = true)
     Lesson toEntity(LessonRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "section", ignore = true)
+    @Mapping(target = "questions", ignore = true)
+    @Mapping(target = "questionGroups", ignore = true)
     void updateEntityFromRequest(LessonRequest request, @MappingTarget Lesson lesson);
 }

@@ -15,14 +15,11 @@ public class UserQuestionHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "selected_answer")
-    private String selectedAnswer;
+    @Column(name = "answer_text", columnDefinition = "TEXT")
+    private String answerText;
 
     @Column(name = "is_correct")
     private boolean correct;
-
-    @Column(name = "attempt_count")
-    private int attemptCount;
 
     @Column(name = "answered_at")
     @CreationTimestamp

@@ -29,5 +29,18 @@ public class SemesterTest {
     private Grade grade;
 
     @ManyToMany
+    @JoinTable(
+            name = "semester_test_question_groups",
+            joinColumns = @JoinColumn(name = "semester_test_id"),
+            inverseJoinColumns = @JoinColumn(name = "question_group_id")
+    )
+    private List<QuestionGroup> questionGroups;
+
+    @ManyToMany
+    @JoinTable(
+            name = "semester_test_questions",
+            joinColumns = @JoinColumn(name = "semester_test_id"),
+            inverseJoinColumns = @JoinColumn(name = "question_id")
+    )
     private List<Question> questions;
 }

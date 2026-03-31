@@ -5,6 +5,8 @@ import com.ie303.uifive.dto.res.UserLessonProgressResponse;
 import com.ie303.uifive.entity.Lesson;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.entity.UserLessonProgress;
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.UserLessonProgressMapper;
 import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.UserLessonProgressRepo;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -24,56 +27,54 @@ public class UserLessonProgressService {
     private final UserRepo userRepo;
     private final LessonRepo lessonRepo;
     private final UserLessonProgressMapper mapper;
+    private final UserLessonProgressRepo progressRepo;
 
-    public UserLessonProgressResponse submit(UserLessonProgressRequest request) {
-        User user = userRepo.findById(request.userId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy User với id = " + request.userId()));
-
-        Lesson lesson = lessonRepo.findById(request.lessonId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
-
-        UserLessonProgress progress = repo.findByUserIdAndLessonId(request.userId(), request.lessonId())
-                .orElseGet(() -> {
-                    UserLessonProgress entity = mapper.toEntity(request);
-                    entity.setUser(user);
-                    entity.setLesson(lesson);
-                    return entity;
-                });
-
-        mapper.updateEntityFromRequest(request, progress);
-        progress.setUser(user);
-        progress.setLesson(lesson);
-        progress.setCompleted(true);
-
-        int coinEarned = (int) (request.score() * 10);
-        progress.setCoinsEarned(coinEarned);
-
-        user.setCoin(user.getCoin() + coinEarned);
-
-        LocalDate today = LocalDate.now();
-
-        if (user.getLastStudyDate() == null) {
-            user.setStreak(1);
-        } else if (user.getLastStudyDate().plusDays(1).equals(today)) {
-            user.setStreak(user.getStreak() + 1);
-        } else if (!user.getLastStudyDate().equals(today)) {
-            user.setStreak(1);
+    public UserLessonProgressResponse submitLessonResult(String username, UserLessonProgressRequest request) {
+        User user = userRepo.findByUsername(username);
+        if (user == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
-        user.setLastStudyDate(today);
-        user.setScore(user.getScore() + (int) request.score());
+        Lesson lesson = lessonRepo.findById(request.lessonId())
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
 
-        userRepo.save(user);
+        UserLessonProgress progress = progressRepo
+                .findByUserIdAndLessonId(user.getId(), lesson.getId())
+                .orElseGet(() -> {
+                    UserLessonProgress newProgress = new UserLessonProgress();
+                    newProgress.setUser(user);
+                    newProgress.setLesson(lesson);
+                    newProgress.setCoinsEarned(0);
+                    return newProgress;
+                });
 
-        progress = repo.save(progress);
+        progress.setScore(request.score());
+        progress.setAccuracy(request.accuracy());
+        progress.setCompleted(true);
+        progress.setProgressPercent(100);
+        progress.setLastAccessedAt(LocalDateTime.now());
 
-        UserLessonProgressResponse response = mapper.toResponse(progress);
-        return response;
+        if (progress.getCompletedAt() == null) {
+            progress.setCompletedAt(LocalDateTime.now());
+        }
+
+        progress.setCoinsEarned(calculateCoins(request.score()));
+        user.setCoin(user.getCoin() + progress.getCoinsEarned());
+
+        UserLessonProgress saved = progressRepo.save(progress);
+        return mapper.toResponse(saved);
+    }
+
+    private int calculateCoins(double score) {
+        if (score >= 90) return 10;
+        if (score >= 75) return 7;
+        if (score >= 50) return 5;
+        return 2;
     }
 
     public UserLessonProgressResponse getById(Long id) {
         UserLessonProgress entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy UserLessonProgress với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
 
         UserLessonProgressResponse response = mapper.toResponse(entity);
         return response;

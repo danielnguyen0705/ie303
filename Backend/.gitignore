@@ -1,33 +1,45 @@
-HELP.md
+# --- [ Build Tools ] ---
 target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+!.mvn/wrapper/maven-wrapper.jar
+build/
+.gradle/
+bin/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
+# --- [ IDE Settings ] ---
+# IntelliJ IDEA
+.idea/
 *.iws
 *.iml
 *.ipr
+out/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+# VS Code
 .vscode/
+
+# Eclipse
+.metadata
+.settings/
+.classpath
+.project
+.factorypath
+
+# --- [ Logs & Temporary Files ] ---
+*.log
+logs/
+temp/
+tmp/
+
+# --- [ OS Files ] ---
+.DS_Store
+Thumbs.db
+
+# --- [ Environment & Secrets ] ---
+# Cực kỳ quan trọng nếu bạn dùng API Key (Gemini) hoặc Database Credentials
+.env
+.env.local
+application-local.properties
+application-dev.properties
+
+# --- [ Project Specific ] ---
+# Nếu bạn có chạy Docker cho SmartQuiz
+.docker/

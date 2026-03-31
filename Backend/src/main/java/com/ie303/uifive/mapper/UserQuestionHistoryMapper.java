@@ -18,13 +18,11 @@ public interface UserQuestionHistoryMapper {
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "question", ignore = true)
     @Mapping(target = "correct", ignore = true)
-    @Mapping(target = "attemptCount", ignore = true)
     UserQuestionHistory toEntity(UserQuestionHistoryRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "question", ignore = true)
     @Mapping(target = "correct", ignore = true)
-    @Mapping(target = "attemptCount", ignore = true)
     void updateEntityFromRequest(UserQuestionHistoryRequest request, @MappingTarget UserQuestionHistory entity);
 }

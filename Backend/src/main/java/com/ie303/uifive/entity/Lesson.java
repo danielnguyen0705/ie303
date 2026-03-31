@@ -34,7 +34,17 @@ public class Lesson {
     @JoinColumn(name = "section_id")
     private Section section;
 
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
+    @Column(name = "is_vip_only")
+    private boolean vipOnly;
+
     @OneToMany(mappedBy = "lesson", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Question> questions;
+
+    @OneToMany(mappedBy = "lesson", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<QuestionGroup> questionGroups;
 }

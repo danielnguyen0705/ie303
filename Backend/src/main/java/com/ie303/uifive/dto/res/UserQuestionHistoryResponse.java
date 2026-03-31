@@ -6,7 +6,6 @@ public record UserQuestionHistoryResponse(
         Long id,
         String selectedAnswer,
         boolean correct,
-        int attemptCount,
         LocalDateTime answeredAt,
         Long userId,
         Long questionId

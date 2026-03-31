@@ -12,7 +12,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/question-options")
 @RequiredArgsConstructor
-public class QuestionOptionController {
+public class
+QuestionOptionController {
 
     private final QuestionOptionService service;
 

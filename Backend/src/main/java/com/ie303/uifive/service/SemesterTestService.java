@@ -4,9 +4,11 @@ import com.ie303.uifive.dto.req.SemesterTestRequest;
 import com.ie303.uifive.dto.res.SemesterTestResponse;
 import com.ie303.uifive.entity.Grade;
 import com.ie303.uifive.entity.Question;
+import com.ie303.uifive.entity.QuestionGroup;
 import com.ie303.uifive.entity.SemesterTest;
 import com.ie303.uifive.mapper.SemesterTestMapper;
 import com.ie303.uifive.repo.GradeRepo;
+import com.ie303.uifive.repo.QuestionGroupRepo;
 import com.ie303.uifive.repo.QuestionRepo;
 import com.ie303.uifive.repo.SemesterTestRepo;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ public class SemesterTestService {
     private final SemesterTestRepo repo;
     private final GradeRepo gradeRepo;
     private final QuestionRepo questionRepo;
+    private final QuestionGroupRepo questionGroupRepo;
     private final SemesterTestMapper mapper;
 
     public SemesterTestResponse create(SemesterTestRequest request) {
@@ -39,6 +42,11 @@ public class SemesterTestService {
         if (request.questionIds() != null) {
             List<Question> questions = questionRepo.findAllById(request.questionIds());
             entity.setQuestions(questions);
+        }
+
+        if (request.questionGroupIds() != null) {
+            List<QuestionGroup> questionGroups = questionGroupRepo.findAllById(request.questionGroupIds());
+            entity.setQuestionGroups(questionGroups);
         }
 
         entity = repo.save(entity);
@@ -88,6 +96,13 @@ public class SemesterTestService {
             entity.setQuestions(questions);
         } else {
             entity.setQuestions(null);
+        }
+
+        if (request.questionGroupIds() != null) {
+            List<QuestionGroup> questionGroups = questionGroupRepo.findAllById(request.questionGroupIds());
+            entity.setQuestionGroups(questionGroups);
+        } else {
+            entity.setQuestionGroups(null);
         }
 
         entity = repo.save(entity);

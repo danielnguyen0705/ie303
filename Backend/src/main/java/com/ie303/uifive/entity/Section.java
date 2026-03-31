@@ -19,6 +19,13 @@ public class Section {
     private int sectionNumber;
     private String title;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "section_type")
+    private SectionType sectionType;
+
+    @Column(name = "order_index", nullable = false)
+    private Integer orderIndex;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id")
     private Unit unit;
