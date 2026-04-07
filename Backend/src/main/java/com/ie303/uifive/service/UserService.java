@@ -79,15 +79,14 @@ public class UserService implements UserDetailsService {
         return response;
     }
 
-    public UserResponse getByUsername(String username) {
+    public User getByUsername(String username) {
         User user = repo.findByUsername(username);
 
         if(user == null){
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
-        UserResponse response = mapper.toResponse(user);
-        return response;
+        return user;
     }
 
     public List<UserResponse> getAll() {

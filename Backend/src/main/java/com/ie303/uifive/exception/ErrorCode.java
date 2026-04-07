@@ -29,7 +29,10 @@ public enum ErrorCode {
     VERIFICATION_TOKEN_EXPIRED(1015, "Verification token has expired", HttpStatus.BAD_REQUEST),
 
     INVALID_OLD_PASSWORD(1016, "Old password is incorrect", HttpStatus.BAD_REQUEST),
-    SAME_PASSWORD(1017, "New password must be different", HttpStatus.BAD_REQUEST);
+    SAME_PASSWORD(1017, "New password must be different", HttpStatus.BAD_REQUEST),
+
+    QUESTION_NOT_FOUND(1018, "Question not found bro", HttpStatus.BAD_REQUEST),
+    GEMINI_NOT_RESPONSE(1019, "Gemini overload", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;
