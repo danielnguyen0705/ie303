@@ -15,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -76,7 +75,6 @@ public class UserLessonProgressService {
         UserLessonProgress entity = repo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
 
-        UserLessonProgressResponse response = mapper.toResponse(entity);
-        return response;
+        return mapper.toResponse(entity);
     }
 }

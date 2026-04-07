@@ -2,15 +2,21 @@ package com.ie303.uifive.service;
 
 import com.ie303.uifive.dto.req.ChangePasswordRequest;
 import com.ie303.uifive.dto.req.UserRequest;
+import com.ie303.uifive.dto.res.StudyingGradeResponse;
+import com.ie303.uifive.dto.res.UserProfileResponse;
 import com.ie303.uifive.dto.res.UserResponse;
+import com.ie303.uifive.entity.Grade;
 import com.ie303.uifive.entity.Role;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.UserMapper;
+import com.ie303.uifive.repo.UserLessonProgressRepo;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -30,6 +36,7 @@ public class UserService implements UserDetailsService {
     private final UserRepo repo;
     private final UserMapper mapper;
     private final EmailService emailService;
+    private final UserLessonProgressRepo userLessonProgressRepo;
 
     public UserResponse create(UserRequest request) {
         if (repo.findByUsername(request.username()) != null) {
@@ -170,6 +177,9 @@ public class UserService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = this.repo.findByUsername(username);
         if (user == null) {
+            user = this.repo.findByEmail(username);
+        }
+        if (user == null) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
@@ -180,6 +190,38 @@ public class UserService implements UserDetailsService {
                 user.getPassword(),
                 List.of(new SimpleGrantedAuthority(authority))
         );
+    }
+
+    public User findByEmailOrNull(String email) {
+        return repo.findByEmail(email);
+    }
+
+    public User findByEmail(String email) {
+        User user = findByEmailOrNull(email);
+        if (user == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+        return user;
+    }
+
+    public User createOAuth2User(String email, String name) {
+        User user = new User();
+        user.setEmail(email);
+        user.setUsername(email);
+        user.setPassword("");
+        user.setRole(Role.USER);
+        user.setCoin(0);
+        user.setScore(0);
+        user.setStreak(0);
+        user.setVerified(true);
+        user.setVerificationToken(null);
+        user.setVerificationExpiry(null);
+        return repo.save(user);
+    }
+
+    public User findOrCreateOAuth2User(String email, String name) {
+        User user = findByEmailOrNull(email);
+        return user != null ? user : createOAuth2User(email, name);
     }
 
     public void changePassword(String username, ChangePasswordRequest request) {
@@ -203,5 +245,25 @@ public class UserService implements UserDetailsService {
         user.setPassword(passwordEncoder.encode(request.newPassword()));
 
         repo.save(user);
+    }
+    public UserProfileResponse getMyProfile(String username) {
+        User user = repo.findByUsername(username);
+
+        List<Grade> grades = userLessonProgressRepo.findDistinctGradesByUser(user);
+
+        List<StudyingGradeResponse> studyingGrades = grades.stream()
+                .map(grade -> {
+                    int totalLessons = userLessonProgressRepo.countTotalLessonsByGradeId(grade.getId());
+                    int completedLessons = userLessonProgressRepo.countCompletedLessonsByUserAndGrade(user, grade.getId());
+
+                    double progressPercent = totalLessons == 0
+                            ? 0
+                            : (completedLessons * 100.0 / totalLessons);
+
+                    return new StudyingGradeResponse(grade.getId(), grade.getName(), progressPercent);
+                })
+                .toList();
+
+        return new UserProfileResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getCoin(), user.getScore(), user.getStreak(), user.getLastStudyDate(), user.getVipExpiredAt(), user.getCreatedAt(), studyingGrades);
     }
 }

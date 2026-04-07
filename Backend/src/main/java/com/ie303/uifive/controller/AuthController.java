@@ -7,6 +7,7 @@ import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UserResponse;
 import com.ie303.uifive.service.AuthService;
 import com.ie303.uifive.service.UserService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,13 +22,20 @@ public class AuthController {
     private final UserService service;
 
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@RequestBody @Valid LoginRequest request) {
+    public ApiResponse<String> login(@RequestBody @Valid LoginRequest request,
+                                     HttpServletResponse response) {
+
         String token = authService.login(request);
 
-        return ApiResponse.<LoginResponse>builder()
+        response.setHeader(
+                "Set-Cookie",
+                "token=" + token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax"
+        );
+
+        return ApiResponse.<String>builder()
                 .code(1000)
                 .message("Login successful")
-                .result(new LoginResponse(token))
+                .result("Logged in successfully")
                 .build();
     }
 
@@ -44,6 +52,21 @@ public class AuthController {
         return ApiResponse.<String>builder()
                 .code(1000)
                 .result("Email verified successfully")
+                .build();
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<String> logout(HttpServletResponse response) {
+
+        response.setHeader(
+                "Set-Cookie",
+                "token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax"
+        );
+
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Logout successful")
+                .result("Logged out")
                 .build();
     }
 }
