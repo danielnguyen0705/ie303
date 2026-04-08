@@ -2,6 +2,8 @@ package com.ie303.uifive.dto.res;
 
 import com.ie303.uifive.entity.QuestionGroupType;
 
+import java.util.List;
+
 public record QuestionGroupResponse(
         Long id,
         QuestionGroupType groupType,
@@ -11,6 +13,7 @@ public record QuestionGroupResponse(
         String audioUrl,
         String imageUrl,
         String groupData,
-        Long lessonId
+        Long lessonId,
+        List<QuestionResponse> questions
 ) {
 }

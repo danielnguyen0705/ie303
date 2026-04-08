@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface QuestionGroupRepo extends JpaRepository<QuestionGroup, Long> {
     List<QuestionGroup> findByLessonId(Long lessonId);
+    List<QuestionGroup> findByLessonIdOrderByIdAsc(Long lessonId);
 }

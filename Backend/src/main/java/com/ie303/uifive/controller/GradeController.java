@@ -1,10 +1,12 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.GradeRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.GradeResponse;
 import com.ie303.uifive.service.GradeService;
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,8 +30,11 @@ public class GradeController {
     }
 
     @GetMapping
-    public List<GradeResponse> getAll() {
-        return gradeService.getAll();
+    public ApiResponse<List<GradeResponse>> getAll() {
+        return ApiResponse.<List<GradeResponse>>builder()
+                .code(1000)
+                .result(gradeService.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

@@ -1,6 +1,5 @@
 package com.ie303.uifive.dto.req;
 
-import com.ie303.uifive.entity.LessonType;
 import com.ie303.uifive.entity.SkillType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -16,9 +15,6 @@ public record LessonRequest(
         @NotBlank(message = "title không được để trống")
         @Size(max = 255, message = "title không được vượt quá 255 ký tự")
         String title,
-
-        @NotNull(message = "lessonType không được để trống")
-        LessonType lessonType,
 
         @NotNull(message = "skillType không được để trống")
         SkillType skillType,

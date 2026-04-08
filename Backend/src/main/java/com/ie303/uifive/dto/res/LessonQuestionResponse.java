@@ -1,4 +1,10 @@
 package com.ie303.uifive.dto.res;
 
-public class LessonQuestionResponse {
+import java.util.List;
+
+public record LessonQuestionResponse(
+        Long lessonId,
+        List<QuestionResponse> singleQuestions,
+        List<QuestionGroupResponse> questionGroups
+) {
 }

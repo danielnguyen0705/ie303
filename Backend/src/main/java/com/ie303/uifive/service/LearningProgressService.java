@@ -34,16 +34,25 @@ public class LearningProgressService {
 
         List<Unit> units = unitRepo.findByGradeIdOrderByUnitNumberAsc(gradeId);
 
-        return units.stream().map(unit -> {
-            int totalLessons = lessonRepo.countLessonsByUnitId(unit.getId());
-            int completedLessons = userLessonProgressRepo.countCompletedLessonsByUserAndUnit(user, unit.getId());
+        return units.stream()
+                .map(unit -> {
+                    int totalLessons = lessonRepo.countLessonsByUnitId(unit.getId());
+                    int completedLessons = userLessonProgressRepo
+                            .countCompletedLessonsByUserAndUnit(user, unit.getId());
 
-            double progressPercent = totalLessons == 0
-                    ? 0
-                    : (completedLessons * 100.0 / totalLessons);
+                    double progressPercent = 0.0;
+                    if (totalLessons > 0) {
+                        progressPercent = (completedLessons * 100.0) / totalLessons;
+                    }
 
-            return new UnitProgressResponse(unit.getId(), unit.getTitle(), unit.getUnitNumber(), progressPercent);
-        }).toList();
+                    return new UnitProgressResponse(
+                            unit.getId(),
+                            unit.getTitle(),
+                            unit.getUnitNumber(),
+                            progressPercent
+                    );
+                })
+                .toList();
     }
 
     public List<SectionProgressResponse> getSectionsByUnit(Long unitId) {
