@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.QuestionOptionRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.QuestionOptionResponse;
 import com.ie303.uifive.service.QuestionOptionService;
 import jakarta.annotation.security.RolesAllowed;
@@ -25,13 +26,19 @@ QuestionOptionController {
     }
 
     @GetMapping("/{id}")
-    public QuestionOptionResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<QuestionOptionResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<QuestionOptionResponse>builder()
+                .code(1000)
+                .result(service.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<QuestionOptionResponse> getAll() {
-        return service.getAll();
+    public ApiResponse<List<QuestionOptionResponse>> getAll() {
+        return ApiResponse.<List<QuestionOptionResponse>>builder()
+                .code(1000)
+                .result(service.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.SemesterTestRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.SemesterTestResponse;
 import com.ie303.uifive.service.SemesterTestService;
 import jakarta.annotation.security.RolesAllowed;
@@ -24,13 +25,19 @@ public class SemesterTestController {
     }
 
     @GetMapping("/{id}")
-    public SemesterTestResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<SemesterTestResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<SemesterTestResponse>builder()
+                .code(1000)
+                .result(service.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<SemesterTestResponse> getAll() {
-        return service.getAll();
+    public ApiResponse<List<SemesterTestResponse>> getAll() {
+        return ApiResponse.<List<SemesterTestResponse>>builder()
+                .code(1000)
+                .result(service.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

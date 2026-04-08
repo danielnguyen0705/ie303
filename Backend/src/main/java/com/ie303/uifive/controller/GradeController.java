@@ -25,8 +25,11 @@ public class GradeController {
     }
 
     @GetMapping("/{id}")
-    public GradeResponse getById(@PathVariable Long id) {
-        return gradeService.getById(id);
+    public ApiResponse<GradeResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<GradeResponse>builder()
+                .code(1000)
+                .result(gradeService.getById(id))
+                .build();
     }
 
     @GetMapping

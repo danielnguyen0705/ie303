@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.SectionRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.SectionResponse;
 import com.ie303.uifive.service.SectionService;
 import jakarta.annotation.security.RolesAllowed;
@@ -24,13 +25,19 @@ public class SectionController {
     }
 
     @GetMapping("/{id}")
-    public SectionResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<SectionResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<SectionResponse>builder()
+                .code(1000)
+                .result(service.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<SectionResponse> getAll() {
-        return service.getAll();
+    public ApiResponse<List<SectionResponse>> getAll() {
+        return ApiResponse.<List<SectionResponse>>builder()
+                .code(1000)
+                .result(service.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

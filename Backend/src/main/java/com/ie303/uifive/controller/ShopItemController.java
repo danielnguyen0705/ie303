@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.ShopItemRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.ShopItemResponse;
 import com.ie303.uifive.service.ShopItemService;
 import jakarta.validation.Valid;
@@ -22,13 +23,19 @@ public class ShopItemController {
     }
 
     @GetMapping("/{id}")
-    public ShopItemResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<ShopItemResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<ShopItemResponse>builder()
+                .code(1000)
+                .result(service.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<ShopItemResponse> getAll() {
-        return service.getAll();
+    public ApiResponse<List<ShopItemResponse>> getAll() {
+        return ApiResponse.<List<ShopItemResponse>>builder()
+                .code(1000)
+                .result(service.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

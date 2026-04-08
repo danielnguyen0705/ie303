@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.LessonRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.LessonResponse;
 import com.ie303.uifive.service.LessonService;
 import jakarta.annotation.security.RolesAllowed;
@@ -24,13 +25,19 @@ public class LessonController {
     }
 
     @GetMapping("/{id}")
-    public LessonResponse getById(@PathVariable Long id) {
-        return lessonService.getById(id);
+    public ApiResponse<LessonResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<LessonResponse>builder()
+                .code(1000)
+                .result(lessonService.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<LessonResponse> getAll() {
-        return lessonService.getAll();
+    public ApiResponse<List<LessonResponse>> getAll() {
+        return ApiResponse.<List<LessonResponse>>builder()
+                .code(1000)
+                .result(lessonService.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

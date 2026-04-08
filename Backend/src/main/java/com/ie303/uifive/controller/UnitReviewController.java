@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.UnitReviewRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UnitReviewResponse;
 import com.ie303.uifive.service.UnitReviewService;
 import jakarta.validation.Valid;
@@ -22,15 +23,20 @@ public class UnitReviewController {
     }
 
     @GetMapping("/{id}")
-    public UnitReviewResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<UnitReviewResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<UnitReviewResponse>builder()
+                .code(1000)
+                .result(service.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<UnitReviewResponse> getAll() {
-        return service.getAll();
+    public ApiResponse<List<UnitReviewResponse>> getAll() {
+        return ApiResponse.<List<UnitReviewResponse>>builder()
+                .code(1000)
+                .result(service.getAll())
+                .build();
     }
-
     @PutMapping("/{id}")
     public UnitReviewResponse update(@PathVariable Long id,
                                      @RequestBody @Valid UnitReviewRequest request) {
