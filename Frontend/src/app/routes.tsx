@@ -23,6 +23,7 @@ import { Reports } from "./pages/admin/Reports";
 import { VIPManagement } from "./pages/admin/VIPManagement";
 import { Notifications } from "./pages/admin/Notifications";
 import { Settings } from "./pages/admin/Settings";
+import { RequireAuth } from "./components/RequireAuth";
 
 export const router = createBrowserRouter([
   {
@@ -46,17 +47,22 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: "/admin",
-    Component: AdminLayout,
+    Component: RequireAuth,
     children: [
-      { index: true, Component: AdminDashboard },
-      { path: "users", Component: UserManagement },
-      { path: "content", Component: ContentManagement },
-      { path: "questions", Component: QuestionBank },
-      { path: "reports", Component: Reports },
-      { path: "vip", Component: VIPManagement },
-      { path: "notifications", Component: Notifications },
-      { path: "settings", Component: Settings },
+      {
+        path: "/admin",
+        Component: AdminLayout,
+        children: [
+          { index: true, Component: AdminDashboard },
+          { path: "users", Component: UserManagement },
+          { path: "content", Component: ContentManagement },
+          { path: "questions", Component: QuestionBank },
+          { path: "reports", Component: Reports },
+          { path: "vip", Component: VIPManagement },
+          { path: "notifications", Component: Notifications },
+          { path: "settings", Component: Settings },
+        ],
+      },
     ],
   },
 ]);

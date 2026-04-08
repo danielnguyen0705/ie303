@@ -95,7 +95,7 @@ export async function getQuestion(questionId: string): Promise<AdminApiResponse<
   const question = getQuestionById(questionId);
   
   if (!question) {
-    createErrorResponse('Question not found', 'NOT_FOUND');
+    return createErrorResponse('Question not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(question);
@@ -127,11 +127,11 @@ export async function getQuestionsByDifficultyApi(
 export async function createQuestion(data: CreateQuestionRequest): Promise<AdminApiResponse<AdminQuestion>> {
   // Validate
   if (!data.question || !data.correctAnswer) {
-    createErrorResponse('Question and correct answer are required', 'VALIDATION_ERROR');
+    return createErrorResponse('Question and correct answer are required', 'VALIDATION_ERROR');
   }
 
   if (data.type === 'multiple-choice' && (!data.options || data.options.length < 2)) {
-    createErrorResponse('Multiple choice questions need at least 2 options', 'VALIDATION_ERROR');
+    return createErrorResponse('Multiple choice questions need at least 2 options', 'VALIDATION_ERROR');
   }
 
   const newQuestion: AdminQuestion = {
@@ -167,7 +167,7 @@ export async function updateQuestion(
   const question = getQuestionById(questionId);
   
   if (!question) {
-    createErrorResponse('Question not found', 'NOT_FOUND');
+    return createErrorResponse('Question not found', 'NOT_FOUND');
   }
 
   const updatedQuestion: AdminQuestion = {
@@ -185,7 +185,7 @@ export async function deleteQuestion(params: { questionId: string }): Promise<Ad
   const question = getQuestionById(params.questionId);
   
   if (!question) {
-    createErrorResponse('Question not found', 'NOT_FOUND');
+    return createErrorResponse('Question not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(true, 1000);
@@ -198,7 +198,7 @@ export async function activateQuestion(questionId: string): Promise<AdminApiResp
   const question = getQuestionById(questionId);
   
   if (!question) {
-    createErrorResponse('Question not found', 'NOT_FOUND');
+    return createErrorResponse('Question not found', 'NOT_FOUND');
   }
 
   const activatedQuestion: AdminQuestion = {
@@ -216,7 +216,7 @@ export async function deactivateQuestion(questionId: string): Promise<AdminApiRe
   const question = getQuestionById(questionId);
   
   if (!question) {
-    createErrorResponse('Question not found', 'NOT_FOUND');
+    return createErrorResponse('Question not found', 'NOT_FOUND');
   }
 
   const deactivatedQuestion: AdminQuestion = {
@@ -237,7 +237,7 @@ export async function flagQuestionForReview(
   const question = getQuestionById(questionId);
   
   if (!question) {
-    createErrorResponse('Question not found', 'NOT_FOUND');
+    return createErrorResponse('Question not found', 'NOT_FOUND');
   }
 
   const flaggedQuestion: AdminQuestion = {
@@ -310,7 +310,7 @@ export async function duplicateQuestion(questionId: string): Promise<AdminApiRes
   const question = getQuestionById(questionId);
   
   if (!question) {
-    createErrorResponse('Question not found', 'NOT_FOUND');
+    return createErrorResponse('Question not found', 'NOT_FOUND');
   }
 
   const duplicatedQuestion: AdminQuestion = {

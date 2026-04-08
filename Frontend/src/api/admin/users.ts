@@ -85,7 +85,7 @@ export async function getUser(userId: string): Promise<AdminApiResponse<AdminUse
   const user = getAdminUserById(userId);
   
   if (!user) {
-    createErrorResponse('User not found', 'NOT_FOUND');
+    return createErrorResponse('User not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(user);
@@ -97,7 +97,7 @@ export async function getUser(userId: string): Promise<AdminApiResponse<AdminUse
 export async function createUser(data: CreateUserRequest): Promise<AdminApiResponse<AdminUser>> {
   // Validate
   if (!data.email || !data.password || !data.name) {
-    createErrorResponse('All fields are required', 'VALIDATION_ERROR');
+    return createErrorResponse('All fields are required', 'VALIDATION_ERROR');
   }
 
   const newUser: AdminUser = {
@@ -133,7 +133,7 @@ export async function updateUser(
   const user = getAdminUserById(userId);
   
   if (!user) {
-    createErrorResponse('User not found', 'NOT_FOUND');
+    return createErrorResponse('User not found', 'NOT_FOUND');
   }
 
   const updatedUser: AdminUser = {
@@ -153,7 +153,7 @@ export async function deleteUser(params: { userId: string } | string): Promise<A
   const user = getAdminUserById(userId);
   
   if (!user) {
-    createErrorResponse('User not found', 'NOT_FOUND');
+    return createErrorResponse('User not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(true, 1000);
@@ -169,7 +169,7 @@ export async function suspendUser(
   const user = getAdminUserById(userId);
   
   if (!user) {
-    createErrorResponse('User not found', 'NOT_FOUND');
+    return createErrorResponse('User not found', 'NOT_FOUND');
   }
 
   const suspendedUser: AdminUser = {
@@ -187,7 +187,7 @@ export async function activateUser(userId: string): Promise<AdminApiResponse<Adm
   const user = getAdminUserById(userId);
   
   if (!user) {
-    createErrorResponse('User not found', 'NOT_FOUND');
+    return createErrorResponse('User not found', 'NOT_FOUND');
   }
 
   const activatedUser: AdminUser = {
@@ -357,7 +357,7 @@ export async function assignVIPStatus(
   const user = getAdminUserById(userId);
   
   if (!user) {
-    createErrorResponse('User not found', 'NOT_FOUND');
+    return createErrorResponse('User not found', 'NOT_FOUND');
   }
 
   const updatedUser: AdminUser = {

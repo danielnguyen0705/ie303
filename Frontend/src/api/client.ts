@@ -1,86 +1,92 @@
 // API Client - Base utilities for API calls
 
-import type { ApiResponse, ApiError } from './types';
+import { ApiError, type ApiResponse } from "./types";
+import {
+  DEFAULT_SIMULATED_DELAY_MS,
+  DEFAULT_SUCCESS_RATE,
+  isSuccess,
+  sleep,
+} from "./utils/async";
 
-// Simulate network delay
-const SIMULATED_DELAY = 500; // ms
+const RANDOM_ERROR_CODE = "RANDOM_ERROR";
+const RANDOM_ERROR_MESSAGE = "Simulated random error";
+const UNKNOWN_ERROR_CODE = "UNKNOWN_ERROR";
+const UNKNOWN_ERROR_MESSAGE = "An unknown error occurred";
 
 // Simulate API call with delay
 export async function simulateApiCall<T>(
-  data: T,
-  delay: number = SIMULATED_DELAY
+  payload: T,
+  delayMs: number = DEFAULT_SIMULATED_DELAY_MS,
 ): Promise<ApiResponse<T>> {
-  await new Promise(resolve => setTimeout(resolve, delay));
-  
+  await sleep(delayMs);
+
   return {
     success: true,
-    data,
+    data: payload,
   };
 }
 
 // Simulate API error
 export async function simulateApiError(
   message: string,
-  code: string = 'API_ERROR',
-  delay: number = SIMULATED_DELAY
-): Promise<never> {
-  await new Promise(resolve => setTimeout(resolve, delay));
-  
-  const error: ApiError = {
-    code,
-    message,
-  };
-  
-  throw error;
+  code: string = "API_ERROR",
+  delayMs: number = DEFAULT_SIMULATED_DELAY_MS,
+): Promise<ApiResponse<never>> {
+  await sleep(delayMs);
+
+  return createErrorResponse(message, code);
 }
 
 // Random success/failure for testing
 export async function simulateRandomResult<T>(
-  data: T,
-  successRate: number = 0.9,
-  delay: number = SIMULATED_DELAY
+  payload: T,
+  successRate: number = DEFAULT_SUCCESS_RATE,
+  delayMs: number = DEFAULT_SIMULATED_DELAY_MS,
 ): Promise<ApiResponse<T>> {
-  await new Promise(resolve => setTimeout(resolve, delay));
-  
-  if (Math.random() < successRate) {
+  await sleep(delayMs);
+
+  if (isSuccess(successRate)) {
     return {
       success: true,
-      data,
+      data: payload,
     };
-  } else {
-    throw {
-      code: 'RANDOM_ERROR',
-      message: 'Simulated random error',
-    } as ApiError;
   }
+
+  return createErrorResponse(RANDOM_ERROR_MESSAGE, RANDOM_ERROR_CODE);
 }
 
 // Error handler
-export function handleApiError(error: any): ApiError {
-  if (error.code && error.message) {
-    return error as ApiError;
+export function handleApiError(error: unknown): ApiError {
+  if (error instanceof ApiError) {
+    return error;
   }
-  
-  return {
-    code: 'UNKNOWN_ERROR',
-    message: error.message || 'An unknown error occurred',
-    details: error,
-  };
+
+  if (error instanceof Error) {
+    return new ApiError(UNKNOWN_ERROR_CODE, error.message, error);
+  }
+
+  return new ApiError(UNKNOWN_ERROR_CODE, UNKNOWN_ERROR_MESSAGE, error);
 }
 
 // Success response wrapper
-export function createSuccessResponse<T>(data: T, message?: string): ApiResponse<T> {
+export function createSuccessResponse<T>(
+  payload: T,
+  message?: string,
+): ApiResponse<T> {
   return {
     success: true,
-    data,
+    data: payload,
     message,
   };
 }
 
 // Error response wrapper
-export function createErrorResponse(message: string, code: string = 'ERROR'): never {
-  throw {
-    code,
-    message,
-  } as ApiError;
+export function createErrorResponse(
+  message: string,
+  code: string = "ERROR",
+): ApiResponse<never> {
+  return {
+    success: false,
+    error: new ApiError(code, message),
+  };
 }

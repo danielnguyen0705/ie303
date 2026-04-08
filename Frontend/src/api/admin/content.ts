@@ -21,7 +21,7 @@ export async function getUnit(params: { unitId: number }): Promise<AdminApiRespo
   const unit = units.find(u => u.id === params.unitId);
   
   if (!unit) {
-    createErrorResponse('Unit not found', 'NOT_FOUND');
+    return createErrorResponse('Unit not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(unit);
@@ -62,7 +62,7 @@ export async function updateUnit(params: {
   const unit = units.find(u => u.id === params.unitId);
   
   if (!unit) {
-    createErrorResponse('Unit not found', 'NOT_FOUND');
+    return createErrorResponse('Unit not found', 'NOT_FOUND');
   }
 
   const updatedUnit = {
@@ -80,7 +80,7 @@ export async function deleteUnit(params: { unitId: number }): Promise<AdminApiRe
   const unit = units.find(u => u.id === params.unitId);
   
   if (!unit) {
-    createErrorResponse('Unit not found', 'NOT_FOUND');
+    return createErrorResponse('Unit not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(true, 1000);
@@ -102,7 +102,7 @@ export async function getLesson(params: { lessonId: string }): Promise<AdminApiR
   const lesson = allLessons.find(l => l.id === params.lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(lesson);
@@ -145,7 +145,7 @@ export async function updateLesson(params: {
   const lesson = allLessons.find(l => l.id === params.lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   const updatedLesson = {
@@ -164,7 +164,7 @@ export async function deleteLesson(params: { lessonId: string }): Promise<AdminA
   const lesson = allLessons.find(l => l.id === params.lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(true, 1000);
@@ -178,7 +178,7 @@ export async function publishLesson(params: { lessonId: string }): Promise<Admin
   const lesson = allLessons.find(l => l.id === params.lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(lesson);
@@ -192,7 +192,7 @@ export async function archiveLesson(params: { lessonId: string }): Promise<Admin
   const lesson = allLessons.find(l => l.id === params.lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(lesson);
@@ -253,7 +253,7 @@ export async function getContent(contentId: string): Promise<AdminApiResponse<Co
   const content = getContentById(contentId);
   
   if (!content) {
-    createErrorResponse('Content not found', 'NOT_FOUND');
+    return createErrorResponse('Content not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(content);
@@ -273,7 +273,7 @@ export async function getContentByUnitId(unitId: number): Promise<AdminApiRespon
 export async function createContent(data: CreateContentRequest): Promise<AdminApiResponse<ContentItem>> {
   // Validate
   if (!data.title || !data.description) {
-    createErrorResponse('Title and description are required', 'VALIDATION_ERROR');
+    return createErrorResponse('Title and description are required', 'VALIDATION_ERROR');
   }
 
   const newContent: ContentItem = {
@@ -307,7 +307,7 @@ export async function updateContent(
   const content = getContentById(contentId);
   
   if (!content) {
-    createErrorResponse('Content not found', 'NOT_FOUND');
+    return createErrorResponse('Content not found', 'NOT_FOUND');
   }
 
   const updatedContent: ContentItem = {
@@ -326,7 +326,7 @@ export async function deleteContent(contentId: string): Promise<AdminApiResponse
   const content = getContentById(contentId);
   
   if (!content) {
-    createErrorResponse('Content not found', 'NOT_FOUND');
+    return createErrorResponse('Content not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(true, 1000);
@@ -339,7 +339,7 @@ export async function publishContent(contentId: string): Promise<AdminApiRespons
   const content = getContentById(contentId);
   
   if (!content) {
-    createErrorResponse('Content not found', 'NOT_FOUND');
+    return createErrorResponse('Content not found', 'NOT_FOUND');
   }
 
   const publishedContent: ContentItem = {
@@ -358,7 +358,7 @@ export async function archiveContent(contentId: string): Promise<AdminApiRespons
   const content = getContentById(contentId);
   
   if (!content) {
-    createErrorResponse('Content not found', 'NOT_FOUND');
+    return createErrorResponse('Content not found', 'NOT_FOUND');
   }
 
   const archivedContent: ContentItem = {
@@ -444,7 +444,7 @@ export async function duplicateContent(contentId: string): Promise<AdminApiRespo
   const content = getContentById(contentId);
   
   if (!content) {
-    createErrorResponse('Content not found', 'NOT_FOUND');
+    return createErrorResponse('Content not found', 'NOT_FOUND');
   }
 
   const duplicatedContent: ContentItem = {

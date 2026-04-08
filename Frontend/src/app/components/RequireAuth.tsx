@@ -1,10 +1,7 @@
 import { Navigate, Outlet } from "react-router";
-import { Navbar } from "./components/Navbar";
-import { Footer } from "./components/Footer";
 import { useAuth } from "@/context/AuthContext";
-import { PublicLanding } from "./pages/PublicLanding";
 
-export function Root() {
+export function RequireAuth() {
   const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
@@ -18,20 +15,14 @@ export function Root() {
   }
 
   if (!isAuthenticated) {
-    return <PublicLanding />;
+    return <Navigate to="/" replace />;
   }
 
-  if (user?.role === "ADMIN") {
-    return <Navigate to="/admin" replace />;
+  if (user?.role !== "ADMIN") {
+    return <Navigate to="/" replace />;
   }
 
-  return (
-    <div className="min-h-screen bg-[#f5f8fc] flex flex-col">
-      <Navbar />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
-  );
+  return <Outlet />;
 }
+
+export default RequireAuth;

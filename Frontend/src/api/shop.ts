@@ -47,7 +47,7 @@ export async function getShopItem(itemId: string): Promise<ApiResponse<ShopItem>
   const item = shopItems.find(i => i.id === itemId);
   
   if (!item) {
-    createErrorResponse('Item not found', 'NOT_FOUND');
+    return createErrorResponse('Item not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(item);
@@ -71,16 +71,16 @@ export async function purchaseItem(data: PurchaseItemRequest): Promise<
   const item = shopItems.find(i => i.id === data.itemId);
   
   if (!item) {
-    createErrorResponse('Item not found', 'NOT_FOUND');
+    return createErrorResponse('Item not found', 'NOT_FOUND');
   }
 
   if (item.isPurchased) {
-    createErrorResponse('Item already purchased', 'INVALID_STATE');
+    return createErrorResponse('Item already purchased', 'INVALID_STATE');
   }
 
   // Check balance
   if (currentUser.coins < item.price) {
-    createErrorResponse('Insufficient coins', 'INSUFFICIENT_FUNDS');
+    return createErrorResponse('Insufficient coins', 'INSUFFICIENT_FUNDS');
   }
 
   const purchasedItem: ShopItem = {
@@ -160,15 +160,15 @@ export async function applyPowerup(itemId: string): Promise<
   const item = shopItems.find(i => i.id === itemId);
   
   if (!item) {
-    createErrorResponse('Item not found', 'NOT_FOUND');
+    return createErrorResponse('Item not found', 'NOT_FOUND');
   }
 
   if (!item.isPurchased) {
-    createErrorResponse('Item not purchased', 'FORBIDDEN');
+    return createErrorResponse('Item not purchased', 'FORBIDDEN');
   }
 
   if (item.type !== 'powerup' && item.type !== 'boost') {
-    createErrorResponse('Item is not a powerup', 'INVALID_TYPE');
+    return createErrorResponse('Item is not a powerup', 'INVALID_TYPE');
   }
 
   const expiresAt = new Date();
@@ -252,11 +252,11 @@ export async function refundItem(itemId: string): Promise<
   const item = shopItems.find(i => i.id === itemId);
   
   if (!item) {
-    createErrorResponse('Item not found', 'NOT_FOUND');
+    return createErrorResponse('Item not found', 'NOT_FOUND');
   }
 
   if (!item.isPurchased) {
-    createErrorResponse('Item not purchased', 'INVALID_STATE');
+    return createErrorResponse('Item not purchased', 'INVALID_STATE');
   }
 
   // Refund 80% of original price

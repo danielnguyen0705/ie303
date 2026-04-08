@@ -70,7 +70,7 @@ export async function getActivityLog(logId: string): Promise<AdminApiResponse<Ac
   const log = activityLogs.find(l => l.id === logId);
   
   if (!log) {
-    createErrorResponse('Activity log not found', 'NOT_FOUND');
+    return createErrorResponse('Activity log not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(log);

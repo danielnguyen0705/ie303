@@ -20,7 +20,7 @@ export async function getLesson(lessonId: string): Promise<ApiResponse<Lesson>> 
   const lesson = lessons.find(l => l.id === lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(lesson);
@@ -50,7 +50,7 @@ export async function getLessonContent(lessonId: string): Promise<
   const lesson = lessons.find(l => l.id === lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   return simulateApiCall({
@@ -95,11 +95,11 @@ export async function startLesson(lessonId: string): Promise<ApiResponse<Lesson>
   const lesson = lessons.find(l => l.id === lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   if (lesson.status === 'locked') {
-    createErrorResponse('Lesson is locked. Complete previous lessons first.', 'FORBIDDEN');
+    return createErrorResponse('Lesson is locked. Complete previous lessons first.', 'FORBIDDEN');
   }
 
   return simulateApiCall(lesson);
@@ -125,7 +125,7 @@ export async function completeLesson(
   const lesson = lessons.find(l => l.id === lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   // Update lesson
@@ -167,7 +167,7 @@ export async function getLessonProgress(lessonId: string): Promise<
   const lesson = lessons.find(l => l.id === lessonId);
   
   if (!lesson) {
-    createErrorResponse('Lesson not found', 'NOT_FOUND');
+    return createErrorResponse('Lesson not found', 'NOT_FOUND');
   }
 
   return simulateApiCall({

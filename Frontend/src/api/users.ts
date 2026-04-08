@@ -15,7 +15,7 @@ export async function getUserProfile(userId?: string): Promise<ApiResponse<User>
   }
 
   // In real app, fetch from server
-  createErrorResponse('User not found', 'NOT_FOUND');
+  return createErrorResponse('User not found', 'NOT_FOUND');
 }
 
 /**
@@ -133,7 +133,7 @@ export async function updatePreferences(preferences: {
  */
 export async function deleteAccount(password: string): Promise<ApiResponse<boolean>> {
   if (!password) {
-    createErrorResponse('Password is required', 'VALIDATION_ERROR');
+    return createErrorResponse('Password is required', 'VALIDATION_ERROR');
   }
 
   return simulateApiCall(true, 1000);

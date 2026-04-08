@@ -2,9 +2,9 @@
 
 export interface ApiResponse<T> {
   success: boolean;
-  data: T;
+  data?: T;
   message?: string;
-  error?: string;
+  error?: ApiError;
 }
 
 export interface PaginatedResponse<T> {
@@ -15,20 +15,26 @@ export interface PaginatedResponse<T> {
   hasMore: boolean;
 }
 
-export interface ApiError {
+export class ApiError extends Error {
   code: string;
-  message: string;
-  details?: any;
+  details?: unknown;
+
+  constructor(code: string, message: string, details?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+    this.details = details;
+  }
 }
 
 // Request types
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
 export interface RegisterRequest {
-  name: string;
+  username: string;
   email: string;
   password: string;
 }
@@ -68,16 +74,16 @@ export interface ClaimQuestRequest {
 
 // Filter & Sort types
 export interface LeaderboardFilter {
-  period?: 'daily' | 'weekly' | 'monthly' | 'all-time';
-  league?: 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+  period?: "daily" | "weekly" | "monthly" | "all-time";
+  league?: "bronze" | "silver" | "gold" | "platinum" | "diamond";
 }
 
 export interface QuestFilter {
-  type?: 'daily' | 'weekly' | 'special';
-  status?: 'active' | 'completed' | 'claimed';
+  type?: "daily" | "weekly" | "special";
+  status?: "active" | "completed" | "claimed";
 }
 
 export interface ShopFilter {
-  type?: 'powerup' | 'cosmetic' | 'subscription' | 'boost';
+  type?: "powerup" | "cosmetic" | "subscription" | "boost";
   isPurchased?: boolean;
 }

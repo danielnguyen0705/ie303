@@ -27,7 +27,7 @@ export async function getUnit(unitId: number): Promise<ApiResponse<Unit>> {
   const unit = getUnitById(unitId);
   
   if (!unit) {
-    createErrorResponse('Unit not found', 'NOT_FOUND');
+    return createErrorResponse('Unit not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(unit);
@@ -50,7 +50,7 @@ export async function getUnitProgress(unitId: number): Promise<
   const unit = getUnitById(unitId);
   
   if (!unit) {
-    createErrorResponse('Unit not found', 'NOT_FOUND');
+    return createErrorResponse('Unit not found', 'NOT_FOUND');
   }
 
   return simulateApiCall({
@@ -71,11 +71,11 @@ export async function startUnit(unitId: number): Promise<ApiResponse<Unit>> {
   const unit = getUnitById(unitId);
   
   if (!unit) {
-    createErrorResponse('Unit not found', 'NOT_FOUND');
+    return createErrorResponse('Unit not found', 'NOT_FOUND');
   }
 
   if (unit.status === 'locked') {
-    createErrorResponse('Unit is locked. Complete previous units first.', 'FORBIDDEN');
+    return createErrorResponse('Unit is locked. Complete previous units first.', 'FORBIDDEN');
   }
 
   // Update unit status
@@ -103,7 +103,7 @@ export async function completeUnit(unitId: number): Promise<
   const unit = getUnitById(unitId);
   
   if (!unit) {
-    createErrorResponse('Unit not found', 'NOT_FOUND');
+    return createErrorResponse('Unit not found', 'NOT_FOUND');
   }
 
   const completedUnit: Unit = {

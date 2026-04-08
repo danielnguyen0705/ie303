@@ -86,7 +86,7 @@ export async function getSetting(key: string): Promise<AdminApiResponse<SystemSe
   const setting = systemSettings.find(s => s.key === key);
   
   if (!setting) {
-    createErrorResponse('Setting not found', 'NOT_FOUND');
+    return createErrorResponse('Setting not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(setting);
@@ -101,7 +101,7 @@ export async function getSettingValueApi(
   const value = getSettingValue(key);
   
   if (value === undefined) {
-    createErrorResponse('Setting not found', 'NOT_FOUND');
+    return createErrorResponse('Setting not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(value);
@@ -117,18 +117,18 @@ export async function updateSetting(
   const setting = systemSettings.find(s => s.key === key);
   
   if (!setting) {
-    createErrorResponse('Setting not found', 'NOT_FOUND');
+    return createErrorResponse('Setting not found', 'NOT_FOUND');
   }
 
   // Validate data type
   if (setting.dataType === 'boolean' && typeof data.value !== 'boolean') {
-    createErrorResponse('Value must be boolean', 'VALIDATION_ERROR');
+    return createErrorResponse('Value must be boolean', 'VALIDATION_ERROR');
   }
   if (setting.dataType === 'number' && typeof data.value !== 'number') {
-    createErrorResponse('Value must be number', 'VALIDATION_ERROR');
+    return createErrorResponse('Value must be number', 'VALIDATION_ERROR');
   }
   if (setting.dataType === 'string' && typeof data.value !== 'string') {
-    createErrorResponse('Value must be string', 'VALIDATION_ERROR');
+    return createErrorResponse('Value must be string', 'VALIDATION_ERROR');
   }
 
   const updatedSetting: SystemSettings = {
@@ -170,7 +170,7 @@ export async function resetSetting(key: string): Promise<AdminApiResponse<System
   const setting = systemSettings.find(s => s.key === key);
   
   if (!setting) {
-    createErrorResponse('Setting not found', 'NOT_FOUND');
+    return createErrorResponse('Setting not found', 'NOT_FOUND');
   }
 
   // Default values (in real app, these would come from a defaults config)
@@ -324,7 +324,7 @@ export async function validateSettingValue(
   const setting = systemSettings.find(s => s.key === key);
   
   if (!setting) {
-    createErrorResponse('Setting not found', 'NOT_FOUND');
+    return createErrorResponse('Setting not found', 'NOT_FOUND');
   }
 
   const errors: string[] = [];

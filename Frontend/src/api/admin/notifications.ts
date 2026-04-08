@@ -84,7 +84,7 @@ export async function getNotification(notificationId: string): Promise<AdminApiR
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(notification);
@@ -114,11 +114,11 @@ export async function createNotification(
 ): Promise<AdminApiResponse<Notification>> {
   // Validate
   if (!data.title || !data.message) {
-    createErrorResponse('Title and message are required', 'VALIDATION_ERROR');
+    return createErrorResponse('Title and message are required', 'VALIDATION_ERROR');
   }
 
   if (data.targetAudience === 'specific' && (!data.targetUserIds || data.targetUserIds.length === 0)) {
-    createErrorResponse('Target user IDs required for specific audience', 'VALIDATION_ERROR');
+    return createErrorResponse('Target user IDs required for specific audience', 'VALIDATION_ERROR');
   }
 
   // Calculate total recipients
@@ -170,11 +170,11 @@ export async function updateNotification(
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   if (notification.status === 'sent') {
-    createErrorResponse('Cannot update sent notification', 'INVALID_STATE');
+    return createErrorResponse('Cannot update sent notification', 'INVALID_STATE');
   }
 
   const updatedNotification: Notification = {
@@ -192,11 +192,11 @@ export async function deleteNotification(notificationId: string): Promise<AdminA
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   if (notification.status === 'sent') {
-    createErrorResponse('Cannot delete sent notification', 'INVALID_STATE');
+    return createErrorResponse('Cannot delete sent notification', 'INVALID_STATE');
   }
 
   return simulateApiCall(true, 1000);
@@ -218,11 +218,11 @@ export async function sendNotification(notificationId: string): Promise<
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   if (notification.status === 'sent') {
-    createErrorResponse('Notification already sent', 'INVALID_STATE');
+    return createErrorResponse('Notification already sent', 'INVALID_STATE');
   }
 
   return simulateApiCall(
@@ -248,7 +248,7 @@ export async function scheduleNotification(
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   const scheduledNotification: Notification = {
@@ -269,11 +269,11 @@ export async function cancelScheduledNotification(
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   if (notification.status !== 'scheduled') {
-    createErrorResponse('Notification is not scheduled', 'INVALID_STATE');
+    return createErrorResponse('Notification is not scheduled', 'INVALID_STATE');
   }
 
   const cancelledNotification: Notification = {
@@ -294,7 +294,7 @@ export async function duplicateNotification(
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   const duplicatedNotification: Notification = {
@@ -334,7 +334,7 @@ export async function getNotificationAnalytics(
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   return simulateApiCall({
@@ -370,7 +370,7 @@ export async function testNotification(
   const notification = notifications.find(n => n.id === notificationId);
   
   if (!notification) {
-    createErrorResponse('Notification not found', 'NOT_FOUND');
+    return createErrorResponse('Notification not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(true, 1000);

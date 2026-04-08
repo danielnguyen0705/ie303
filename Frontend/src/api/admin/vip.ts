@@ -44,7 +44,7 @@ export async function getVIPSubscription(vipId: string): Promise<AdminApiRespons
   const vip = vipSubscriptions.find(v => v.id === vipId);
   
   if (!vip) {
-    createErrorResponse('VIP subscription not found', 'NOT_FOUND');
+    return createErrorResponse('VIP subscription not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(vip);
@@ -74,13 +74,13 @@ export async function createVIPSubscription(
 ): Promise<AdminApiResponse<VIPSubscription>> {
   // Validate
   if (!data.userId || !data.plan || !data.duration) {
-    createErrorResponse('User ID, plan, and duration are required', 'VALIDATION_ERROR');
+    return createErrorResponse('User ID, plan, and duration are required', 'VALIDATION_ERROR');
   }
 
   // Check if user already has active subscription
   const existing = getVipByUserId(data.userId);
   if (existing && existing.status === 'active') {
-    createErrorResponse('User already has an active VIP subscription', 'DUPLICATE');
+    return createErrorResponse('User already has an active VIP subscription', 'DUPLICATE');
   }
 
   const startDate = new Date();
@@ -121,7 +121,7 @@ export async function updateVIPSubscription(
   const vip = vipSubscriptions.find(v => v.id === vipId);
   
   if (!vip) {
-    createErrorResponse('VIP subscription not found', 'NOT_FOUND');
+    return createErrorResponse('VIP subscription not found', 'NOT_FOUND');
   }
 
   const updatedVIP: VIPSubscription = {
@@ -142,7 +142,7 @@ export async function cancelVIPSubscription(
   const vip = vipSubscriptions.find(v => v.id === vipId);
   
   if (!vip) {
-    createErrorResponse('VIP subscription not found', 'NOT_FOUND');
+    return createErrorResponse('VIP subscription not found', 'NOT_FOUND');
   }
 
   const cancelledVIP: VIPSubscription = {
@@ -164,7 +164,7 @@ export async function renewVIPSubscription(
   const vip = vipSubscriptions.find(v => v.id === vipId);
   
   if (!vip) {
-    createErrorResponse('VIP subscription not found', 'NOT_FOUND');
+    return createErrorResponse('VIP subscription not found', 'NOT_FOUND');
   }
 
   const newEndDate = new Date(vip.endDate);
@@ -191,7 +191,7 @@ export async function extendVIPSubscription(
   const vip = vipSubscriptions.find(v => v.id === vipId);
   
   if (!vip) {
-    createErrorResponse('VIP subscription not found', 'NOT_FOUND');
+    return createErrorResponse('VIP subscription not found', 'NOT_FOUND');
   }
 
   const newEndDate = new Date(vip.endDate);
@@ -372,7 +372,7 @@ export async function sendRenewalReminder(
   const vip = vipSubscriptions.find(v => v.id === vipId);
   
   if (!vip) {
-    createErrorResponse('VIP subscription not found', 'NOT_FOUND');
+    return createErrorResponse('VIP subscription not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(true, 1000);

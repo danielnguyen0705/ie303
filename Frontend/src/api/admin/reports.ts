@@ -149,7 +149,7 @@ export async function getReport(reportId: string): Promise<AdminApiResponse<Repo
   const report = reports.find(r => r.id === reportId);
   
   if (!report) {
-    createErrorResponse('Report not found', 'NOT_FOUND');
+    return createErrorResponse('Report not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(report);
@@ -161,7 +161,7 @@ export async function getReport(reportId: string): Promise<AdminApiResponse<Repo
 export async function generateReport(data: GenerateReportRequest): Promise<AdminApiResponse<Report>> {
   // Validate
   if (!data.title || !data.dateRange.start || !data.dateRange.end) {
-    createErrorResponse('Title and date range are required', 'VALIDATION_ERROR');
+    return createErrorResponse('Title and date range are required', 'VALIDATION_ERROR');
   }
 
   const newReport: Report = {
@@ -204,7 +204,7 @@ export async function downloadReport(
   const report = reports.find(r => r.id === reportId);
   
   if (!report) {
-    createErrorResponse('Report not found', 'NOT_FOUND');
+    return createErrorResponse('Report not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(
@@ -224,7 +224,7 @@ export async function deleteReport(reportId: string): Promise<AdminApiResponse<b
   const report = reports.find(r => r.id === reportId);
   
   if (!report) {
-    createErrorResponse('Report not found', 'NOT_FOUND');
+    return createErrorResponse('Report not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(true, 1000);

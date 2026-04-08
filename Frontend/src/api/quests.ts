@@ -53,7 +53,7 @@ export async function getQuest(questId: string): Promise<ApiResponse<Quest>> {
   const quest = quests.find(q => q.id === questId);
   
   if (!quest) {
-    createErrorResponse('Quest not found', 'NOT_FOUND');
+    return createErrorResponse('Quest not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(quest);
@@ -69,7 +69,7 @@ export async function updateQuestProgress(
   const quest = quests.find(q => q.id === questId);
   
   if (!quest) {
-    createErrorResponse('Quest not found', 'NOT_FOUND');
+    return createErrorResponse('Quest not found', 'NOT_FOUND');
   }
 
   const updatedQuest: Quest = {
@@ -97,11 +97,11 @@ export async function claimQuestReward(data: ClaimQuestRequest): Promise<
   const quest = quests.find(q => q.id === data.questId);
   
   if (!quest) {
-    createErrorResponse('Quest not found', 'NOT_FOUND');
+    return createErrorResponse('Quest not found', 'NOT_FOUND');
   }
 
   if (quest.status !== 'completed') {
-    createErrorResponse('Quest is not completed yet', 'INVALID_STATE');
+    return createErrorResponse('Quest is not completed yet', 'INVALID_STATE');
   }
 
   const claimedQuest: Quest = {
@@ -179,7 +179,7 @@ export async function getAchievement(achievementId: string): Promise<ApiResponse
   const achievement = achievements.find(a => a.id === achievementId);
   
   if (!achievement) {
-    createErrorResponse('Achievement not found', 'NOT_FOUND');
+    return createErrorResponse('Achievement not found', 'NOT_FOUND');
   }
 
   return simulateApiCall(achievement);
@@ -201,11 +201,11 @@ export async function unlockAchievement(achievementId: string): Promise<
   const achievement = achievements.find(a => a.id === achievementId);
   
   if (!achievement) {
-    createErrorResponse('Achievement not found', 'NOT_FOUND');
+    return createErrorResponse('Achievement not found', 'NOT_FOUND');
   }
 
   if (!achievement.isLocked) {
-    createErrorResponse('Achievement already unlocked', 'INVALID_STATE');
+    return createErrorResponse('Achievement already unlocked', 'INVALID_STATE');
   }
 
   const unlockedAchievement: Achievement = {
@@ -239,7 +239,7 @@ export async function getAchievementProgress(achievementId: string): Promise<
   const achievement = achievements.find(a => a.id === achievementId);
   
   if (!achievement) {
-    createErrorResponse('Achievement not found', 'NOT_FOUND');
+    return createErrorResponse('Achievement not found', 'NOT_FOUND');
   }
 
   const progress = achievement.progress || 0;
