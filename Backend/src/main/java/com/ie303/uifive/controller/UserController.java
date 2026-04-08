@@ -23,9 +23,12 @@ public class UserController {
 
     @GetMapping("/me")
     public ApiResponse<UserProfileResponse> getMyProfile(Authentication authentication) {
+
+        String username = authentication.getName();
+
         return ApiResponse.<UserProfileResponse>builder()
                 .code(1000)
-                .result(userService.getMyProfile(authentication.getName()))
+                .result(userService.getMyProfile(username))
                 .build();
     }
 

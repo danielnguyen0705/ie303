@@ -34,4 +34,31 @@ public interface UserLessonProgressRepo extends JpaRepository<UserLessonProgress
           and ulp.lesson.section.unit.grade.id = :gradeId
     """)
     int countCompletedLessonsByUserAndGrade(User user, Long gradeId);
+
+    @Query("""
+        select count(distinct ulp.lesson.id)
+        from UserLessonProgress ulp
+        where ulp.user = :user
+          and ulp.completed = true
+          and ulp.lesson.section.unit.id = :unitId
+    """)
+    int countCompletedLessonsByUserAndUnit(User user, Long unitId);
+
+    @Query("""
+        select count(distinct ulp.lesson.id)
+        from UserLessonProgress ulp
+        where ulp.user = :user
+          and ulp.completed = true
+          and ulp.lesson.section.id = :sectionId
+    """)
+    int countCompletedLessonsByUserAndSection(User user, Long sectionId);
+
+    @Query("""
+        select distinct ulp.lesson.id
+        from UserLessonProgress ulp
+        where ulp.user = :user
+          and ulp.completed = true
+          and ulp.lesson.section.unit.grade.id = :gradeId
+    """)
+    java.util.Set<Long> findCompletedLessonIdsByUserAndGrade(User user, Long gradeId);
 }

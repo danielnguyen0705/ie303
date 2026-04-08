@@ -14,6 +14,8 @@ public record SectionRequest(
         @NotNull(message = "sectionType không được để trống")
         SectionType sectionType,
 
+        Integer orderIndex,
+
         @NotNull(message = "unitId không được để trống")
         Long unitId
 ) {

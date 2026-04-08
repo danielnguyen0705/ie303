@@ -3,6 +3,7 @@ package com.ie303.uifive.controller;
 import com.ie303.uifive.dto.req.SectionRequest;
 import com.ie303.uifive.dto.res.SectionResponse;
 import com.ie303.uifive.service.SectionService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ public class SectionController {
     private final SectionService service;
 
     @PostMapping
+    @RolesAllowed("ADMIN")
     public SectionResponse create(@RequestBody @Valid SectionRequest request) {
         return service.create(request);
     }
@@ -32,12 +34,14 @@ public class SectionController {
     }
 
     @PutMapping("/{id}")
+    @RolesAllowed("ADMIN")
     public SectionResponse update(@PathVariable Long id,
                                   @RequestBody @Valid SectionRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
+    @RolesAllowed("ADMIN")
     public String delete(@PathVariable Long id) {
         service.delete(id);
         return "Deleted section with id: " + id;

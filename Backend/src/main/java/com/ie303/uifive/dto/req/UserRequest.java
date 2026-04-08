@@ -13,6 +13,5 @@ public record UserRequest(
 
         @NotBlank(message = "password không được để trống")
         String password
-
 ) {
 }
