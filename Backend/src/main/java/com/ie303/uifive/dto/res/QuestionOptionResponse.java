@@ -4,7 +4,6 @@ public record QuestionOptionResponse(
         Long id,
         String optionKey,
         String content,
-        boolean isCorrect,
-        Long questionId
+        boolean isCorrect
 ) {
 }

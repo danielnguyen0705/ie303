@@ -20,6 +20,7 @@ public class UserLessonProgressController {
     @GetMapping("/grades/{gradeId}/units")
     public ApiResponse<List<UnitProgressResponse>> getUnitsByGrade(@PathVariable Long gradeId) {
         return ApiResponse.<List<UnitProgressResponse>>builder()
+                .code(1000)
                 .result(learningProgressService.getUnitsByGrade(gradeId))
                 .build();
     }
@@ -27,6 +28,7 @@ public class UserLessonProgressController {
     @GetMapping("/units/{unitId}/sections")
     public ApiResponse<List<SectionProgressResponse>> getSectionsByUnit(@PathVariable Long unitId) {
         return ApiResponse.<List<SectionProgressResponse>>builder()
+                .code(1000)
                 .result(learningProgressService.getSectionsByUnit(unitId))
                 .build();
     }
@@ -34,6 +36,7 @@ public class UserLessonProgressController {
     @GetMapping("/sections/{sectionId}/lessons")
     public ApiResponse<List<LessonProgressResponse>> getLessonsBySection(@PathVariable Long sectionId) {
         return ApiResponse.<List<LessonProgressResponse>>builder()
+                .code(1000)
                 .result(learningProgressService.getLessonsBySection(sectionId))
                 .build();
     }

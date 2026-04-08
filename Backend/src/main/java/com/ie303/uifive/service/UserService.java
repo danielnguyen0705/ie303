@@ -200,7 +200,7 @@ public class UserService implements UserDetailsService {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
-        String authority = user.getRole().name();
+        String authority = "ROLE_" + user.getRole().name();
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),

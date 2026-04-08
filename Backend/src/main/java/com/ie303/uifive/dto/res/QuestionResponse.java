@@ -2,6 +2,8 @@ package com.ie303.uifive.dto.res;
 
 import com.ie303.uifive.entity.QuestionType;
 
+import java.util.List;
+
 public record QuestionResponse(
         Long id,
         QuestionType questionType,
@@ -12,6 +14,7 @@ public record QuestionResponse(
         String questionData,
         String explanation,
         Long lessonId,
-        Long questionGroupId
+        Long questionGroupId,
+        List<QuestionOptionResponse> options
 ) {
 }

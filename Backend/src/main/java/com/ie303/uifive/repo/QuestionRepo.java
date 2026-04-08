@@ -10,4 +10,7 @@ import java.util.List;
 public interface QuestionRepo extends JpaRepository<Question, Long> {
     List<Question> findByLessonId(Long lessonId);
     List<Question> findByQuestionGroupId(Long questionGroupId);
+
+    List<Question> findByLessonIdAndQuestionGroupIsNullOrderByIdAsc(Long lessonId);
+    List<Question> findByQuestionGroupIdOrderByIdAsc(Long questionGroupId);
 }

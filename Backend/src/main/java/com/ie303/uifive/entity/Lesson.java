@@ -19,10 +19,6 @@ public class Lesson {
     private int lessonNumber;
     private String title;
 
-    @Column(name = "lesson_type")
-    @Enumerated(EnumType.STRING)
-    private LessonType lessonType;
-
     @Column(name = "skill_type")
     @Enumerated(EnumType.STRING)
     private SkillType skillType;
