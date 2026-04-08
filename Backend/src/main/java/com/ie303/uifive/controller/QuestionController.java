@@ -2,6 +2,7 @@ package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.QuestionRequest;
 import com.ie303.uifive.dto.res.ApiResponse;
+import com.ie303.uifive.dto.res.LessonQuestionResponse;
 import com.ie303.uifive.dto.res.QuestionResponse;
 import com.ie303.uifive.service.QuestionService;
 import jakarta.annotation.security.RolesAllowed;
@@ -52,5 +53,13 @@ public class QuestionController {
     public String delete(@PathVariable Long id) {
         questionService.delete(id);
         return "Deleted question with id: " + id;
+    }
+
+    @GetMapping("/lesson/{lessonId}")
+    public ApiResponse<LessonQuestionResponse> getQuestionsByLesson(@PathVariable Long lessonId) {
+        return ApiResponse.<LessonQuestionResponse>builder()
+                .code(1000)
+                .result(questionService.getQuestionsByLesson(lessonId))
+                .build();
     }
 }

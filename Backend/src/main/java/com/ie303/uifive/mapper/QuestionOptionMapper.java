@@ -10,7 +10,6 @@ import org.mapstruct.MappingTarget;
 @Mapper(componentModel = "spring")
 public interface QuestionOptionMapper {
 
-    @Mapping(target = "questionId", source = "question.id")
     QuestionOptionResponse toResponse(QuestionOption entity);
 
     @Mapping(target = "id", ignore = true)
