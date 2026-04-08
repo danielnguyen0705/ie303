@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.QuestionGroupRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.QuestionGroupResponse;
 import com.ie303.uifive.service.QuestionGroupService;
 import jakarta.annotation.security.RolesAllowed;
@@ -26,15 +27,19 @@ public class QuestionGroupController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<QuestionGroupResponse> getById(@PathVariable Long id) {
-        QuestionGroupResponse response = questionGroupService.getById(id);
-        return ResponseEntity.ok(response);
+    public ApiResponse<QuestionGroupResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<QuestionGroupResponse>builder()
+                .code(1000)
+                .result(questionGroupService.getById(id))
+                .build();
     }
 
     @GetMapping
-    public ResponseEntity<List<QuestionGroupResponse>> getAll() {
-        List<QuestionGroupResponse> responses = questionGroupService.getAll();
-        return ResponseEntity.ok(responses);
+    public ApiResponse<List<QuestionGroupResponse>> getAll() {
+        return ApiResponse.<List<QuestionGroupResponse>>builder()
+                .code(1000)
+                .result(questionGroupService.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.GroupReviewRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.GroupReviewResponse;
 import com.ie303.uifive.service.GroupReviewService;
 import jakarta.annotation.security.RolesAllowed;
@@ -24,13 +25,19 @@ public class GroupReviewController {
     }
 
     @GetMapping("/{id}")
-    public GroupReviewResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<GroupReviewResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<GroupReviewResponse>builder()
+                .code(1000)
+                .result(service.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<GroupReviewResponse> getAll() {
-        return service.getAll();
+    public ApiResponse<List<GroupReviewResponse>> getAll() {
+        return ApiResponse.<List<GroupReviewResponse>>builder()
+                .code(1000)
+                .result(service.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

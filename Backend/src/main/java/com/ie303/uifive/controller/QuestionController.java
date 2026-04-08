@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.QuestionRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.QuestionResponse;
 import com.ie303.uifive.service.QuestionService;
 import jakarta.annotation.security.RolesAllowed;
@@ -24,13 +25,19 @@ public class QuestionController {
     }
 
     @GetMapping("/{id}")
-    public QuestionResponse getById(@PathVariable Long id) {
-        return questionService.getById(id);
+    public ApiResponse<QuestionResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<QuestionResponse>builder()
+                .code(1000)
+                .result(questionService.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<QuestionResponse> getAll() {
-        return questionService.getAll();
+    public ApiResponse<List<QuestionResponse>> getAll() {
+        return ApiResponse.<List<QuestionResponse>>builder()
+                .code(1000)
+                .result(questionService.getAll())
+                .build();
     }
 
     @PutMapping("/{id}")

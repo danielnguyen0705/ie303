@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.UserQuestionHistoryRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UserQuestionHistoryResponse;
 import com.ie303.uifive.service.UserQuestionHistoryService;
 import lombok.RequiredArgsConstructor;
@@ -21,18 +22,27 @@ public class UserQuestionHistoryController {
     }
 
     @GetMapping("/{id}")
-    public UserQuestionHistoryResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<UserQuestionHistoryResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<UserQuestionHistoryResponse>builder()
+                .code(1000)
+                .result(service.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<UserQuestionHistoryResponse> getAll() {
-        return service.getAll();
+    public ApiResponse<List<UserQuestionHistoryResponse>> getAll() {
+        return ApiResponse.<List<UserQuestionHistoryResponse>>builder()
+                .code(1000)
+                .result(service.getAll())
+                .build();
     }
 
     @GetMapping("/user/{userId}")
-    public List<UserQuestionHistoryResponse> getByUserId(@PathVariable Long userId) {
-        return service.getByUserId(userId);
+    public ApiResponse<List<UserQuestionHistoryResponse>> getByUserId(@PathVariable Long userId) {
+        return ApiResponse.<List<UserQuestionHistoryResponse>>builder()
+                .code(1000)
+                .result(service.getByUserId(userId))
+                .build();
     }
 
     @DeleteMapping("/{id}")

@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.UserItemRequest;
+import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UserItemResponse;
 import com.ie303.uifive.service.UserItemService;
 import lombok.RequiredArgsConstructor;
@@ -21,13 +22,19 @@ public class UserItemController {
     }
 
     @GetMapping("/{id}")
-    public UserItemResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<UserItemResponse> getById(@PathVariable Long id) {
+        return ApiResponse.<UserItemResponse>builder()
+                .code(1000)
+                .result(service.getById(id))
+                .build();
     }
 
     @GetMapping
-    public List<UserItemResponse> getAll() {
-        return service.getAll();
+    public ApiResponse<List<UserItemResponse>> getAll() {
+        return ApiResponse.<List<UserItemResponse>>builder()
+                .code(1000)
+                .result(service.getAll())
+                .build();
     }
 
     @DeleteMapping("/{id}")
