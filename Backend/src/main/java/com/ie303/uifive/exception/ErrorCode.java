@@ -32,7 +32,12 @@ public enum ErrorCode {
     SAME_PASSWORD(1017, "New password must be different", HttpStatus.BAD_REQUEST),
 
     QUESTION_NOT_FOUND(1018, "Question not found bro", HttpStatus.BAD_REQUEST),
-    GEMINI_NOT_RESPONSE(1019, "Gemini overload", HttpStatus.BAD_REQUEST);
+    GEMINI_NOT_RESPONSE(1019, "Gemini overload", HttpStatus.BAD_REQUEST),
+
+    GRADE_NOT_FOUND(1020, "Grade not found", HttpStatus.NOT_FOUND),
+    UNIT_NOT_FOUND(1021, "Unit not found", HttpStatus.NOT_FOUND),
+    SECTION_NOT_FOUND(1022, "Section not found", HttpStatus.NOT_FOUND),
+    LESSON_LOCKED(1023, "Lesson is locked. Complete the previous lesson first", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

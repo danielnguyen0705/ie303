@@ -1,4 +1,9 @@
 package com.ie303.uifive.dto.res;
 
-public class UnitProgressResponse {
+public record UnitProgressResponse(
+        Long unitId,
+        String unitTitle,
+        int unitNumber,
+        double progressPercent
+) {
 }

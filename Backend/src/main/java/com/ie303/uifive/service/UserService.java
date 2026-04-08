@@ -89,6 +89,24 @@ public class UserService implements UserDetailsService {
         return user;
     }
 
+    public User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication.getName() == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        String username = authentication.getName();
+
+        User user = repo.findByUsername(username);
+
+        if (user == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return user;
+    }
+
     public List<UserResponse> getAll() {
         List<User> users = repo.findAll();
 

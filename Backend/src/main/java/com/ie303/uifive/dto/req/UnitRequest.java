@@ -12,6 +12,8 @@ public record UnitRequest(
 
         String description,
 
+        Integer orderIndex,
+
         @NotNull(message = "gradeId không được để trống")
         Long gradeId
 ) {

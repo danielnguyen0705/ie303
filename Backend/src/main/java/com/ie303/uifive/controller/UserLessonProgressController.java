@@ -1,31 +1,40 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.UserLessonProgressRequest;
-import com.ie303.uifive.dto.res.UserLessonProgressResponse;
-import com.ie303.uifive.service.UserLessonProgressService;
+import com.ie303.uifive.dto.res.*;
+import com.ie303.uifive.service.LearningProgressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/progress")
 @RequiredArgsConstructor
 public class UserLessonProgressController {
 
-    private final UserLessonProgressService service;
+    private final LearningProgressService learningProgressService;
 
-    @PostMapping("/submit")
-    public UserLessonProgressResponse submitLesson(
-            Authentication authentication,
-            @Valid @RequestBody UserLessonProgressRequest request
-    ) {
-        String username = authentication.getName();
-        return service.submitLessonResult(username, request);
+    @GetMapping("/grades/{gradeId}/units")
+    public ApiResponse<List<UnitProgressResponse>> getUnitsByGrade(@PathVariable Long gradeId) {
+        return ApiResponse.<List<UnitProgressResponse>>builder()
+                .result(learningProgressService.getUnitsByGrade(gradeId))
+                .build();
     }
 
-    @GetMapping("/{id}")
-    public UserLessonProgressResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    @GetMapping("/units/{unitId}/sections")
+    public ApiResponse<List<SectionProgressResponse>> getSectionsByUnit(@PathVariable Long unitId) {
+        return ApiResponse.<List<SectionProgressResponse>>builder()
+                .result(learningProgressService.getSectionsByUnit(unitId))
+                .build();
+    }
+
+    @GetMapping("/sections/{sectionId}/lessons")
+    public ApiResponse<List<LessonProgressResponse>> getLessonsBySection(@PathVariable Long sectionId) {
+        return ApiResponse.<List<LessonProgressResponse>>builder()
+                .result(learningProgressService.getLessonsBySection(sectionId))
+                .build();
     }
 }

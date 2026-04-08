@@ -40,6 +40,9 @@ public class Lesson {
     @Column(name = "is_vip_only")
     private boolean vipOnly;
 
+    @Column(name = "order_index", nullable = false)
+    private Integer orderIndex;
+
     @OneToMany(mappedBy = "lesson", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Question> questions;

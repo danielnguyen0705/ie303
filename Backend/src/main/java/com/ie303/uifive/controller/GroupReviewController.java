@@ -3,6 +3,7 @@ package com.ie303.uifive.controller;
 import com.ie303.uifive.dto.req.GroupReviewRequest;
 import com.ie303.uifive.dto.res.GroupReviewResponse;
 import com.ie303.uifive.service.GroupReviewService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ public class GroupReviewController {
     private final GroupReviewService service;
 
     @PostMapping
+    @RolesAllowed("ADMIN")
     public GroupReviewResponse create(@RequestBody @Valid GroupReviewRequest request) {
         return service.create(request);
     }
@@ -32,12 +34,14 @@ public class GroupReviewController {
     }
 
     @PutMapping("/{id}")
+    @RolesAllowed("ADMIN")
     public GroupReviewResponse update(@PathVariable Long id,
                                       @RequestBody GroupReviewRequest request) {
         return service.update(id, request);
     }
 
     @DeleteMapping("/{id}")
+    @RolesAllowed("ADMIN")
     public String delete(@PathVariable Long id) {
         service.delete(id);
         return "Deleted successfully";
