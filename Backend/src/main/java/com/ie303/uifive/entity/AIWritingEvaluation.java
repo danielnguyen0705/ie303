@@ -15,9 +15,6 @@ public class AIWritingEvaluation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_answer", columnDefinition = "TEXT")
-    private String userAnswer;
-
     @Column(name = "ai_score")
     private double aiScore;
 
@@ -32,5 +29,5 @@ public class AIWritingEvaluation {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Lesson lesson;
+    private Question question;
 }

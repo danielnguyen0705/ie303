@@ -11,13 +11,16 @@ import org.mapstruct.MappingTarget;
 public interface QuestionMapper {
 
     @Mapping(target = "lessonId", source = "lesson.id")
+    @Mapping(target = "questionGroupId", source = "questionGroup.id")
     QuestionResponse toResponse(Question question);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "lesson", ignore = true)
+    @Mapping(target = "questionGroup", ignore = true)
     Question toEntity(QuestionRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "lesson", ignore = true)
+    @Mapping(target = "questionGroup", ignore = true)
     void updateEntityFromRequest(QuestionRequest request, @MappingTarget Question question);
 }

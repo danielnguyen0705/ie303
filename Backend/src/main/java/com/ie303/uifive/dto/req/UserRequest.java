@@ -12,8 +12,7 @@ public record UserRequest(
         String email,
 
         @NotBlank(message = "password không được để trống")
-        String password,
+        String password
 
-        Role role // ADMIN / USER
 ) {
 }

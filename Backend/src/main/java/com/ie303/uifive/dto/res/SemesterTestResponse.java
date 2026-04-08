@@ -9,6 +9,7 @@ public record SemesterTestResponse(
         int endUnit,
         int timeLimit,
         Long gradeId,
+        List<Long> questionGroupIds,
         List<Long> questionIds
 ) {
 }

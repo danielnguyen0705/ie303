@@ -5,11 +5,13 @@ import com.ie303.uifive.entity.SkillType;
 
 public record LessonResponse(
         Long id,
-        int lessonNumber,
+        Integer lessonNumber,
         String title,
         LessonType lessonType,
         SkillType skillType,
         boolean reviewLesson,
+        Integer durationMinutes,
+        boolean vipOnly,
+        Integer orderIndex,
         Long sectionId
-) {
-}
+) {}

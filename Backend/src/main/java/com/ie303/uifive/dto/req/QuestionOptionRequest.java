@@ -4,8 +4,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record QuestionOptionRequest(
-        @NotBlank(message = "optionText không được để trống")
-        String optionText,
+        String optionKey,
+
+        @NotBlank(message = "content không được để trống")
+        String content,
 
         boolean isCorrect,
 
