@@ -1,34 +1,34 @@
 // Admin API Index - Central exports for all admin API modules
 
 // Types
-export * from './types';
+export * from "./types";
 
 // Dashboard API
-export * as adminDashboardApi from './dashboard';
+export * as adminDashboardApi from "./dashboard";
 
 // User Management API
-export * as adminUserApi from './users';
+export * as adminUserApi from "./users";
 
 // Content Management API
-export * as adminContentApi from './content';
+export * as adminContentApi from "./content";
 
 // Question Bank API
-export * as adminQuestionApi from './questions';
+export * as adminQuestionApi from "./questions";
 
 // Reports API
-export * as adminReportApi from './reports';
+export * as adminReportApi from "./reports";
 
 // VIP Management API
-export * as adminVIPApi from './vip';
+export * as adminVIPApi from "./vip";
 
 // Notifications API
-export * as adminNotificationApi from './notifications';
+export * as adminNotificationApi from "./notifications";
 
 // Settings API
-export * as adminSettingsApi from './settings';
+export * as adminSettingsApi from "./settings";
 
 // Activity Logs API
-export * as adminActivityApi from './activityLogs';
+export * as adminActivityApi from "./activityLogs";
 
 // Re-export for convenience
 export {
@@ -40,7 +40,7 @@ export {
   getKPISummary,
   getRecentActivities,
   exportDashboardData,
-} from './dashboard';
+} from "./dashboard";
 
 export {
   // Users
@@ -59,10 +59,13 @@ export {
   getUserLearningPath,
   resetUserPassword,
   assignVIPStatus,
-} from './users';
+} from "./users";
 
 export {
   // Content
+  getAllGrades,
+  createGrade,
+  deleteGrade,
   getAllUnits as getAllUnitsAdmin,
   getUnit as getUnitAdmin,
   createUnit,
@@ -81,7 +84,7 @@ export {
   getUnit,
   getLessonsByUnit,
   getLesson,
-} from './content';
+} from "./content";
 
 export {
   // Questions
@@ -95,7 +98,7 @@ export {
   bulkImportQuestions,
   exportQuestions,
   getQuestionStats,
-} from './questions';
+} from "./questions";
 
 export {
   // Reports
@@ -104,7 +107,7 @@ export {
   getFinancialReport,
   getEngagementMetrics,
   exportReport,
-} from './reports';
+} from "./reports";
 
 export {
   // VIP
@@ -115,7 +118,7 @@ export {
   downgradeVIPUser,
   getVIPRevenue,
   getVIPRetention,
-} from './vip';
+} from "./vip";
 
 export {
   // Notifications
@@ -125,7 +128,7 @@ export {
   scheduleNotification,
   deleteNotification as deleteNotificationAdmin,
   getNotificationStats,
-} from './notifications';
+} from "./notifications";
 
 export {
   // Settings
@@ -133,7 +136,7 @@ export {
   updateSystemSettings,
   resetSettings,
   getPublicSettings,
-} from './settings';
+} from "./settings";
 
 export {
   // Activity Logs
@@ -142,10 +145,10 @@ export {
   getUserActivityLogs as getUserActivityLogsAdmin,
   getActivityStats,
   getSecurityEvents,
-} from './activityLogs';
+} from "./activityLogs";
 
 // Import for wrapper function
-import { getDashboardStats } from './dashboard';
+import { getDashboardStats } from "./dashboard";
 
 // Convenience wrapper - Match what admin pages are calling
 export async function getAdminStats() {
