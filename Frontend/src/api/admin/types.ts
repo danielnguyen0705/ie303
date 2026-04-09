@@ -150,6 +150,21 @@ export interface UpdateSettingRequest {
   value: string | number | boolean;
 }
 
+export interface Grade {
+  id: number;
+  name: string;
+  description: string;
+}
+
+export interface CreateGradeRequest {
+  name: string;
+  description: string;
+}
+
+export interface DeleteGradeRequest {
+  id: number;
+}
+
 // Filter types
 export interface UserFilter {
   role?: "student" | "teacher" | "admin" | "super-admin";

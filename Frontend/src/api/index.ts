@@ -1,54 +1,54 @@
 // API Index - Central exports for all API modules
 
 // Types
-export * from './types';
+export * from "./types";
 
 // Client utilities
-export * from './client';
+export * from "./client";
 
 // ============================================
 // USER API
 // ============================================
 
 // Auth API
-export * as authApi from './auth';
+export * as authApi from "./auth";
 
 // User API
-export * as userApi from './users';
+export * as userApi from "./users";
 
 // Units API
-export * as unitApi from './units';
+export * as unitApi from "./units";
 
 // Lessons API
-export * as lessonApi from './lessons';
+export * as lessonApi from "./lessons";
 
 // Exercises API
-export * as exerciseApi from './exercises';
+export * as exerciseApi from "./exercises";
 
 // Tests API
-export * as testApi from './tests';
+export * as testApi from "./tests";
 
 // Quests & Achievements API
-export * as questApi from './quests';
+export * as questApi from "./quests";
 
 // Leaderboard API
-export * as leaderboardApi from './leaderboard';
+export * as leaderboardApi from "./leaderboard";
 
 // Shop API
-export * as shopApi from './shop';
+export * as shopApi from "./shop";
 
 // Notifications API
-export * as notificationApi from './notifications';
+export * as notificationApi from "./notifications";
 
 // ============================================
 // ADMIN API
 // ============================================
 
 // Admin API - All modules
-export * as adminApi from './admin';
+export * as adminApi from "./admin";
 
 // Admin Types
-export * from './admin/types';
+export * from "./admin/types";
 
 // Re-export for convenience
 export {
@@ -57,7 +57,7 @@ export {
   register,
   logout,
   getCurrentUser,
-} from './auth';
+} from "./auth";
 
 export {
   // User
@@ -65,7 +65,7 @@ export {
   updateUserProfile,
   getUserStats,
   getUserHistory,
-} from './users';
+} from "./users";
 
 export {
   // Units
@@ -73,20 +73,20 @@ export {
   getUnit,
   getUnitProgress,
   getCurriculumOverview,
-} from './units';
+} from "./units";
 
 export {
   // Lessons
   getLessonsByUnit,
   getLesson,
   completeLesson,
-} from './lessons';
+} from "./lessons";
 
 export {
   // Exercises
   getExercise,
   submitExercise,
-} from './exercises';
+} from "./exercises";
 
 export {
   // Tests
@@ -94,7 +94,7 @@ export {
   submitTest,
   getTestResults,
   getTestReview,
-} from './tests';
+} from "./tests";
 
 export {
   // Quests
@@ -102,7 +102,7 @@ export {
   getActiveQuestsApi,
   claimQuestReward,
   getAllAchievements,
-} from './quests';
+} from "./quests";
 
 export {
   // Leaderboard
@@ -110,7 +110,7 @@ export {
   getTopPlayers,
   getUserRank,
   getLeagueInfo,
-} from './leaderboard';
+} from "./leaderboard";
 
 export {
   // Shop
@@ -118,11 +118,11 @@ export {
   purchaseItem,
   getPurchasedItems,
   getCoinBalance,
-} from './shop';
+} from "./shop";
 
 export {
   // Notifications
   getNotifications,
   getUnreadCount,
   markAsRead,
-} from './notifications';
+} from "./notifications";
