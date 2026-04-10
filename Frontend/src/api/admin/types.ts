@@ -1,242 +1,306 @@
-import type { ApiError } from "../types";
+export type SectionType =
+  | "GETTING_STARTED"
+  | "LANGUAGE"
+  | "READING"
+  | "SPEAKING"
+  | "LISTENING"
+  | "WRITING"
+  | "COMMUNICATION_CULTURE_CLIL"
+  | "LOOKING_BACK"
+  | "UNIT_REVISION";
 
-// Admin API Types & Interfaces
+export type SkillType =
+  | "VOCABULARY"
+  | "GRAMMAR"
+  | "READING"
+  | "LISTENING"
+  | "SPEAKING"
+  | "WRITING";
+
+/* =========================
+   BASE API TYPES
+========================= */
+export class ApiError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+  }
+}
 
 export interface AdminApiResponse<T> {
   success: boolean;
   data?: T;
-  message?: string;
   error?: ApiError;
-}
-
-export interface PaginatedAdminResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
-}
-
-export interface AdminApiError {
-  code: string;
-  message: string;
-  details?: any;
-}
-
-// Request types
-export interface CreateUserRequest {
-  name: string;
-  email: string;
-  password: string;
-  role: "student" | "teacher" | "admin";
-}
-
-export interface UpdateUserRequest {
-  name?: string;
-  email?: string;
-  role?: "student" | "teacher" | "admin" | "super-admin";
-  status?: "active" | "inactive" | "suspended" | "pending";
-  vipStatus?: "free" | "premium" | "elite";
-}
-
-export interface CreateContentRequest {
-  type: "unit" | "lesson" | "exercise" | "test" | "article";
-  title: string;
-  description: string;
-  unitId?: number;
-  lessonType?: string;
-  difficulty: "beginner" | "intermediate" | "advanced" | "expert";
-  status?: "draft" | "published";
-}
-
-export interface UpdateContentRequest {
-  title?: string;
-  description?: string;
-  status?: "draft" | "published" | "archived" | "under-review";
-  difficulty?: "beginner" | "intermediate" | "advanced" | "expert";
-}
-
-export interface CreateQuestionRequest {
-  type:
-    | "multiple-choice"
-    | "true-false"
-    | "fill-blank"
-    | "listening"
-    | "reading"
-    | "essay";
-  category:
-    | "grammar"
-    | "vocabulary"
-    | "listening"
-    | "reading"
-    | "writing"
-    | "speaking";
-  difficulty: "easy" | "medium" | "hard" | "advanced";
-  question: string;
-  options?: string[];
-  correctAnswer: string;
-  explanation: string;
-  points: number;
-  tags: string[];
-  unitId?: number;
-}
-
-export interface UpdateQuestionRequest {
-  question?: string;
-  options?: string[];
-  correctAnswer?: string;
-  explanation?: string;
-  points?: number;
-  tags?: string[];
-  status?: "active" | "inactive" | "needs-review";
-  difficulty?: "easy" | "medium" | "hard" | "advanced";
-}
-
-export interface GenerateReportRequest {
-  type:
-    | "user-progress"
-    | "content-performance"
-    | "financial"
-    | "engagement"
-    | "system";
-  title: string;
-  description?: string;
-  dateRange: {
-    start: string;
-    end: string;
-  };
-}
-
-export interface CreateVIPSubscriptionRequest {
-  userId: string;
-  plan: "premium" | "elite";
-  duration: number; // months
-  amount: number;
-  paymentMethod: "credit-card" | "paypal" | "bank-transfer" | "voucher";
-  autoRenew?: boolean;
-}
-
-export interface UpdateVIPSubscriptionRequest {
-  status?: "active" | "expired" | "cancelled" | "pending";
-  endDate?: string;
-  autoRenew?: boolean;
-}
-
-export interface CreateNotificationRequest {
-  type:
-    | "system"
-    | "update"
-    | "announcement"
-    | "maintenance"
-    | "alert"
-    | "promotion";
-  priority: "low" | "medium" | "high" | "urgent";
-  title: string;
-  message: string;
-  targetAudience: "all" | "students" | "teachers" | "vip" | "specific";
-  targetUserIds?: string[];
-  scheduledFor?: string;
-}
-
-export interface UpdateNotificationRequest {
-  title?: string;
   message?: string;
-  priority?: "low" | "medium" | "high" | "urgent";
-  scheduledFor?: string;
-  status?: "draft" | "scheduled" | "sent" | "failed";
 }
 
-export interface UpdateSettingRequest {
-  value: string | number | boolean;
-}
-
+/* =========================
+   GRADE
+========================= */
 export interface Grade {
   id: number;
   name: string;
-  description: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateGradeRequest {
   name: string;
-  description: string;
+  description?: string;
+}
+
+export interface UpdateGradeRequest {
+  name?: string;
+  description?: string;
 }
 
 export interface DeleteGradeRequest {
   id: number;
 }
 
-// Filter types
-export interface UserFilter {
-  role?: "student" | "teacher" | "admin" | "super-admin";
-  status?: "active" | "inactive" | "suspended" | "pending";
-  vipStatus?: "free" | "premium" | "elite";
-  searchTerm?: string;
+/* =========================
+   UNIT
+========================= */
+export interface Unit {
+  id: number;
+  gradeId: number;
+  name: string;
+  description?: string;
+  unitNumber?: number;
+  orderIndex?: number;
+  progress?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface ContentFilter {
-  type?: "unit" | "lesson" | "exercise" | "test" | "article";
-  status?: "draft" | "published" | "archived" | "under-review";
-  difficulty?: "beginner" | "intermediate" | "advanced" | "expert";
+export interface CreateUnitRequest {
+  gradeId: number;
+  name: string;
+  description?: string;
+  unitNumber?: number;
+  orderIndex?: number;
+}
+
+export interface UpdateUnitRequest {
+  name?: string;
+  description?: string;
+  unitNumber?: number;
+  orderIndex?: number;
+  gradeId?: number;
+}
+
+export interface DeleteUnitRequest {
+  id: number;
+}
+
+/* =========================
+   SECTION
+========================= */
+export interface Section {
+  id: number;
+  unitId: number;
+  name: string;
+  description?: string;
+  sectionNumber?: number;
+  sectionType?: SectionType;
+  orderIndex?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateSectionRequest {
+  unitId: number;
+  name: string;
+  description?: string;
+  sectionNumber?: number;
+  orderIndex?: number;
+  sectionType?: SectionType;
+}
+
+export interface UpdateSectionRequest {
+  name?: string;
+  description?: string;
+  sectionNumber?: number;
+  orderIndex?: number;
   unitId?: number;
+  sectionType?: SectionType;
 }
 
-export interface QuestionFilter {
-  category?:
-    | "grammar"
-    | "vocabulary"
-    | "listening"
-    | "reading"
-    | "writing"
-    | "speaking";
-  difficulty?: "easy" | "medium" | "hard" | "advanced";
-  status?: "active" | "inactive" | "needs-review";
-  unitId?: number;
-  tags?: string[];
+export interface DeleteSectionRequest {
+  id: number;
 }
 
-export interface ReportFilter {
-  type?:
-    | "user-progress"
-    | "content-performance"
-    | "financial"
-    | "engagement"
-    | "system";
-  status?: "completed" | "processing" | "failed";
-  dateFrom?: string;
-  dateTo?: string;
+/* =========================
+   LESSON
+========================= */
+export interface Lesson {
+  id: number;
+  sectionId: number;
+  name: string;
+  description?: string;
+  lessonNumber?: number;
+  skillType?: SkillType;
+  isReviewLesson?: boolean;
+  durationMinutes?: number;
+  isVipOnly?: boolean;
+  orderIndex?: number;
+  completed?: boolean;
+  unlocked?: boolean;
+  current?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface VIPFilter {
-  plan?: "premium" | "elite";
-  status?: "active" | "expired" | "cancelled" | "pending";
+export interface CreateLessonRequest {
+  sectionId: number;
+  name: string;
+  description?: string;
+  lessonNumber?: number;
+  orderIndex?: number;
+  skillType?: SkillType;
+  isReviewLesson?: boolean;
+  durationMinutes?: number;
+  isVipOnly?: boolean;
 }
 
-export interface NotificationFilter {
-  type?:
-    | "system"
-    | "update"
-    | "announcement"
-    | "maintenance"
-    | "alert"
-    | "promotion";
-  status?: "draft" | "scheduled" | "sent" | "failed";
-  priority?: "low" | "medium" | "high" | "urgent";
+export interface UpdateLessonRequest {
+  name?: string;
+  description?: string;
+  lessonNumber?: number;
+  orderIndex?: number;
+  sectionId?: number;
+  skillType?: SkillType;
+  isReviewLesson?: boolean;
+  durationMinutes?: number;
+  isVipOnly?: boolean;
 }
 
-export interface SettingsFilter {
-  category?:
-    | "general"
-    | "security"
-    | "email"
-    | "payment"
-    | "gamification"
-    | "api";
+export interface DeleteLessonRequest {
+  id: number;
 }
 
-export interface ActivityLogFilter {
-  userId?: string;
-  action?: string;
-  status?: "success" | "failed" | "warning";
-  dateFrom?: string;
-  dateTo?: string;
+/* =========================
+   QUESTION OPTION
+========================= */
+export interface QuestionOption {
+  id: number;
+  questionId: number;
+  optionKey?: string;
+  content: string;
+  isCorrect?: boolean;
+  explanation?: string;
+  orderIndex?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateQuestionOptionRequest {
+  questionId: number;
+  optionKey?: string;
+  content: string;
+  isCorrect?: boolean;
+  explanation?: string;
+  orderIndex?: number;
+}
+
+export interface UpdateQuestionOptionRequest {
+  questionId?: number;
+  optionKey?: string;
+  content?: string;
+  isCorrect?: boolean;
+  explanation?: string;
+  orderIndex?: number;
+}
+
+/* =========================
+   QUESTION GROUP
+========================= */
+export interface QuestionGroup {
+  id: number;
+  lessonId?: number;
+  title?: string;
+  description?: string;
+  groupType?: string;
+  orderIndex?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateQuestionGroupRequest {
+  lessonId?: number;
+  title?: string;
+  description?: string;
+  groupType?: string;
+  orderIndex?: number;
+}
+
+export interface UpdateQuestionGroupRequest {
+  lessonId?: number;
+  title?: string;
+  description?: string;
+  groupType?: string;
+  orderIndex?: number;
+}
+
+/* =========================
+   QUESTION
+========================= */
+export interface Question {
+  id: number;
+  questionType: string;
+  content?: string;
+  instruction?: string;
+  audioUrl?: string | null;
+  imageUrl?: string | null;
+  questionData?: string | null;
+  explanation?: string | null;
+  correctAnswer?: string | null;
+  lessonId?: number;
+  questionGroupId?: number | null;
+  options?: QuestionOption[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateQuestionRequest {
+  questionType: string;
+  content?: string;
+  instruction?: string;
+  audioUrl?: string;
+  imageUrl?: string;
+  questionData?: string;
+  explanation?: string;
+  correctAnswer?: string;
+  lessonId?: number;
+  questionGroupId?: number | null;
+}
+
+export interface UpdateQuestionRequest {
+  questionType?: string;
+  content?: string;
+  instruction?: string;
+  audioUrl?: string;
+  imageUrl?: string;
+  questionData?: string;
+  explanation?: string;
+  correctAnswer?: string;
+  lessonId?: number;
+  questionGroupId?: number | null;
+}
+
+export interface DeleteQuestionRequest {
+  id: number;
+}
+
+/* =========================
+   LESSON QUESTION RESPONSE
+========================= */
+export interface LessonQuestionResponse {
+  lessonId?: number;
+  lessonName?: string;
+  questions: Question[];
 }

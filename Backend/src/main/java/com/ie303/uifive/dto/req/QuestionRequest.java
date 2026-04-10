@@ -13,6 +13,7 @@ public record QuestionRequest(
         String imageUrl,
         String questionData,
         String explanation,
+        String correctAnswer,
 
         Long lessonId,
         Long questionGroupId
