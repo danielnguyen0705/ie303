@@ -1,7 +1,7 @@
 // Admin API Index - Central exports for all admin API modules
 
-// Types
 export * from "./types";
+export * from "./content";
 
 // Dashboard API
 export * as adminDashboardApi from "./dashboard";
@@ -62,32 +62,54 @@ export {
 } from "./users";
 
 export {
-  // Content
+  // Grades
   getAllGrades,
   createGrade,
+  updateGrade,
   deleteGrade,
+
+  // Units
   getAllUnits as getAllUnitsAdmin,
+  getUnitsByGrade,
   getUnit as getUnitAdmin,
   createUnit,
   updateUnit,
   deleteUnit,
-  getLessonsByUnit as getLessonsByUnitAdmin,
+
+  // Sections
+  getSectionsByUnit,
+  getSection,
+  createSection,
+  updateSection,
+  deleteSection,
+
+  // Lessons
+  getLessonsBySection,
   getLesson as getLessonAdmin,
   createLesson,
   updateLesson,
   deleteLesson,
-  publishLesson,
-  archiveLesson,
-  reorderLessons,
-  // Also export without Admin suffix for convenience
+
+  // Content questions
+  getQuestionsByLesson,
+  createQuestion as createContentQuestion,
+  updateQuestion as updateContentQuestion,
+  deleteQuestion as deleteContentQuestion,
+  createQuestionOption,
+  updateQuestionOption,
+  deleteQuestionOption,
+  createQuestionGroup,
+  updateQuestionGroup,
+  deleteQuestionGroup,
+
+  // convenience
   getAllUnits,
   getUnit,
-  getLessonsByUnit,
   getLesson,
 } from "./content";
 
 export {
-  // Questions
+  // Question bank
   getAllQuestions,
   getQuestion,
   createQuestion,

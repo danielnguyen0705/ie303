@@ -152,6 +152,7 @@ public class QuestionService {
                 question.getImageUrl(),
                 question.getQuestionData(),
                 question.getExplanation(),
+                question.getCorrectAnswer(),
                 question.getLesson() != null ? question.getLesson().getId() : null,
                 question.getQuestionGroup() != null ? question.getQuestionGroup().getId() : null,
                 options

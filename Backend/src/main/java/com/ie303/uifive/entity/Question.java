@@ -46,4 +46,7 @@ public class Question {
 
     @OneToMany(mappedBy = "question", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<QuestionOption> options;
+
+    @Column(name = "correct_answer")
+    private String correctAnswer;
 }
