@@ -182,7 +182,7 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         if (user.getCoin() < amount) {
-            throw new RuntimeException("Không đủ coin");
+            throw new AppException(ErrorCode.INSUFFICIENT_COIN);
         }
 
         user.setCoin(user.getCoin() - amount);
@@ -250,15 +250,13 @@ public class UserService implements UserDetailsService {
         }
 
         if (!passwordEncoder.matches(request.oldPassword(), user.getPassword())) {
-            throw new AppException(ErrorCode.INVALID_PASSWORD);
+            throw new AppException(ErrorCode.INVALID_OLD_PASSWORD);
         }
 
-        // không cho đặt password giống cũ
         if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
-            throw new AppException(ErrorCode.INVALID_PASSWORD);
+            throw new AppException(ErrorCode.SAME_PASSWORD);
         }
 
-        // encode password mới
         user.setPassword(passwordEncoder.encode(request.newPassword()));
 
         repo.save(user);

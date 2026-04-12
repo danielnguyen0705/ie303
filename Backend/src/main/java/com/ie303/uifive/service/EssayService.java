@@ -9,14 +9,15 @@ import com.ie303.uifive.entity.UserQuestionHistory;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.repo.AIWritingEvalutionRepo;
-import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.QuestionRepo;
 import com.ie303.uifive.repo.UserQuestionHistoryRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class EssayService {
     private final QuestionRepo questionRepo;
     private final UserQuestionHistoryRepo historyRepo;
@@ -27,22 +28,19 @@ public class EssayService {
         Question question = questionRepo.findById(request.questionId())
                 .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
 
-        // 1. Lưu bài user vào history
-        UserQuestionHistory history = new UserQuestionHistory();
-        history.setUser(user);
-        history.setQuestion(question);
-        history.setAnswerText(request.answerText());
-        history.setCorrect(true);
-        history = historyRepo.save(history);
-
-        // 2. Gọi AI chấm
         WritingEvaluationResponse aiResult = geminiService.evaluateEssay(
                 question.getContent(),
                 question.getExplanation(),
                 request.answerText()
         );
 
-        // 3. Lưu kết quả AI
+        UserQuestionHistory history = new UserQuestionHistory();
+        history.setUser(user);
+        history.setQuestion(question);
+        history.setAnswerText(request.answerText());
+        history.setCorrect(aiResult.score() >= 5.0);
+        historyRepo.save(history);
+
         AIWritingEvaluation evaluation = new AIWritingEvaluation();
         evaluation.setUser(user);
         evaluation.setQuestion(question);
