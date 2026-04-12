@@ -3,6 +3,10 @@ import { Root } from "./Root";
 import { Dashboard } from "./pages/Dashboard";
 import { UnitView } from "./pages/UnitView";
 import { UnitSelection } from "./pages/UnitSelection";
+import { GradeUnits } from "./pages/GradeUnits";
+import { SectionSelection } from "./pages/SectionSelection";
+import { LessonSelection } from "./pages/LessonSelection";
+import { LessonRunner } from "./pages/LessonRunner";
 import { PronunciationExercise } from "./pages/exercises/PronunciationExercise";
 import { ReadingExercise } from "./pages/exercises/ReadingExercise";
 import { QuizExercise } from "./pages/exercises/QuizExercise";
@@ -31,12 +35,23 @@ export const router = createBrowserRouter([
     Component: Root,
     children: [
       { index: true, Component: Dashboard },
+
+      // New content flow
+      { path: "grades/:gradeId/units", Component: GradeUnits },
+      { path: "units/:unitId/sections", Component: SectionSelection },
+      { path: "sections/:sectionId/lessons", Component: LessonSelection },
+      { path: "lessons/:lessonId", Component: LessonRunner },
+
+      // Old routes - keep temporarily for compatibility
       { path: "units", Component: UnitSelection },
       { path: "unit/:unitId", Component: UnitView },
+
+      // Exercise demo routes
       { path: "exercise/pronunciation", Component: PronunciationExercise },
       { path: "exercise/reading", Component: ReadingExercise },
       { path: "exercise/quiz", Component: QuizExercise },
       { path: "exercise/listening", Component: ListeningExercise },
+
       { path: "test/results", Component: TestResults },
       { path: "test/review", Component: TestReview },
       { path: "test/revision", Component: RevisionTest },

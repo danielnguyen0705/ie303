@@ -1,0 +1,408 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router";
+import { ChevronLeft, Loader2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faBookOpen,
+  faLock,
+  faFire,
+} from "@fortawesome/free-solid-svg-icons";
+import { getSectionsByUnitProgress } from "@/api";
+
+type SectionProgressItem = {
+  sectionId: number;
+  sectionTitle: string;
+  sectionNumber: number;
+  progressPercent: number;
+};
+
+type PositionedSection = SectionProgressItem & {
+  cx: number;
+  cy: number;
+};
+
+const NODE_WIDTH = 220;
+const NODE_RADIUS = 58;
+const BASE_Y = 135;
+const Y_PATTERN = [-28, 44, -14, 54, -8, 34, -18];
+const MIN_STEP_X = 220;
+const MAX_STEP_X = 280;
+const SIDE_PADDING = 40;
+const MIN_MAP_WIDTH = 720;
+
+function clampProgress(value: number) {
+  if (Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getSectionStyle(section: SectionProgressItem, index: number) {
+  const progress = clampProgress(section.progressPercent);
+  const isLocked = index > 0 && progress === 0;
+  const isCurrent = !isLocked && progress === 0;
+  const isCompleted = progress >= 100;
+
+  if (isLocked) {
+    return {
+      outerRing: "from-gray-300 to-gray-400",
+      outerBorder: "border-gray-200",
+      middleBg: "bg-gray-100",
+      innerBg: "bg-gray-200",
+      iconColor: "text-gray-400",
+      badge: "bg-gray-100 text-gray-500 border-gray-200",
+      title: "text-gray-500",
+      glow: "",
+      connector: "#d1d5db",
+      dot: "#e5e7eb",
+      icon: faLock,
+      statusText: "Locked",
+      locked: true,
+    };
+  }
+
+  if (isCompleted) {
+    return {
+      outerRing: "from-[#34d399] to-[#16a34a]",
+      outerBorder: "border-green-100",
+      middleBg: "bg-green-50",
+      innerBg: "bg-gradient-to-br from-[#34d399] to-[#16a34a]",
+      iconColor: "text-white",
+      badge: "bg-green-50 text-[#15803d] border-green-200",
+      title: "text-[#1e2e51]",
+      glow: "shadow-[0_0_35px_rgba(34,197,94,0.22)]",
+      connector: "#22c55e",
+      dot: "#22c55e",
+      icon: faBookOpen,
+      statusText: "Completed",
+      locked: false,
+    };
+  }
+
+  if (isCurrent) {
+    return {
+      outerRing: "from-[#ffb067] to-[#f97316]",
+      outerBorder: "border-orange-100",
+      middleBg: "bg-orange-50",
+      innerBg: "bg-gradient-to-br from-[#ff9f43] to-[#f97316]",
+      iconColor: "text-white",
+      badge: "bg-orange-50 text-[#d35400] border-orange-200",
+      title: "text-[#1e2e51]",
+      glow: "shadow-[0_0_40px_rgba(249,115,22,0.25)]",
+      connector: "#fb923c",
+      dot: "#fb923c",
+      icon: faFire,
+      statusText: "Current",
+      locked: false,
+    };
+  }
+
+  return {
+    outerRing: "from-[#86efac] to-[#22c55e]",
+    outerBorder: "border-emerald-100",
+    middleBg: "bg-emerald-50",
+    innerBg: "bg-gradient-to-br from-[#6ee7b7] to-[#22c55e]",
+    iconColor: "text-white",
+    badge: "bg-emerald-50 text-[#059669] border-emerald-200",
+    title: "text-[#1e2e51]",
+    glow: "shadow-[0_0_28px_rgba(74,222,128,0.18)]",
+    connector: "#4ade80",
+    dot: "#4ade80",
+    icon: faBookOpen,
+    statusText: "Unlocked",
+    locked: false,
+  };
+}
+
+function buildSectionPath(
+  current: PositionedSection,
+  next: PositionedSection,
+  color: string,
+  dot: string,
+  index: number,
+) {
+  const startX = current.cx + NODE_RADIUS;
+  const startY = current.cy;
+  const endX = next.cx - NODE_RADIUS;
+  const endY = next.cy;
+
+  const midX = (startX + endX) / 2;
+  const curvature =
+    index % 3 === 0 ? -90 : index % 3 === 1 ? 95 : current.cy > next.cy ? -70 : 70;
+
+  const controlY = (startY + endY) / 2 + curvature;
+
+  return (
+    <g key={`path-${current.sectionId}-${next.sectionId}`}>
+      <path
+        d={`M ${startX} ${startY} Q ${midX} ${controlY} ${endX} ${endY}`}
+        fill="none"
+        stroke={color}
+        strokeWidth="5"
+        strokeDasharray="10 10"
+        strokeLinecap="round"
+        opacity="0.95"
+      />
+      <circle cx={startX} cy={startY} r="5" fill={dot} />
+      <circle cx={endX} cy={endY} r="5" fill={dot} />
+    </g>
+  );
+}
+
+export function SectionSelection() {
+  const { unitId } = useParams();
+  const [sections, setSections] = useState<SectionProgressItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const unitIdNumber = useMemo(() => Number(unitId), [unitId]);
+
+  useEffect(() => {
+    const loadSections = async () => {
+      if (!unitIdNumber || Number.isNaN(unitIdNumber)) {
+        setError("Unit ID không hợp lệ");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await getSectionsByUnitProgress(unitIdNumber);
+
+        if (res.success) {
+          const sorted = [...(res.data ?? [])].sort(
+            (a, b) =>
+              a.sectionNumber - b.sectionNumber || a.sectionId - b.sectionId,
+          );
+          setSections(sorted);
+        } else {
+          setError(res.error?.message || "Không tải được danh sách section");
+        }
+      } catch (err) {
+        console.error("Error loading sections:", err);
+        setError("Có lỗi xảy ra khi tải danh sách section");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSections();
+  }, [unitIdNumber]);
+
+  const layout = useMemo(() => {
+    const count = sections.length;
+
+    if (count === 0) {
+      return {
+        positionedSections: [] as PositionedSection[],
+        mapWidth: MIN_MAP_WIDTH,
+        containerHeight: 430,
+      };
+    }
+
+    const viewportWidth =
+      typeof window !== "undefined" ? window.innerWidth : 1440;
+
+    const usableWidth = Math.max(720, viewportWidth - 80);
+
+    let stepX =
+      count > 1
+        ? Math.floor((usableWidth - SIDE_PADDING * 2) / (count - 1))
+        : 0;
+
+    stepX = Math.max(MIN_STEP_X, Math.min(MAX_STEP_X, stepX));
+
+    const contentWidth =
+      count === 1
+        ? 2 * SIDE_PADDING + NODE_WIDTH
+        : 2 * SIDE_PADDING + (count - 1) * stepX + NODE_WIDTH;
+
+    const mapWidth = Math.max(MIN_MAP_WIDTH, contentWidth);
+
+    const startX =
+      count === 1
+        ? mapWidth / 2
+        : Math.max(SIDE_PADDING, (mapWidth - (count - 1) * stepX) / 2);
+
+    const positionedSections: PositionedSection[] = sections.map(
+      (section, index) => ({
+        ...section,
+        cx: startX + index * stepX,
+        cy: BASE_Y + Y_PATTERN[index % Y_PATTERN.length],
+      }),
+    );
+
+    const minCy = Math.min(...positionedSections.map((item) => item.cy));
+    const maxCy = Math.max(...positionedSections.map((item) => item.cy));
+
+    const containerHeight = Math.max(430, maxCy - minCy + 260);
+
+    return {
+      positionedSections,
+      mapWidth,
+      containerHeight,
+    };
+  }, [sections]);
+
+  const { positionedSections, mapWidth, containerHeight } = layout;
+
+  if (loading) {
+    return (
+      <main className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
+          <p className="text-gray-600 font-medium">Đang tải các section...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+          <p className="text-red-600 font-bold">{error}</p>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Quay lại
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
+      <section className="mb-8">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Quay lại Dashboard
+        </Link>
+
+        <div className="mt-4">
+          <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
+            Unit {unitId}
+          </span>
+          <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
+            Chọn Section
+          </h1>
+          <p className="text-gray-600 mt-2 text-lg">
+            Chọn 1 section để tiếp tục qua lesson.
+          </p>
+        </div>
+      </section>
+
+      {sections.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
+          <p className="text-lg font-bold text-[#1e2e51]">
+            Unit này chưa có section nào
+          </p>
+        </div>
+      ) : (
+        <section className="overflow-x-auto">
+          <div className="min-w-max pl-0 pr-4 py-4">
+            <div
+              className="relative"
+              style={{
+                width: `${mapWidth}px`,
+                height: `${containerHeight}px`,
+              }}
+            >
+              <svg
+                className="absolute inset-0 pointer-events-none"
+                width={mapWidth}
+                height={containerHeight}
+                viewBox={`0 0 ${mapWidth} ${containerHeight}`}
+              >
+                {positionedSections.slice(0, -1).map((section, index) => {
+                  const next = positionedSections[index + 1];
+                  const nextStyle = getSectionStyle(next, index + 1);
+
+                  return buildSectionPath(
+                    section,
+                    next,
+                    nextStyle.connector,
+                    nextStyle.dot,
+                    index,
+                  );
+                })}
+              </svg>
+
+              {positionedSections.map((section, index) => {
+                const style = getSectionStyle(section, index);
+                const progress = clampProgress(section.progressPercent);
+
+                return (
+                  <div
+                    key={section.sectionId}
+                    className="absolute"
+                    style={{
+                      left: `${section.cx - NODE_WIDTH / 2}px`,
+                      top: `${section.cy - NODE_RADIUS}px`,
+                      width: `${NODE_WIDTH}px`,
+                    }}
+                  >
+                    <Link
+                      to={style.locked ? "#" : `/sections/${section.sectionId}/lessons`}
+                      onClick={(e) => {
+                        if (style.locked) e.preventDefault();
+                      }}
+                      className={`group block text-center ${style.locked ? "cursor-not-allowed" : ""}`}
+                    >
+                      <div className="relative mx-auto w-32 h-32">
+                        <div
+                          className={`absolute inset-0 rounded-full bg-gradient-to-br ${style.outerRing} p-[6px] ${style.glow} transition-all duration-300 group-hover:scale-105`}
+                        >
+                          <div
+                            className={`w-full h-full rounded-full border ${style.outerBorder} ${style.middleBg} flex items-center justify-center`}
+                          >
+                            <div
+                              className={`w-[84px] h-[84px] rounded-full ${style.innerBg} flex items-center justify-center shadow-inner`}
+                            >
+                              <FontAwesomeIcon
+                                icon={style.icon}
+                                className={`text-[28px] ${style.iconColor}`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white border border-[#dbe7f7] shadow-sm text-xs font-black text-[#1e2e51]">
+                          {progress}%
+                        </div>
+                      </div>
+
+                      <div className="mt-5">
+                        <div
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
+                        >
+                          Section {section.sectionNumber}
+                        </div>
+
+                        <h3
+                          className={`mt-3 text-base font-black leading-tight px-3 ${style.title}`}
+                        >
+                          {section.sectionTitle}
+                        </h3>
+
+                        <p className="mt-2 text-xs font-semibold text-gray-500">
+                          {style.statusText}
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+    </main>
+  );
+} 

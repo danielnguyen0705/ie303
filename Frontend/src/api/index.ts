@@ -40,6 +40,10 @@ export * as shopApi from "./shop";
 // Notifications API
 export * as notificationApi from "./notifications";
 
+export * as gradeApi from "./grades";
+export * as sectionApi from "./sections";
+export * as questionApi from "./questions";
+
 // ============================================
 // ADMIN API
 // ============================================
@@ -47,8 +51,7 @@ export * as notificationApi from "./notifications";
 // Admin API - All modules
 export * as adminApi from "./admin";
 
-// Admin Types
-export * from "./admin/types";
+
 
 // Re-export for convenience
 export {
@@ -68,18 +71,26 @@ export {
 } from "./users";
 
 export {
-  // Units
-  getAllUnits,
+  getUnitsByGradeProgress,
   getUnit,
-  getUnitProgress,
-  getCurriculumOverview,
 } from "./units";
 
 export {
-  // Lessons
-  getLessonsByUnit,
-  getLesson,
-  completeLesson,
+  getAllGrades,
+  getGrade,
+} from "./grades";
+
+export {
+  getSectionsByUnitProgress,
+  getSection,
+} from "./sections";
+
+export {
+  getQuestionsByLesson,
+} from "./questions";
+
+export {
+  getLessonsBySectionProgress,
 } from "./lessons";
 
 export {
