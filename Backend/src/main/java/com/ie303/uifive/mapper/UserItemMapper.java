@@ -10,9 +10,12 @@ import org.mapstruct.MappingTarget;
 @Mapper(componentModel = "spring")
 public interface UserItemMapper {
 
-    @Mapping(target = "userId", source = "user.id")
-    @Mapping(target = "itemId", source = "item.id")
-    UserItemResponse toResponse(UserItem entity);
+    @Mapping(target = "userItemId", source = "id")
+    @Mapping(target = "shopItemId", source = "item.id")
+    @Mapping(target = "name", source = "item.name")
+    @Mapping(target = "imageUrl", source = "item.imageUrl")
+    @Mapping(target = "type", source = "item.type")
+    UserItemResponse toResponse(UserItem userItem);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)

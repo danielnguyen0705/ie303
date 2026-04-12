@@ -1,5 +1,7 @@
 package com.ie303.uifive.service;
 
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.AllArgsConstructor;
@@ -32,7 +34,7 @@ public class EmailService {
 
             mailSender.send(message);
         } catch (MessagingException e) {
-            throw new RuntimeException("Send email failed");
+            throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Failed to send verification email");
         }
     }
 

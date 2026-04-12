@@ -13,12 +13,16 @@ public class ShopItem {
     private Long id;
 
     private String name;
-    private String description;
 
-    @Column(name = "price_coin")
-    private int priceCoin;
+    @Column(columnDefinition = "TEXT")
+
+    private String description;
+    private int price;
+    private String imageUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "item_type")
-    private ItemType itemType;
+    private ItemType type;
+
+    private Integer durationDays;
+    private boolean active = true;
 }

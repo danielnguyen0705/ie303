@@ -6,12 +6,14 @@ import com.google.genai.types.GenerateContentResponse;
 import com.ie303.uifive.dto.res.WritingEvaluationResponse;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GeminiService {
 
     @Value("${gemini.api-key}")
@@ -23,6 +25,9 @@ public class GeminiService {
     private final ObjectMapper objectMapper;
 
     public WritingEvaluationResponse evaluateEssay(String topic, String explanation, String answerText) {
+        validateConfiguration();
+        validateEssayAnswer(answerText);
+
         int maxRetry = 3;
         int attempt = 0;
 
@@ -77,22 +82,24 @@ public class GeminiService {
                         null
                 );
 
-                String raw = response.text();
-                raw = raw.replace("```json", "")
-                        .replace("```", "")
-                        .trim();
-
-                return objectMapper.readValue(raw, WritingEvaluationResponse.class);
+                String raw = response == null ? null : response.text();
+                String cleanedJson = extractJsonObject(raw);
+                WritingEvaluationResponse parsed = objectMapper.readValue(cleanedJson, WritingEvaluationResponse.class);
+                return normalize(parsed);
 
             } catch (Exception e) {
                 attempt++;
+                log.warn("Gemini attempt {} failed: {}", attempt, e.getMessage());
 
                 if (attempt >= maxRetry) {
+                    if (e instanceof AppException appException) {
+                        throw appException;
+                    }
                     throw new AppException(ErrorCode.GEMINI_NOT_RESPONSE);
                 }
 
                 try {
-                    Thread.sleep(2000); // nghỉ 2 giây rồi thử lại
+                    Thread.sleep(2000);
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 }
@@ -102,9 +109,42 @@ public class GeminiService {
         throw new AppException(ErrorCode.GEMINI_NOT_RESPONSE);
     }
 
+    private void validateConfiguration() {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new AppException(ErrorCode.GEMINI_NOT_CONFIGURED);
+        }
+    }
+
+    private void validateEssayAnswer(String answerText) {
+        if (answerText == null || answerText.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_ESSAY_ANSWER);
+        }
+    }
+
+    private String extractJsonObject(String raw) {
+        String cleaned = cleanJson(raw);
+        int start = cleaned.indexOf('{');
+        int end = cleaned.lastIndexOf('}');
+
+        if (start < 0 || end < start) {
+            throw new AppException(ErrorCode.GEMINI_INVALID_RESPONSE);
+        }
+
+        return cleaned.substring(start, end + 1).trim();
+    }
+
+    private WritingEvaluationResponse normalize(WritingEvaluationResponse response) {
+        if (response == null || response.feedback() == null || response.feedback().isBlank()) {
+            throw new AppException(ErrorCode.GEMINI_INVALID_RESPONSE);
+        }
+
+        double score = Math.max(0, Math.min(10, response.score()));
+        return new WritingEvaluationResponse(score, response.feedback().trim());
+    }
+
     private String cleanJson(String raw) {
-        if (raw == null) {
-            return "";
+        if (raw == null || raw.isBlank()) {
+            throw new AppException(ErrorCode.GEMINI_INVALID_RESPONSE);
         }
 
         return raw.replace("```json", "")
