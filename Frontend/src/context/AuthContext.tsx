@@ -25,6 +25,7 @@ type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
+  isReady: boolean;
   error: string | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<boolean>;
@@ -83,6 +84,7 @@ function extractUser(payload: unknown): AuthUser | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isReady, setIsReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const isAuthenticated = Boolean(user);
@@ -125,7 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    void loadCurrentUser(false);
+    void loadCurrentUser(false).finally(() => {
+      setIsReady(true);
+    });
   }, [loadCurrentUser]);
 
   const login = useCallback(
@@ -210,13 +214,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
+      isReady,
       error,
       isAuthenticated,
       login,
       register,
       logout,
     }),
-    [user, loading, error, isAuthenticated, login, register, logout],
+    [user, loading, isReady, error, isAuthenticated, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

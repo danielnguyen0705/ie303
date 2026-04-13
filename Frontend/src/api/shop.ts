@@ -1,61 +1,227 @@
-// Shop API
+import type {
+  ApiResponse,
+  BuyItemResponse,
+  PurchaseItemRequest,
+  ShopFilter,
+  ShopItem,
+  ShopItemResponse,
+  ShopItemType,
+  UserItemResponse,
+} from "./types";
+import { createError, request } from "./utils/http";
 
-import { shopItems, getAvailableShopItems, currentUser } from '@/data/mockData';
-import { simulateApiCall, createErrorResponse } from './client';
-import type { ApiResponse, ShopFilter, PurchaseItemRequest } from './types';
-import type { ShopItem } from '@/data/mockData';
+const TYPE_TO_DISPLAY: Record<ShopItemType, ShopItem["type"]> = {
+  SKIP: "powerup",
+  VIP: "subscription",
+  AVATAR: "cosmetic",
+  BACKGROUND: "cosmetic",
+};
+
+const TYPE_TO_ICON: Record<ShopItemType, string> = {
+  SKIP: "Zap",
+  VIP: "Crown",
+  AVATAR: "Sparkles",
+  BACKGROUND: "Palette",
+};
+
+const TYPE_TO_EFFECT: Record<ShopItemType, string | undefined> = {
+  SKIP: "Skip one streak break",
+  VIP: "Premium benefits during subscription",
+  AVATAR: "Unlock avatar cosmetic",
+  BACKGROUND: "Unlock background cosmetic",
+};
+
+const toNumberId = (value: string | number): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+};
+
+const fetchActiveShopItems = async (): Promise<
+  ApiResponse<ShopItemResponse[]>
+> => request<ShopItemResponse[]>("/shop-items", { method: "GET" });
+
+const fetchMyShopItems = async (): Promise<ApiResponse<UserItemResponse[]>> =>
+  request<UserItemResponse[]>("/shop-items/my-items", {
+    method: "GET",
+  });
+
+const toDisplayItem = (
+  item: ShopItemResponse,
+  purchasedIds: Set<number>,
+): ShopItem => ({
+  id: String(item.id),
+  backendId: item.id,
+  name: item.name,
+  description: item.description || "",
+  type: TYPE_TO_DISPLAY[item.type],
+  price: item.price,
+  icon: TYPE_TO_ICON[item.type],
+  duration: item.durationDays ?? undefined,
+  effect: TYPE_TO_EFFECT[item.type],
+  isPurchased: purchasedIds.has(item.id),
+  imageUrl: item.imageUrl,
+  active: item.active,
+});
+
+const getPurchasedIdSet = async (): Promise<Set<number>> => {
+  const myItemsResponse = await fetchMyShopItems();
+
+  if (!myItemsResponse.success || !myItemsResponse.data) {
+    return new Set<number>();
+  }
+
+  return new Set(myItemsResponse.data.map((item) => item.shopItemId));
+};
+
+/**
+ * Get all active shop items
+ */
+export async function getActiveShopItems(): Promise<ApiResponse<ShopItem[]>> {
+  const [itemsResponse, purchasedIds] = await Promise.all([
+    fetchActiveShopItems(),
+    getPurchasedIdSet(),
+  ]);
+
+  if (!itemsResponse.success || !itemsResponse.data) {
+    return createError(
+      itemsResponse.error?.message || "Failed to fetch shop items",
+      itemsResponse.error?.code || "API_ERROR",
+    );
+  }
+
+  return {
+    success: true,
+    data: itemsResponse.data.map((item) => toDisplayItem(item, purchasedIds)),
+  };
+}
+
+/**
+ * Get items owned by current user
+ */
+export async function getMyShopItems(): Promise<
+  ApiResponse<UserItemResponse[]>
+> {
+  const response = await fetchMyShopItems();
+
+  if (!response.success || !response.data) {
+    return createError(
+      response.error?.message || "Failed to fetch owned shop items",
+      response.error?.code || "API_ERROR",
+    );
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
+}
 
 /**
  * Get all shop items
  */
-export async function getAllShopItems(filter?: ShopFilter): Promise<ApiResponse<ShopItem[]>> {
-  let filteredItems = [...shopItems];
+export async function getAllShopItems(
+  filter?: ShopFilter,
+): Promise<ApiResponse<ShopItem[]>> {
+  const response = await getActiveShopItems();
+
+  if (!response.success || !response.data) {
+    return createError(
+      response.error?.message || "Failed to fetch shop items",
+      response.error?.code || "API_ERROR",
+    );
+  }
+
+  let filteredItems = [...response.data];
 
   if (filter?.type) {
-    filteredItems = filteredItems.filter(i => i.type === filter.type);
+    filteredItems = filteredItems.filter((i) => i.type === filter.type);
   }
 
   if (filter?.isPurchased !== undefined) {
-    filteredItems = filteredItems.filter(i => i.isPurchased === filter.isPurchased);
+    filteredItems = filteredItems.filter(
+      (i) => i.isPurchased === filter.isPurchased,
+    );
   }
 
-  return simulateApiCall(filteredItems);
+  return {
+    success: true,
+    data: filteredItems,
+  };
 }
 
 /**
  * Get available shop items (not purchased)
  */
 export async function getAvailableItems(): Promise<ApiResponse<ShopItem[]>> {
-  const available = getAvailableShopItems();
-  return simulateApiCall(available);
+  return getAllShopItems({ isPurchased: false });
 }
 
 /**
  * Get shop items by type
  */
 export async function getItemsByType(
-  type: 'powerup' | 'cosmetic' | 'subscription' | 'boost'
+  type: "powerup" | "cosmetic" | "subscription" | "boost",
 ): Promise<ApiResponse<ShopItem[]>> {
-  const filtered = shopItems.filter(i => i.type === type);
-  return simulateApiCall(filtered);
+  return getAllShopItems({ type });
 }
 
 /**
  * Get single shop item
  */
-export async function getShopItem(itemId: string): Promise<ApiResponse<ShopItem>> {
-  const item = shopItems.find(i => i.id === itemId);
-  
-  if (!item) {
-    return createErrorResponse('Item not found', 'NOT_FOUND');
+export async function getShopItem(
+  itemId: string,
+): Promise<ApiResponse<ShopItem>> {
+  const response = await getActiveShopItems();
+  if (!response.success || !response.data) {
+    return createError(
+      response.error?.message || "Failed to fetch shop item",
+      response.error?.code || "API_ERROR",
+    );
   }
 
-  return simulateApiCall(item);
+  const item = response.data.find((i) => i.id === itemId);
+  if (!item) {
+    return createError("Item not found", "NOT_FOUND");
+  }
+
+  return {
+    success: true,
+    data: item,
+  };
 }
 
 /**
  * Purchase item
  */
+export async function buyShopItem(
+  itemId: string | number,
+): Promise<ApiResponse<BuyItemResponse>> {
+  const parsedItemId = toNumberId(itemId);
+
+  if (!Number.isFinite(parsedItemId) || parsedItemId <= 0) {
+    return createError("Invalid item id", "VALIDATION_ERROR");
+  }
+
+  const buyResponse = await request<BuyItemResponse>(
+    `/shop-items/buy/${parsedItemId}`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!buyResponse.success || !buyResponse.data) {
+    return createError(
+      buyResponse.error?.message || "Purchase failed",
+      buyResponse.error?.code || "API_ERROR",
+    );
+  }
+
+  return {
+    success: true,
+    data: buyResponse.data,
+  };
+}
+
 export async function purchaseItem(data: PurchaseItemRequest): Promise<
   ApiResponse<{
     item: ShopItem;
@@ -68,37 +234,108 @@ export async function purchaseItem(data: PurchaseItemRequest): Promise<
     newBalance: number;
   }>
 > {
-  const item = shopItems.find(i => i.id === data.itemId);
-  
-  if (!item) {
-    return createErrorResponse('Item not found', 'NOT_FOUND');
+  const itemId = toNumberId(data.itemId);
+  if (!Number.isFinite(itemId) || itemId <= 0) {
+    return createError("Invalid item id", "VALIDATION_ERROR");
   }
 
-  if (item.isPurchased) {
-    return createErrorResponse('Item already purchased', 'INVALID_STATE');
+  const buyResponse = await buyShopItem(itemId);
+
+  if (!buyResponse.success || !buyResponse.data) {
+    return createError(
+      buyResponse.error?.message || "Purchase failed",
+      buyResponse.error?.code || "API_ERROR",
+    );
   }
 
-  // Check balance
-  if (currentUser.coins < item.price) {
-    return createErrorResponse('Insufficient coins', 'INSUFFICIENT_FUNDS');
+  const [allItemsResponse, profileResponse] = await Promise.all([
+    getAllShopItems(),
+    request<{ id: number; coin: number }>("/users/me", { method: "GET" }),
+  ]);
+
+  if (!allItemsResponse.success || !allItemsResponse.data) {
+    return createError(
+      allItemsResponse.error?.message ||
+        "Purchase succeeded but failed to reload item",
+      allItemsResponse.error?.code || "API_ERROR",
+    );
   }
 
-  const purchasedItem: ShopItem = {
-    ...item,
-    isPurchased: true,
-  };
+  const purchasedItem = allItemsResponse.data.find(
+    (item) => Number(item.id) === itemId,
+  );
+  if (!purchasedItem) {
+    return createError("Purchased item not found", "NOT_FOUND");
+  }
 
-  const newBalance = currentUser.coins - item.price;
+  const newBalance =
+    profileResponse.success && profileResponse.data
+      ? profileResponse.data.coin
+      : buyResponse.data.remainingCoin;
 
-  return simulateApiCall({
-    item: purchasedItem,
-    transaction: {
-      id: `txn-${Date.now()}`,
-      itemId: item.id,
-      price: item.price,
-      timestamp: new Date().toISOString(),
+  return {
+    success: true,
+    data: {
+      item: purchasedItem,
+      transaction: {
+        id: `txn-${Date.now()}`,
+        itemId: purchasedItem.id,
+        price: purchasedItem.price,
+        timestamp: new Date().toISOString(),
+      },
+      newBalance,
     },
-    newBalance,
+  };
+}
+
+/**
+ * Use one SKIP item by user item id
+ */
+export async function useSkipItem(
+  userItemId: string | number,
+): Promise<ApiResponse<string>> {
+  const parsedUserItemId = toNumberId(userItemId);
+
+  if (!Number.isFinite(parsedUserItemId) || parsedUserItemId <= 0) {
+    return createError("Invalid user item id", "VALIDATION_ERROR");
+  }
+
+  return request<string>(`/shop-items/use-skip/${parsedUserItemId}`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Equip owned avatar item
+ */
+export async function equipAvatar(
+  shopItemId: string | number,
+): Promise<ApiResponse<string>> {
+  const parsedShopItemId = toNumberId(shopItemId);
+
+  if (!Number.isFinite(parsedShopItemId) || parsedShopItemId <= 0) {
+    return createError("Invalid shop item id", "VALIDATION_ERROR");
+  }
+
+  return request<string>(`/shop-items/equip/avatar/${parsedShopItemId}`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Equip owned background item
+ */
+export async function equipBackground(
+  shopItemId: string | number,
+): Promise<ApiResponse<string>> {
+  const parsedShopItemId = toNumberId(shopItemId);
+
+  if (!Number.isFinite(parsedShopItemId) || parsedShopItemId <= 0) {
+    return createError("Invalid shop item id", "VALIDATION_ERROR");
+  }
+
+  return request<string>(`/shop-items/equip/background/${parsedShopItemId}`, {
+    method: "POST",
   });
 }
 
@@ -106,8 +343,18 @@ export async function purchaseItem(data: PurchaseItemRequest): Promise<
  * Get purchased items
  */
 export async function getPurchasedItems(): Promise<ApiResponse<ShopItem[]>> {
-  const purchased = shopItems.filter(i => i.isPurchased);
-  return simulateApiCall(purchased);
+  const response = await getAllShopItems({ isPurchased: true });
+  if (!response.success || !response.data) {
+    return createError(
+      response.error?.message || "Failed to fetch purchased items",
+      response.error?.code || "API_ERROR",
+    );
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
 }
 
 /**
@@ -121,28 +368,32 @@ export async function getPurchaseHistory(): Promise<
       itemName: string;
       price: number;
       timestamp: string;
-      status: 'completed' | 'pending' | 'refunded';
+      status: "completed" | "pending" | "refunded";
     }>
   >
 > {
-  return simulateApiCall([
+  const history: Array<{
+    id: string;
+    itemId: string;
+    itemName: string;
+    price: number;
+    timestamp: string;
+    status: "completed" | "pending" | "refunded";
+  }> = [
     {
-      id: 'txn-001',
-      itemId: 'item-002',
-      itemName: 'Streak Freeze',
+      id: "txn-001",
+      itemId: "2",
+      itemName: "Shop purchase",
       price: 30,
-      timestamp: '2026-04-05T10:30:00Z',
-      status: 'completed',
+      timestamp: new Date().toISOString(),
+      status: "completed",
     },
-    {
-      id: 'txn-002',
-      itemId: 'item-006',
-      itemName: 'Premium Monthly',
-      price: 500,
-      timestamp: '2024-03-01T12:00:00Z',
-      status: 'completed',
-    },
-  ]);
+  ];
+
+  return {
+    success: true,
+    data: history,
+  };
 }
 
 /**
@@ -157,30 +408,16 @@ export async function applyPowerup(itemId: string): Promise<
     active: boolean;
   }>
 > {
-  const item = shopItems.find(i => i.id === itemId);
-  
-  if (!item) {
-    return createErrorResponse('Item not found', 'NOT_FOUND');
-  }
-
-  if (!item.isPurchased) {
-    return createErrorResponse('Item not purchased', 'FORBIDDEN');
-  }
-
-  if (item.type !== 'powerup' && item.type !== 'boost') {
-    return createErrorResponse('Item is not a powerup', 'INVALID_TYPE');
-  }
-
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + (item.duration || 1));
-
-  return simulateApiCall({
-    itemId,
-    effect: item.effect || '',
-    duration: (item.duration || 1) * 86400, // days to seconds
-    expiresAt: expiresAt.toISOString(),
-    active: true,
-  });
+  return {
+    success: true,
+    data: {
+      itemId,
+      effect: "Powerup activated",
+      duration: 86400,
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+      active: true,
+    },
+  };
 }
 
 /**
@@ -197,15 +434,30 @@ export async function getActivePowerups(): Promise<
     }>
   >
 > {
-  return simulateApiCall([
-    {
-      itemId: 'item-002',
-      itemName: 'Streak Freeze',
-      effect: 'Protects streak for 1 day',
-      expiresAt: '2026-04-08T10:30:00Z',
-      timeRemaining: 72000,
-    },
-  ]);
+  const ownedResponse = await fetchMyShopItems();
+
+  if (!ownedResponse.success || !ownedResponse.data) {
+    return {
+      success: true,
+      data: [],
+    };
+  }
+
+  const now = Date.now();
+  const powerups = ownedResponse.data
+    .filter((item) => item.type === "SKIP" || item.type === "VIP")
+    .map((item) => ({
+      itemId: String(item.shopItemId),
+      itemName: item.name,
+      effect: item.type === "SKIP" ? "Skip one streak break" : "VIP active",
+      expiresAt: new Date(now + 86400000).toISOString(),
+      timeRemaining: 86400,
+    }));
+
+  return {
+    success: true,
+    data: powerups,
+  };
 }
 
 /**
@@ -225,18 +477,10 @@ export async function getSpecialOffers(): Promise<
     }>
   >
 > {
-  return simulateApiCall([
-    {
-      id: 'offer-001',
-      itemId: 'item-001',
-      item: shopItems[0],
-      originalPrice: 50,
-      discountPrice: 35,
-      discountPercentage: 30,
-      expiresAt: '2026-04-10T00:00:00Z',
-      limited: true,
-    },
-  ]);
+  return {
+    success: true,
+    data: [],
+  };
 }
 
 /**
@@ -249,25 +493,7 @@ export async function refundItem(itemId: string): Promise<
     newBalance: number;
   }>
 > {
-  const item = shopItems.find(i => i.id === itemId);
-  
-  if (!item) {
-    return createErrorResponse('Item not found', 'NOT_FOUND');
-  }
-
-  if (!item.isPurchased) {
-    return createErrorResponse('Item not purchased', 'INVALID_STATE');
-  }
-
-  // Refund 80% of original price
-  const refundAmount = Math.floor(item.price * 0.8);
-  const newBalance = currentUser.coins + refundAmount;
-
-  return simulateApiCall({
-    itemId,
-    refundAmount,
-    newBalance,
-  });
+  return createError("Refund is not supported", "NOT_SUPPORTED");
 }
 
 /**
@@ -280,11 +506,25 @@ export async function getCoinBalance(): Promise<
     spentTotal: number;
   }>
 > {
-  return simulateApiCall({
-    balance: currentUser.coins,
-    earnedTotal: 1680,
-    spentTotal: 440,
+  const profileResponse = await request<{ coin: number }>("/users/me", {
+    method: "GET",
   });
+
+  if (!profileResponse.success || !profileResponse.data) {
+    return createError(
+      profileResponse.error?.message || "Failed to fetch coin balance",
+      profileResponse.error?.code || "API_ERROR",
+    );
+  }
+
+  return {
+    success: true,
+    data: {
+      balance: profileResponse.data.coin,
+      earnedTotal: 0,
+      spentTotal: 0,
+    },
+  };
 }
 
 /**
@@ -294,34 +534,31 @@ export async function getCoinHistory(limit: number = 10): Promise<
   ApiResponse<
     Array<{
       id: string;
-      type: 'earned' | 'spent' | 'refund';
+      type: "earned" | "spent" | "refund";
       amount: number;
       source: string;
       timestamp: string;
     }>
   >
 > {
-  return simulateApiCall([
+  const history: Array<{
+    id: string;
+    type: "earned" | "spent" | "refund";
+    amount: number;
+    source: string;
+    timestamp: string;
+  }> = [
     {
-      id: 'coin-001',
-      type: 'earned',
+      id: "coin-001",
+      type: "earned",
       amount: 10,
-      source: 'Completed lesson',
-      timestamp: '2026-04-07T14:30:00Z',
+      source: "Completed lesson",
+      timestamp: new Date().toISOString(),
     },
-    {
-      id: 'coin-002',
-      type: 'spent',
-      amount: -30,
-      source: 'Purchased Streak Freeze',
-      timestamp: '2026-04-05T10:30:00Z',
-    },
-    {
-      id: 'coin-003',
-      type: 'earned',
-      amount: 25,
-      source: 'Completed test',
-      timestamp: '2026-04-04T16:20:00Z',
-    },
-  ].slice(0, limit));
+  ];
+
+  return {
+    success: true,
+    data: history.slice(0, limit),
+  };
 }

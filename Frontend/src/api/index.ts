@@ -51,8 +51,6 @@ export * as questionApi from "./questions";
 // Admin API - All modules
 export * as adminApi from "./admin";
 
-
-
 // Re-export for convenience
 export {
   // Auth
@@ -70,28 +68,15 @@ export {
   getUserHistory,
 } from "./users";
 
-export {
-  getUnitsByGradeProgress,
-  getUnit,
-} from "./units";
+export { getUnitsByGradeProgress, getUnit } from "./units";
 
-export {
-  getAllGrades,
-  getGrade,
-} from "./grades";
+export { getAllGrades, getGrade } from "./grades";
 
-export {
-  getSectionsByUnitProgress,
-  getSection,
-} from "./sections";
+export { getSectionsByUnitProgress, getSection } from "./sections";
 
-export {
-  getQuestionsByLesson,
-} from "./questions";
+export { getQuestionsByLesson } from "./questions";
 
-export {
-  getLessonsBySectionProgress,
-} from "./lessons";
+export { getLessonsBySectionProgress } from "./lessons";
 
 export {
   // Exercises
@@ -117,17 +102,21 @@ export {
 
 export {
   // Leaderboard
-  getLeaderboard,
-  getTopPlayers,
-  getUserRank,
-  getLeagueInfo,
+  getCoinLeaderboard,
+  getCollectorLeaderboard,
 } from "./leaderboard";
 
 export {
   // Shop
+  getActiveShopItems,
+  getMyShopItems,
   getAllShopItems,
+  buyShopItem,
   purchaseItem,
   getPurchasedItems,
+  useSkipItem,
+  equipAvatar,
+  equipBackground,
   getCoinBalance,
 } from "./shop";
 

@@ -27,6 +27,9 @@ export * as adminNotificationApi from "./notifications";
 // Settings API
 export * as adminSettingsApi from "./settings";
 
+// Shop Item Management API
+export * as adminShopApi from "./shop";
+
 // Activity Logs API
 export * as adminActivityApi from "./activityLogs";
 
@@ -159,6 +162,15 @@ export {
   resetSettings,
   getPublicSettings,
 } from "./settings";
+
+export {
+  // Shop items
+  createShopItem,
+  updateShopItem,
+  deleteShopItem,
+  getShopItemByIdAdmin,
+  getAllShopItemsAdmin,
+} from "./shop";
 
 export {
   // Activity Logs

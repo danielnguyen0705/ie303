@@ -1,15 +1,38 @@
-import { useState, useEffect } from 'react';
-import { ShoppingCart, Zap, Sparkles, Crown, Shield, Coins, Loader2, CheckCircle } from 'lucide-react';
-import { getAllShopItems, purchaseItem, getCoinBalance } from '@/api';
-import type { ShopItem } from '@/data/mockData';
+import { useState, useEffect } from "react";
+import {
+  ShoppingCart,
+  Zap,
+  Sparkles,
+  Crown,
+  Shield,
+  Coins,
+  Loader2,
+  CheckCircle,
+} from "lucide-react";
+import { buyShopItem, getActiveShopItems, getCoinBalance } from "@/api";
+import type { ShopItem } from "@/api";
+import { NotificationPopup } from "@/utils/NotificationPopup";
+import { useNotificationPopup } from "@/utils/useNotificationPopup";
+
+const normalizeShopItems = (items: ShopItem[]): ShopItem[] =>
+  items.map((item) => ({
+    ...item,
+    isPurchased: item.type === "cosmetic" ? item.isPurchased : false,
+  }));
 
 export function Shop() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [balance, setBalance] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'powerup' | 'cosmetic' | 'subscription'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<
+    "all" | "powerup" | "cosmetic" | "subscription"
+  >("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const popup = useNotificationPopup({
+    autoClose: true,
+    autoCloseDuration: 2500,
+  });
 
   useEffect(() => {
     loadShopData();
@@ -21,55 +44,74 @@ export function Shop() {
       setError(null);
 
       const [itemsResponse, balanceResponse] = await Promise.all([
-        getAllShopItems(),
+        getActiveShopItems(),
         getCoinBalance(),
       ]);
 
       if (itemsResponse.success) {
-        setItems(itemsResponse.data);
+        setItems(normalizeShopItems(itemsResponse.data || []));
       }
 
       if (balanceResponse.success) {
-        setBalance(balanceResponse.data.balance);
+        setBalance(balanceResponse.data?.balance || 0);
       }
     } catch (err) {
-      console.error('Error loading shop:', err);
-      setError('Failed to load shop items');
+      console.error("Error loading shop:", err);
+      setError("Failed to load shop items");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePurchase = async (itemId: string, price: number) => {
+  const handlePurchase = async (item: ShopItem) => {
+    const { id: itemId, price, type } = item;
+
     if (balance < price) {
-      alert('Insufficient coins!');
+      popup.error({
+        title: "Insufficient coins",
+        message: "You do not have enough coins for this item.",
+      });
       return;
     }
 
     try {
       setPurchasing(itemId);
-      const response = await purchaseItem({ itemId });
+      const response = await buyShopItem(itemId);
 
-      if (response.success) {
-        // Update item status
-        setItems(prev =>
-          prev.map(item =>
-            item.id === itemId ? { ...item, isPurchased: true } : item
-          )
-        );
-
+      if (response.success && response.data) {
         // Update balance
-        setBalance(response.data.newBalance);
+        setBalance(response.data.remainingCoin);
 
-        alert(`🎉 Successfully purchased ${response.data.item.name}!`);
+        if (type === "cosmetic") {
+          setItems((prev) =>
+            prev.map((currentItem) =>
+              currentItem.id === itemId
+                ? { ...currentItem, isPurchased: true }
+                : currentItem,
+            ),
+          );
+        }
+
+        popup.success({
+          title: "Purchase successful",
+          message: `Successfully purchased ${item.name}.`,
+        });
+      } else {
+        popup.error({
+          title: "Purchase failed",
+          message:
+            response.error?.message || "Could not complete the purchase.",
+        });
       }
     } catch (err: any) {
-      console.error('Error purchasing item:', err);
-      if (err.code === 'INSUFFICIENT_FUNDS') {
-        alert('You don\'t have enough coins!');
-      } else {
-        alert('Purchase failed. Please try again.');
-      }
+      console.error("Error purchasing item:", err);
+      popup.error({
+        title: "Purchase failed",
+        message:
+          err?.code === "INSUFFICIENT_FUNDS"
+            ? "You don't have enough coins."
+            : "Purchase failed. Please try again.",
+      });
     } finally {
       setPurchasing(null);
     }
@@ -77,22 +119,23 @@ export function Shop() {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'powerup':
+      case "powerup":
         return <Zap className="w-5 h-5" />;
-      case 'cosmetic':
+      case "cosmetic":
         return <Sparkles className="w-5 h-5" />;
-      case 'subscription':
+      case "subscription":
         return <Crown className="w-5 h-5" />;
-      case 'boost':
+      case "boost":
         return <Shield className="w-5 h-5" />;
       default:
         return <ShoppingCart className="w-5 h-5" />;
     }
   };
 
-  const filteredItems = selectedCategory === 'all'
-    ? items
-    : items.filter(item => item.type === selectedCategory);
+  const filteredItems =
+    selectedCategory === "all"
+      ? items
+      : items.filter((item) => item.type === selectedCategory);
 
   if (loading) {
     return (
@@ -139,7 +182,9 @@ export function Shop() {
           <div className="bg-white px-6 py-4 rounded-lg shadow-sm flex items-center gap-3">
             <Coins className="w-8 h-8 text-[#f1c40f]" fill="#f1c40f" />
             <div>
-              <div className="text-xs text-gray-500 font-bold uppercase">Your Balance</div>
+              <div className="text-xs text-gray-500 font-bold uppercase">
+                Your Balance
+              </div>
               <div className="text-2xl font-black text-[#f1c40f]">
                 {balance.toLocaleString()}
               </div>
@@ -150,44 +195,44 @@ export function Shop() {
         {/* Category Filter */}
         <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm flex-wrap">
           <button
-            onClick={() => setSelectedCategory('all')}
+            onClick={() => setSelectedCategory("all")}
             className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === 'all'
-                ? 'bg-[#155ca5] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              selectedCategory === "all"
+                ? "bg-[#155ca5] text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <ShoppingCart className="w-5 h-5" />
             All Items
           </button>
           <button
-            onClick={() => setSelectedCategory('powerup')}
+            onClick={() => setSelectedCategory("powerup")}
             className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === 'powerup'
-                ? 'bg-[#155ca5] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              selectedCategory === "powerup"
+                ? "bg-[#155ca5] text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <Zap className="w-5 h-5" />
             Power-ups
           </button>
           <button
-            onClick={() => setSelectedCategory('cosmetic')}
+            onClick={() => setSelectedCategory("cosmetic")}
             className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === 'cosmetic'
-                ? 'bg-[#155ca5] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              selectedCategory === "cosmetic"
+                ? "bg-[#155ca5] text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <Sparkles className="w-5 h-5" />
             Cosmetics
           </button>
           <button
-            onClick={() => setSelectedCategory('subscription')}
+            onClick={() => setSelectedCategory("subscription")}
             className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === 'subscription'
-                ? 'bg-[#155ca5] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              selectedCategory === "subscription"
+                ? "bg-[#155ca5] text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <Crown className="w-5 h-5" />
@@ -201,29 +246,39 @@ export function Shop() {
         {filteredItems.map((item) => {
           const canAfford = balance >= item.price;
           const isPurchasing = purchasing === item.id;
+          const isOwned = item.type === "cosmetic" && item.isPurchased;
 
           return (
             <div
               key={item.id}
               className={`bg-white rounded-lg shadow-sm overflow-hidden border-2 transition-all ${
-                item.isPurchased
-                  ? 'border-[#27ae60]'
+                isOwned
+                  ? "border-[#27ae60]"
                   : canAfford
-                  ? 'border-transparent hover:shadow-lg'
-                  : 'border-transparent opacity-75'
+                    ? "border-transparent hover:shadow-lg"
+                    : "border-transparent opacity-75"
               }`}
             >
               {/* Item Header */}
               <div className="bg-gradient-to-br from-[#155ca5] to-[#005095] p-6 text-white relative">
                 <div className="absolute top-4 right-4">
-                  {item.isPurchased ? (
+                  {isOwned ? (
                     <CheckCircle className="w-6 h-6 text-[#27ae60]" />
                   ) : (
                     getCategoryIcon(item.type)
                   )}
                 </div>
-                <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center mb-4">
-                  {getCategoryIcon(item.type)}
+                <div className="w-20 h-20 bg-white/20 rounded-xl flex items-center justify-center mb-4 overflow-hidden border border-white/20">
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    getCategoryIcon(item.type)
+                  )}
                 </div>
                 <h3 className="font-bold text-xl mb-1">{item.name}</h3>
                 <p className="text-sm opacity-90 capitalize">{item.type}</p>
@@ -245,7 +300,8 @@ export function Shop() {
                 {/* Duration */}
                 {item.duration && (
                   <p className="text-xs text-gray-500">
-                    Duration: {item.duration} {item.duration === 1 ? 'day' : 'days'}
+                    Duration: {item.duration}{" "}
+                    {item.duration === 1 ? "day" : "days"}
                   </p>
                 )}
 
@@ -253,21 +309,23 @@ export function Shop() {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <div className="flex items-center gap-2">
                     <Coins className="w-6 h-6 text-[#f1c40f]" fill="#f1c40f" />
-                    <span className="text-2xl font-black">{item.price.toLocaleString()}</span>
+                    <span className="text-2xl font-black">
+                      {item.price.toLocaleString()}
+                    </span>
                   </div>
 
-                  {item.isPurchased ? (
+                  {isOwned ? (
                     <span className="px-4 py-2 bg-[#27ae60]/10 text-[#27ae60] rounded-md font-bold text-sm">
                       Owned ✓
                     </span>
                   ) : (
                     <button
-                      onClick={() => handlePurchase(item.id, item.price)}
+                      onClick={() => handlePurchase(item)}
                       disabled={!canAfford || isPurchasing}
                       className={`px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 ${
                         canAfford
-                          ? 'bg-[#155ca5] text-white hover:bg-[#005095]'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          ? "bg-[#155ca5] text-white hover:bg-[#005095]"
+                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
                       }`}
                     >
                       {isPurchasing ? (
@@ -278,7 +336,7 @@ export function Shop() {
                       ) : (
                         <>
                           <ShoppingCart className="w-4 h-4" />
-                          {canAfford ? 'Buy Now' : 'Not Enough Coins'}
+                          {canAfford ? "Buy Now" : "Not Enough Coins"}
                         </>
                       )}
                     </button>
@@ -311,6 +369,21 @@ export function Shop() {
           </button>
         </div>
       </section>
+
+      <NotificationPopup
+        isOpen={popup.notification.isOpen}
+        type={popup.notification.type}
+        title={popup.notification.title}
+        message={popup.notification.message}
+        description={popup.notification.description}
+        onClose={popup.close}
+        onConfirm={popup.notification.onConfirm}
+        confirmText={popup.notification.confirmText}
+        cancelText={popup.notification.cancelText}
+        showCancelButton={popup.notification.showCancelButton}
+        autoClose={popup.notification.autoClose}
+        autoCloseDuration={popup.notification.autoCloseDuration}
+      />
     </main>
   );
 }

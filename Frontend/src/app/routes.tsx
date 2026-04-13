@@ -27,6 +27,7 @@ import { Reports } from "./pages/admin/Reports";
 import { VIPManagement } from "./pages/admin/VIPManagement";
 import { Notifications } from "./pages/admin/Notifications";
 import { Settings } from "./pages/admin/Settings";
+import { ShopManagement } from "./pages/admin/ShopManagement";
 import { RequireAuth } from "./components/RequireAuth";
 
 export const router = createBrowserRouter([
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
           { path: "questions", Component: QuestionBank },
           { path: "reports", Component: Reports },
           { path: "vip", Component: VIPManagement },
+          { path: "shop", Component: ShopManagement },
           { path: "notifications", Component: Notifications },
           { path: "settings", Component: Settings },
         ],
