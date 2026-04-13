@@ -87,3 +87,127 @@ export interface ShopFilter {
   type?: "powerup" | "cosmetic" | "subscription" | "boost";
   isPurchased?: boolean;
 }
+
+export type ShopItemType = "SKIP" | "VIP" | "AVATAR" | "BACKGROUND";
+
+export interface ShopItemResponse {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  type: ShopItemType;
+  durationDays: number | null;
+  active: boolean;
+}
+
+export interface ShopItemUpsertRequest {
+  name: string;
+  description?: string;
+  price: number;
+  type: ShopItemType;
+  durationDays?: number | null;
+  active?: boolean;
+  imageFile?: File;
+  imageUrl?: string;
+}
+
+export interface UserItemResponse {
+  userItemId: number;
+  shopItemId: number;
+  name: string;
+  imageUrl: string;
+  type: ShopItemType;
+  quantity: number;
+  equipped: boolean;
+  purchasedAt: string;
+}
+
+export interface BuyItemResponse {
+  message: string;
+  remainingCoin: number;
+}
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  description: string;
+  type: "powerup" | "cosmetic" | "subscription" | "boost";
+  price: number;
+  icon: string;
+  duration?: number;
+  effect?: string;
+  isPurchased: boolean;
+  imageUrl?: string;
+  backendId?: number;
+  active?: boolean;
+}
+
+// Leaderboard domain types
+export type LeaderboardLeague =
+  | "bronze"
+  | "silver"
+  | "gold"
+  | "platinum"
+  | "diamond";
+
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  name: string;
+  avatar: string;
+  xp: number;
+  streak: number;
+  accuracy: number;
+  level: number;
+  league: LeaderboardLeague;
+}
+
+export interface CoinLeaderboardEntryResponse {
+  userId: number;
+  rank: number;
+  username: string;
+  avatar: string;
+  coin: number;
+  score: number;
+  streak: number;
+  currentUser: boolean;
+}
+
+export interface CoinLeaderboardResponse {
+  totalPlayers: number;
+  leaderboard: CoinLeaderboardEntryResponse[];
+  currentUser: CoinLeaderboardEntryResponse | null;
+}
+
+export interface CollectorLeaderboardEntryRaw {
+  userId: number;
+  rank: number;
+  username: string;
+  avatar: string;
+  collectibleCount: number;
+  avatarCount: number;
+  backgroundCount: number;
+  collectionPercent: number;
+  title: string;
+  showcaseReady: boolean;
+  currentUser: boolean;
+}
+
+export interface CollectorLeaderboardRawResponse {
+  totalCollectors: number;
+  totalCollectibleItems: number;
+  leaderboard: CollectorLeaderboardEntryRaw[];
+  currentUser: CollectorLeaderboardEntryRaw | null;
+}
+
+export interface CollectorLeaderboardEntryResponse extends CollectorLeaderboardEntryRaw {
+  categoryCount: number;
+}
+
+export interface CollectorLeaderboardResponse {
+  totalCollectors: number;
+  totalCollectibleItems: number;
+  leaderboard: CollectorLeaderboardEntryResponse[];
+  currentUser: CollectorLeaderboardEntryResponse | null;
+}

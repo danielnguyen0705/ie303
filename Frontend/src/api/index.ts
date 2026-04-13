@@ -47,9 +47,12 @@ export * as notificationApi from "./notifications";
 // Admin API - All modules
 export * as adminApi from "./admin";
 
+<<<<<<< Updated upstream
 // Admin Types
 export * from "./admin/types";
 
+=======
+>>>>>>> Stashed changes
 // Re-export for convenience
 export {
   // Auth
@@ -67,6 +70,7 @@ export {
   getUserHistory,
 } from "./users";
 
+<<<<<<< Updated upstream
 export {
   // Units
   getAllUnits,
@@ -81,6 +85,17 @@ export {
   getLesson,
   completeLesson,
 } from "./lessons";
+=======
+export { getUnitsByGradeProgress, getUnit } from "./units";
+
+export { getAllGrades, getGrade } from "./grades";
+
+export { getSectionsByUnitProgress, getSection } from "./sections";
+
+export { getQuestionsByLesson } from "./questions";
+
+export { getLessonsBySectionProgress } from "./lessons";
+>>>>>>> Stashed changes
 
 export {
   // Exercises
@@ -106,17 +121,21 @@ export {
 
 export {
   // Leaderboard
-  getLeaderboard,
-  getTopPlayers,
-  getUserRank,
-  getLeagueInfo,
+  getCoinLeaderboard,
+  getCollectorLeaderboard,
 } from "./leaderboard";
 
 export {
   // Shop
+  getActiveShopItems,
+  getMyShopItems,
   getAllShopItems,
+  buyShopItem,
   purchaseItem,
   getPurchasedItems,
+  useSkipItem,
+  equipAvatar,
+  equipBackground,
   getCoinBalance,
 } from "./shop";
 

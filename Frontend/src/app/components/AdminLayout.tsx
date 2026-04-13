@@ -9,6 +9,7 @@ import {
   Crown,
   Bell,
   Settings,
+  ShoppingBag,
   Search,
   HelpCircle,
   LogOut,
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Question Bank", href: "/admin/questions", icon: MessageSquare },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "VIP Management", href: "/admin/vip", icon: Crown },
+  { name: "Shop Management", href: "/admin/shop", icon: ShoppingBag },
   { name: "Notifications", href: "/admin/notifications", icon: Bell },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];

@@ -18,30 +18,41 @@ export async function request<T>(
   options: RequestInit,
 ): Promise<ApiResponse<T>> {
   try {
+    const isFormDataBody =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
+
     const res = await fetch(`${BASE_URL}${url}`, {
       ...options,
       credentials: "include",
       headers: {
-        "Content-Type": "application/json",
+        ...(isFormDataBody ? {} : { "Content-Type": "application/json" }),
         ...(options.headers || {}),
       },
     });
 
+    const rawText = await res.text();
     let data: unknown = null;
 
     try {
-      data = await res.json();
+      data = rawText ? JSON.parse(rawText) : null;
     } catch {
-      data = null;
+      data = rawText;
     }
 
     if (!res.ok) {
-      const errorPayload = data as { code?: string; message?: string } | null;
+      const errorPayload = data as
+        | { code?: string; message?: string }
+        | string
+        | null;
       return {
         success: false,
         error: new ApiError(
-          errorPayload?.code || "API_ERROR",
-          errorPayload?.message || `Error ${res.status}`,
+          typeof errorPayload === "string"
+            ? "API_ERROR"
+            : errorPayload?.code || "API_ERROR",
+          typeof errorPayload === "string"
+            ? errorPayload || `Error ${res.status}`
+            : errorPayload?.message || `Error ${res.status}`,
         ),
       };
     }
