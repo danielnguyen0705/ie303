@@ -1,12 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { ProgressBar } from "../components/ProgressBar";
-import { Flame, Coins, Zap, Target, Lock, Loader2 } from "lucide-react";
-import { getAllUnits, getUserStats, getCurrentUser } from '@/api';
-import type { Unit, User } from '@/data/mockData';
+import {
+  Flame,
+  Coins,
+  Zap,
+  Target,
+  Loader2,
+  GraduationCap,
+  BookOpen,
+  Trophy,
+  Star,
+} from "lucide-react";
+import { getUserStats, getCurrentUser, getAllGrades } from "@/api";
+import type { User } from "@/data/mockData";
+import type { Grade } from "@/api/content";
+
+const gradeStyles = [
+  {
+    icon: GraduationCap,
+    circle: "bg-gradient-to-br from-[#155ca5] to-[#005095] text-white",
+    badge: "bg-[#155ca5]/10 text-[#155ca5]",
+  },
+  {
+    icon: BookOpen,
+    circle: "bg-gradient-to-br from-[#27ae60] to-[#1f8b4d] text-white",
+    badge: "bg-[#27ae60]/10 text-[#27ae60]",
+  },
+  {
+    icon: Trophy,
+    circle: "bg-gradient-to-br from-[#f39c12] to-[#d68910] text-white",
+    badge: "bg-[#f39c12]/10 text-[#f39c12]",
+  },
+  {
+    icon: Star,
+    circle: "bg-gradient-to-br from-[#8e44ad] to-[#6c3483] text-white",
+    badge: "bg-[#8e44ad]/10 text-[#8e44ad]",
+  },
+];
 
 export function Dashboard() {
-  const [units, setUnits] = useState<Unit[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState({
     totalLessonsCompleted: 0,
@@ -27,33 +60,34 @@ export function Dashboard() {
       setLoading(true);
       setError(null);
 
-      // Load data in parallel
-      const [unitsResponse, userResponse, statsResponse] = await Promise.all([
-        getAllUnits(),
+      const [gradesResponse, userResponse, statsResponse] = await Promise.all([
+        getAllGrades(),
         getCurrentUser(),
         getUserStats(),
       ]);
 
-      if (unitsResponse.success && userResponse.success && statsResponse.success) {
-        // Take first 4 units for dashboard display
-        setUnits(unitsResponse.data.slice(0, 4));
-        setUser(userResponse.data);
-        setStats(statsResponse.data);
+      if (gradesResponse.success && userResponse.success && statsResponse.success) {
+        setGrades(gradesResponse.data ?? []);
+        setUser(userResponse.data ?? null);
+        setStats(
+          statsResponse.data ?? {
+            totalLessonsCompleted: 0,
+            totalXP: 0,
+            totalCoins: 0,
+            currentStreak: 0,
+            accuracy: 0,
+          },
+        );
       } else {
-        setError('Failed to load dashboard data');
+        setError("Failed to load dashboard data");
       }
     } catch (err) {
-      console.error('Error loading dashboard:', err);
-      setError('An error occurred while loading data');
+      console.error("Error loading dashboard:", err);
+      setError("An error occurred while loading data");
     } finally {
       setLoading(false);
     }
   };
-
-  // Calculate overall progress
-  const overallProgress = units.length > 0
-    ? Math.round(units.reduce((sum, unit) => sum + unit.progress, 0) / units.length)
-    : 0;
 
   if (loading) {
     return (
@@ -84,43 +118,73 @@ export function Dashboard() {
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-10 space-y-12 pb-24 md:pb-12">
-      {/* Welcome Section */}
       <section className="space-y-6">
         <div>
           <h1 className="text-5xl font-black text-[#155ca5] tracking-tight mb-2">
-            Xin chào, {user?.name || 'Bạn'}!
+            Xin chào, {user?.name || "Bạn"}!
           </h1>
           <p className="text-xl text-gray-600 font-medium">
-            Bạn đang thực hiện rất tốt lộ trình học tập của mình.
+            Hãy chọn khối lớp để bắt đầu hành trình học tập của mình.
           </p>
         </div>
 
-        {/* Current Course Card */}
-        <div className="bg-white p-8 rounded-lg shadow-sm relative overflow-hidden group transition-all hover:shadow-lg">
-          <div className="absolute -right-12 -top-12 w-48 h-48 bg-[#155ca5]/5 rounded-full blur-3xl group-hover:bg-[#155ca5]/10 transition-colors" />
-          
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-4 flex-1">
-              <div className="flex items-center gap-3">
-                <span className="bg-[#73aaf9]/20 text-[#155ca5] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                  Current Course
-                </span>
-                <h2 className="text-2xl font-black">Global Success 11</h2>
-              </div>
-              <ProgressBar value={overallProgress} label="Overall Progress" />
+        <div className="bg-white p-8 rounded-2xl shadow-sm relative overflow-hidden">
+          <div className="absolute -right-12 -top-12 w-48 h-48 bg-[#155ca5]/5 rounded-full blur-3xl" />
+
+          <div className="relative z-10 space-y-8">
+            <div className="flex items-center gap-3">
+              <span className="bg-[#73aaf9]/20 text-[#155ca5] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                Choose Your Grade
+              </span>
+              <h2 className="text-2xl font-black text-[#1e2e51]">
+                Select Grade
+              </h2>
             </div>
-            <Link
-              to="/unit/1"
-              className="bg-gradient-to-r from-[#155ca5] to-[#005095] text-white px-8 py-4 rounded-md font-bold shadow-md hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
-            >
-              Tiếp tục bài học
-              <span>→</span>
-            </Link>
+
+            <div className="overflow-x-auto">
+              <div className="min-w-max flex items-start gap-8 px-2 py-4">
+                {grades.map((grade, index) => {
+                  const style = gradeStyles[index % gradeStyles.length];
+                  const Icon = style.icon;
+
+                  return (
+                    <Link
+                      key={grade.id}
+                      to={`/grades/${grade.id}/units`}
+                      className="group flex flex-col items-center text-center w-[150px] shrink-0"
+                    >
+                      <div
+                        className={`w-24 h-24 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:-translate-y-1 ${style.circle}`}
+                      >
+                        <Icon className="w-10 h-10" />
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        <div
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${style.badge}`}
+                        >
+                          Grade {grade.gradeNumber ?? grade.id}
+                        </div>
+
+                        <h3 className="text-lg font-black text-[#1e2e51] leading-tight">
+                          {grade.title}
+                        </h3>
+
+                        {grade.description && (
+                          <p className="text-sm text-gray-500 leading-snug">
+                            {grade.description}
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Gamification Stats */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-lg shadow-sm hover:scale-[1.02] transition-transform">
           <Coins className="w-8 h-8 text-[#f1c40f] mb-3" fill="#f1c40f" />
@@ -129,6 +193,7 @@ export function Dashboard() {
             Coins Earned
           </div>
         </div>
+
         <div className="bg-white p-6 rounded-lg shadow-sm hover:scale-[1.02] transition-transform">
           <Zap className="w-8 h-8 text-[#155ca5] mb-3" fill="#155ca5" />
           <div className="text-2xl font-black">{stats.totalXP.toLocaleString()}</div>
@@ -136,6 +201,7 @@ export function Dashboard() {
             Total XP
           </div>
         </div>
+
         <div className="bg-white p-6 rounded-lg shadow-sm hover:scale-[1.02] transition-transform">
           <Flame className="w-8 h-8 text-[#f39c12] mb-3" fill="#f39c12" />
           <div className="text-2xl font-black">{stats.currentStreak} Days</div>
@@ -143,6 +209,7 @@ export function Dashboard() {
             Current Streak
           </div>
         </div>
+
         <div className="bg-white p-6 rounded-lg shadow-sm hover:scale-[1.02] transition-transform">
           <Target className="w-8 h-8 text-[#27ae60] mb-3" />
           <div className="text-2xl font-black">{stats.accuracy}%</div>
@@ -152,110 +219,22 @@ export function Dashboard() {
         </div>
       </section>
 
-      {/* Unit Cards */}
-      <section className="space-y-8">
-        <div className="flex items-end justify-between">
-          <div>
-            <h3 className="text-3xl font-black">Course Content</h3>
-            <p className="text-gray-600 font-medium">
-              Track your progress through each unit of the curriculum.
-            </p>
-          </div>
-          <Link
-            to="/units"
-            className="text-[#155ca5] font-bold hover:underline"
-          >
-            View all units →
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {units.map((unit) => (
-            <div
-              key={unit.id}
-              className={`rounded-lg overflow-hidden shadow-lg transition-all duration-300 ${
-                unit.status !== 'locked'
-                  ? "hover:shadow-2xl transform hover:-translate-y-2 cursor-pointer"
-                  : "opacity-50 cursor-not-allowed"
-              }`}
-            >
-              {/* Unit Image/Header */}
-              <div className="h-40 relative bg-gradient-to-br from-[#155ca5] to-[#005095]">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-4 left-4">
-                  {unit.status === 'in-progress' ? (
-                    <span className="bg-[#75f39c]/90 text-[#00592b] text-[10px] font-black uppercase px-2 py-1 rounded-full">
-                      In Progress
-                    </span>
-                  ) : unit.status === 'completed' ? (
-                    <span className="bg-[#27ae60]/90 text-white text-[10px] font-black uppercase px-2 py-1 rounded-full">
-                      Completed
-                    </span>
-                  ) : (
-                    <Lock className="w-6 h-6 text-white" />
-                  )}
-                </div>
-              </div>
-
-              {/* Unit Content */}
-              <div className="p-6 space-y-4 bg-white">
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-gray-500">
-                    UNIT {String(unit.id).padStart(2, "0")}
-                  </span>
-                  <h4 className="text-xl font-extrabold">{unit.title}</h4>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold text-gray-500">
-                    <span>Completion</span>
-                    <span>{unit.progress}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${
-                        unit.status !== 'locked' ? "bg-[#27ae60]" : "bg-gray-300"
-                      }`}
-                      style={{ width: `${unit.progress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs font-bold text-gray-500">
-                    <span>{unit.completedLessons}/{unit.totalLessons} lessons</span>
-                  </div>
-                </div>
-
-                {unit.status !== 'locked' ? (
-                  <Link
-                    to={`/unit/${unit.id}`}
-                    className="w-full py-3 rounded-md bg-gray-100 text-[#155ca5] font-bold text-center block hover:bg-[#155ca5] hover:text-white transition-colors"
-                  >
-                    {unit.status === 'completed' ? 'Review Unit' : 'Continue Unit'}
-                  </Link>
-                ) : (
-                  <div className="w-full py-3 rounded-md bg-gray-100 text-center text-gray-500 font-bold">
-                    Locked
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Learning Tips & Leaderboard */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-[#1e2e51] text-white rounded-lg p-10 relative overflow-hidden">
           <div className="relative z-10 space-y-6 max-w-lg">
             <h3 className="text-3xl font-black leading-tight">
-              Mẹo học từ vựng hiệu quả hôm nay
+              Bắt đầu từ khối lớp phù hợp
             </h3>
             <p className="text-lg opacity-90">
-              Hãy thử phương pháp <b>Spaced Repetition</b>. Ôn lại những từ khó
-              Unit 1 sau 10 phút, 1 giờ và 1 ngày để ghi nhớ vĩnh viễn.
+              Chọn khối lớp trước, sau đó hệ thống sẽ dẫn bạn qua Unit, Section
+              và Lesson theo đúng lộ trình học.
             </p>
-            <button className="bg-white text-[#1e2e51] px-6 py-3 rounded-md font-bold hover:bg-gray-100 transition-colors">
-              Thử ngay
-            </button>
+            <Link
+              to="/grades"
+              className="inline-block bg-white text-[#1e2e51] px-6 py-3 rounded-md font-bold hover:bg-gray-100 transition-colors"
+            >
+              Xem tất cả khối lớp
+            </Link>
           </div>
           <div className="absolute right-0 bottom-0 top-0 w-1/3 bg-gradient-to-l from-[#155ca5]/20 to-transparent" />
         </div>
@@ -266,6 +245,7 @@ export function Dashboard() {
             <p className="text-sm text-gray-600 mb-6">
               Bạn đang đứng thứ <b>#{user?.level || 12}</b> trong giải đấu Sapphire.
             </p>
+
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-[#fed023] flex items-center justify-center font-bold text-xs">
@@ -275,6 +255,7 @@ export function Dashboard() {
                 <span className="font-bold flex-1">Elena P.</span>
                 <span className="text-xs font-bold">2,450 XP</span>
               </div>
+
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center font-bold text-xs">
                   2
@@ -283,18 +264,22 @@ export function Dashboard() {
                 <span className="font-bold flex-1">Alex Wong</span>
                 <span className="text-xs font-bold">2,100 XP</span>
               </div>
+
               <div className="flex items-center gap-3 bg-[#155ca5]/10 p-2 -mx-2 rounded-md">
                 <div className="w-8 h-8 rounded-full bg-[#155ca5] text-white flex items-center justify-center font-bold text-xs">
                   {user?.level || 12}
                 </div>
                 <div className="w-8 h-8 rounded-full bg-gray-200 ring-2 ring-[#155ca5]" />
                 <span className="font-black flex-1 text-[#155ca5]">
-                  Bạn ({user?.name || 'User'})
+                  Bạn ({user?.name || "User"})
                 </span>
-                <span className="text-xs font-bold text-[#155ca5]">{stats.totalXP} XP</span>
+                <span className="text-xs font-bold text-[#155ca5]">
+                  {stats.totalXP} XP
+                </span>
               </div>
             </div>
           </div>
+
           <Link
             to="/leaderboard"
             className="mt-6 w-full border-2 border-[#155ca5]/20 text-[#155ca5] py-2 rounded-md font-bold hover:bg-[#155ca5]/5 transition-colors text-center"

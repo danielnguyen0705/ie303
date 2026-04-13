@@ -8,7 +8,9 @@ import com.ie303.uifive.service.QuestionService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.util.List;
 
@@ -19,9 +21,9 @@ public class QuestionController {
 
     private final QuestionService questionService;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RolesAllowed("ADMIN")
-    public QuestionResponse create(@RequestBody @Valid QuestionRequest request) {
+    public QuestionResponse create(@ModelAttribute @Valid QuestionRequest request) {
         return questionService.create(request);
     }
 
@@ -41,10 +43,10 @@ public class QuestionController {
                 .build();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RolesAllowed("ADMIN")
     public QuestionResponse update(@PathVariable Long id,
-                                   @RequestBody @Valid QuestionRequest request) {
+                                   @ModelAttribute @Valid QuestionRequest request) {
         return questionService.update(id, request);
     }
 

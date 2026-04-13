@@ -17,6 +17,7 @@ import com.ie303.uifive.repo.QuestionGroupRepo;
 import com.ie303.uifive.repo.QuestionRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,19 +29,21 @@ public class QuestionService {
     private final LessonRepo lessonRepo;
     private final QuestionGroupRepo questionGroupRepo;
     private final QuestionMapper questionMapper;
+    private final CloudinaryService cloudinaryService;
 
     public QuestionResponse create(QuestionRequest request) {
         Question question = questionMapper.toEntity(request);
+        applyMedia(question, request);
 
         if (request.lessonId() != null) {
             Lesson lesson = lessonRepo.findById(request.lessonId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
             question.setLesson(lesson);
         }
 
         if (request.questionGroupId() != null) {
             QuestionGroup questionGroup = questionGroupRepo.findById(request.questionGroupId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionGroup với id = " + request.questionGroupId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND));
             question.setQuestionGroup(questionGroup);
         }
 
@@ -50,7 +53,7 @@ public class QuestionService {
 
     public QuestionResponse getById(Long id) {
         Question question = questionRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Question với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
         return questionMapper.toResponse(question);
     }
 
@@ -62,13 +65,14 @@ public class QuestionService {
 
     public QuestionResponse update(Long id, QuestionRequest request) {
         Question question = questionRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Question với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
 
         questionMapper.updateEntityFromRequest(request, question);
+        applyMedia(question, request);
 
         if (request.lessonId() != null) {
             Lesson lesson = lessonRepo.findById(request.lessonId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
             question.setLesson(lesson);
         } else {
             question.setLesson(null);
@@ -76,7 +80,7 @@ public class QuestionService {
 
         if (request.questionGroupId() != null) {
             QuestionGroup questionGroup = questionGroupRepo.findById(request.questionGroupId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionGroup với id = " + request.questionGroupId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND));
             question.setQuestionGroup(questionGroup);
         } else {
             question.setQuestionGroup(null);
@@ -88,7 +92,7 @@ public class QuestionService {
 
     public void delete(Long id) {
         if (!questionRepo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy Question với id = " + id);
+            throw new AppException(ErrorCode.QUESTION_NOT_FOUND);
         }
         questionRepo.deleteById(id);
     }
@@ -166,5 +170,23 @@ public class QuestionService {
                 option.getContent(),
                 option.isCorrect()
         );
+    }
+
+    private void applyMedia(Question question, QuestionRequest request) {
+        String audioUrl = uploadIfPresent(request.audioUrl(), "learning-app/questions/audio");
+        if (audioUrl != null) {
+            question.setAudioUrl(audioUrl);
+        }
+
+        String imageUrl = uploadIfPresent(request.imageUrl(), "learning-app/questions/images");
+        if (imageUrl != null) {
+            question.setImageUrl(imageUrl);
+        }
+    }
+
+    private String uploadIfPresent(MultipartFile file, String folder) {
+        return (file == null || file.isEmpty())
+                ? null
+                : cloudinaryService.uploadFile(file, folder);
     }
 }

@@ -3,22 +3,20 @@ import { Link, useParams } from "react-router";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faSeedling,
+  faBookOpen,
   faLock,
   faFire,
 } from "@fortawesome/free-solid-svg-icons";
-import { getLessonsBySectionProgress } from "@/api";
+import { getSectionsByUnitProgress } from "@/api";
 
-type LessonProgressItem = {
-  lessonId: number;
-  lessonTitle: string;
-  lessonNumber: number;
-  completed: boolean;
-  unlocked: boolean;
-  current: boolean;
+type SectionProgressItem = {
+  sectionId: number;
+  sectionTitle: string;
+  sectionNumber: number;
+  progressPercent: number;
 };
 
-type PositionedLesson = LessonProgressItem & {
+type PositionedSection = SectionProgressItem & {
   cx: number;
   cy: number;
 };
@@ -32,10 +30,16 @@ const MAX_STEP_X = 280;
 const SIDE_PADDING = 40;
 const MIN_MAP_WIDTH = 720;
 
-function getLessonStyle(lesson: LessonProgressItem) {
-  const isLocked = !lesson.unlocked;
-  const isCurrent = lesson.current;
-  const isCompleted = lesson.completed;
+function clampProgress(value: number) {
+  if (Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getSectionStyle(section: SectionProgressItem, index: number) {
+  const progress = clampProgress(section.progressPercent);
+  const isLocked = index > 0 && progress === 0;
+  const isCurrent = !isLocked && progress === 0;
+  const isCompleted = progress >= 100;
 
   if (isLocked) {
     return {
@@ -51,6 +55,25 @@ function getLessonStyle(lesson: LessonProgressItem) {
       dot: "#e5e7eb",
       icon: faLock,
       statusText: "Locked",
+      locked: true,
+    };
+  }
+
+  if (isCompleted) {
+    return {
+      outerRing: "from-[#34d399] to-[#16a34a]",
+      outerBorder: "border-green-100",
+      middleBg: "bg-green-50",
+      innerBg: "bg-gradient-to-br from-[#34d399] to-[#16a34a]",
+      iconColor: "text-white",
+      badge: "bg-green-50 text-[#15803d] border-green-200",
+      title: "text-[#1e2e51]",
+      glow: "shadow-[0_0_35px_rgba(34,197,94,0.22)]",
+      connector: "#22c55e",
+      dot: "#22c55e",
+      icon: faBookOpen,
+      statusText: "Completed",
+      locked: false,
     };
   }
 
@@ -68,23 +91,7 @@ function getLessonStyle(lesson: LessonProgressItem) {
       dot: "#fb923c",
       icon: faFire,
       statusText: "Current",
-    };
-  }
-
-  if (isCompleted) {
-    return {
-      outerRing: "from-[#34d399] to-[#16a34a]",
-      outerBorder: "border-green-100",
-      middleBg: "bg-green-50",
-      innerBg: "bg-gradient-to-br from-[#34d399] to-[#16a34a]",
-      iconColor: "text-white",
-      badge: "bg-green-50 text-[#15803d] border-green-200",
-      title: "text-[#1e2e51]",
-      glow: "shadow-[0_0_35px_rgba(34,197,94,0.22)]",
-      connector: "#22c55e",
-      dot: "#22c55e",
-      icon: faSeedling,
-      statusText: "Completed",
+      locked: false,
     };
   }
 
@@ -99,14 +106,15 @@ function getLessonStyle(lesson: LessonProgressItem) {
     glow: "shadow-[0_0_28px_rgba(74,222,128,0.18)]",
     connector: "#4ade80",
     dot: "#4ade80",
-    icon: faSeedling,
+    icon: faBookOpen,
     statusText: "Unlocked",
+    locked: false,
   };
 }
 
-function buildLessonPath(
-  current: PositionedLesson,
-  next: PositionedLesson,
+function buildSectionPath(
+  current: PositionedSection,
+  next: PositionedSection,
   color: string,
   dot: string,
   index: number,
@@ -123,7 +131,7 @@ function buildLessonPath(
   const controlY = (startY + endY) / 2 + curvature;
 
   return (
-    <g key={`path-${current.lessonId}-${next.lessonId}`}>
+    <g key={`path-${current.sectionId}-${next.sectionId}`}>
       <path
         d={`M ${startX} ${startY} Q ${midX} ${controlY} ${endX} ${endY}`}
         fill="none"
@@ -139,18 +147,18 @@ function buildLessonPath(
   );
 }
 
-export function LessonSelection() {
-  const { sectionId } = useParams();
-  const [lessons, setLessons] = useState<LessonProgressItem[]>([]);
+export function SectionSelection() {
+  const { unitId } = useParams();
+  const [sections, setSections] = useState<SectionProgressItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const sectionIdNumber = useMemo(() => Number(sectionId), [sectionId]);
+  const unitIdNumber = useMemo(() => Number(unitId), [unitId]);
 
   useEffect(() => {
-    const loadLessons = async () => {
-      if (!sectionIdNumber || Number.isNaN(sectionIdNumber)) {
-        setError("Section ID không hợp lệ");
+    const loadSections = async () => {
+      if (!unitIdNumber || Number.isNaN(unitIdNumber)) {
+        setError("Unit ID không hợp lệ");
         setLoading(false);
         return;
       }
@@ -159,33 +167,34 @@ export function LessonSelection() {
         setLoading(true);
         setError(null);
 
-        const res = await getLessonsBySectionProgress(sectionIdNumber);
+        const res = await getSectionsByUnitProgress(unitIdNumber);
 
         if (res.success) {
           const sorted = [...(res.data ?? [])].sort(
-            (a, b) => a.lessonNumber - b.lessonNumber || a.lessonId - b.lessonId,
+            (a, b) =>
+              a.sectionNumber - b.sectionNumber || a.sectionId - b.sectionId,
           );
-          setLessons(sorted);
+          setSections(sorted);
         } else {
-          setError(res.error?.message || "Không tải được danh sách lesson");
+          setError(res.error?.message || "Không tải được danh sách section");
         }
       } catch (err) {
-        console.error("Error loading lessons:", err);
-        setError("Có lỗi xảy ra khi tải danh sách lesson");
+        console.error("Error loading sections:", err);
+        setError("Có lỗi xảy ra khi tải danh sách section");
       } finally {
         setLoading(false);
       }
     };
 
-    loadLessons();
-  }, [sectionIdNumber]);
+    loadSections();
+  }, [unitIdNumber]);
 
   const layout = useMemo(() => {
-    const count = lessons.length;
+    const count = sections.length;
 
     if (count === 0) {
       return {
-        positionedLessons: [] as PositionedLesson[],
+        positionedSections: [] as PositionedSection[],
         mapWidth: MIN_MAP_WIDTH,
         containerHeight: 430,
       };
@@ -194,7 +203,7 @@ export function LessonSelection() {
     const viewportWidth =
       typeof window !== "undefined" ? window.innerWidth : 1440;
 
-    const usableWidth = Math.max(760, viewportWidth - 160);
+    const usableWidth = Math.max(720, viewportWidth - 80);
 
     let stepX =
       count > 1
@@ -215,32 +224,34 @@ export function LessonSelection() {
         ? mapWidth / 2
         : Math.max(SIDE_PADDING, (mapWidth - (count - 1) * stepX) / 2);
 
-    const positionedLessons: PositionedLesson[] = lessons.map((lesson, index) => ({
-      ...lesson,
-      cx: startX + index * stepX,
-      cy: BASE_Y + Y_PATTERN[index % Y_PATTERN.length],
-    }));
+    const positionedSections: PositionedSection[] = sections.map(
+      (section, index) => ({
+        ...section,
+        cx: startX + index * stepX,
+        cy: BASE_Y + Y_PATTERN[index % Y_PATTERN.length],
+      }),
+    );
 
-    const minCy = Math.min(...positionedLessons.map((item) => item.cy));
-    const maxCy = Math.max(...positionedLessons.map((item) => item.cy));
+    const minCy = Math.min(...positionedSections.map((item) => item.cy));
+    const maxCy = Math.max(...positionedSections.map((item) => item.cy));
 
     const containerHeight = Math.max(430, maxCy - minCy + 260);
 
     return {
-      positionedLessons,
+      positionedSections,
       mapWidth,
       containerHeight,
     };
-  }, [lessons]);
+  }, [sections]);
 
-  const { positionedLessons, mapWidth, containerHeight } = layout;
+  const { positionedSections, mapWidth, containerHeight } = layout;
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
+      <main className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Đang tải các lesson...</p>
+          <p className="text-gray-600 font-medium">Đang tải các section...</p>
         </div>
       </main>
     );
@@ -248,7 +259,7 @@ export function LessonSelection() {
 
   if (error) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
           <p className="text-red-600 font-bold">{error}</p>
           <Link
@@ -264,8 +275,8 @@ export function LessonSelection() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 pb-28">
-      <section className="mb-10">
+    <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
+      <section className="mb-8">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
@@ -276,26 +287,26 @@ export function LessonSelection() {
 
         <div className="mt-4">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
-            Section {sectionId}
+            Unit {unitId}
           </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
-            Chọn Lesson
+            Chọn Section
           </h1>
           <p className="text-gray-600 mt-2 text-lg">
-            Lesson đang học sẽ màu cam, hoàn thành sẽ màu xanh, chưa mở khóa sẽ màu xám.
+            Chọn 1 section để tiếp tục qua lesson.
           </p>
         </div>
       </section>
 
-      {lessons.length === 0 ? (
+      {sections.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
           <p className="text-lg font-bold text-[#1e2e51]">
-            Section này chưa có lesson nào
+            Unit này chưa có section nào
           </p>
         </div>
       ) : (
         <section className="overflow-x-auto">
-          <div className="min-w-max px-4 py-8">
+          <div className="min-w-max pl-0 pr-4 py-4">
             <div
               className="relative"
               style={{
@@ -309,12 +320,12 @@ export function LessonSelection() {
                 height={containerHeight}
                 viewBox={`0 0 ${mapWidth} ${containerHeight}`}
               >
-                {positionedLessons.slice(0, -1).map((lesson, index) => {
-                  const next = positionedLessons[index + 1];
-                  const nextStyle = getLessonStyle(next);
+                {positionedSections.slice(0, -1).map((section, index) => {
+                  const next = positionedSections[index + 1];
+                  const nextStyle = getSectionStyle(next, index + 1);
 
-                  return buildLessonPath(
-                    lesson,
+                  return buildSectionPath(
+                    section,
                     next,
                     nextStyle.connector,
                     nextStyle.dot,
@@ -323,26 +334,26 @@ export function LessonSelection() {
                 })}
               </svg>
 
-              {positionedLessons.map((lesson) => {
-                const style = getLessonStyle(lesson);
-                const isLocked = !lesson.unlocked;
+              {positionedSections.map((section, index) => {
+                const style = getSectionStyle(section, index);
+                const progress = clampProgress(section.progressPercent);
 
                 return (
                   <div
-                    key={lesson.lessonId}
+                    key={section.sectionId}
                     className="absolute"
                     style={{
-                      left: `${lesson.cx - NODE_WIDTH / 2}px`,
-                      top: `${lesson.cy - NODE_RADIUS}px`,
+                      left: `${section.cx - NODE_WIDTH / 2}px`,
+                      top: `${section.cy - NODE_RADIUS}px`,
                       width: `${NODE_WIDTH}px`,
                     }}
                   >
                     <Link
-                      to={isLocked ? "#" : `/lessons/${lesson.lessonId}`}
+                      to={style.locked ? "#" : `/sections/${section.sectionId}/lessons`}
                       onClick={(e) => {
-                        if (isLocked) e.preventDefault();
+                        if (style.locked) e.preventDefault();
                       }}
-                      className={`group block text-center ${isLocked ? "cursor-not-allowed" : ""}`}
+                      className={`group block text-center ${style.locked ? "cursor-not-allowed" : ""}`}
                     >
                       <div className="relative mx-auto w-32 h-32">
                         <div
@@ -361,19 +372,23 @@ export function LessonSelection() {
                             </div>
                           </div>
                         </div>
+
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white border border-[#dbe7f7] shadow-sm text-xs font-black text-[#1e2e51]">
+                          {progress}%
+                        </div>
                       </div>
 
                       <div className="mt-5">
                         <div
                           className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
                         >
-                          Lesson {lesson.lessonNumber}
+                          Section {section.sectionNumber}
                         </div>
 
                         <h3
                           className={`mt-3 text-base font-black leading-tight px-3 ${style.title}`}
                         >
-                          {lesson.lessonTitle}
+                          {section.sectionTitle}
                         </h3>
 
                         <p className="mt-2 text-xs font-semibold text-gray-500">
@@ -390,4 +405,4 @@ export function LessonSelection() {
       )}
     </main>
   );
-}
+} 

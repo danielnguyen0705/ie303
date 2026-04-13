@@ -7,7 +7,12 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_items")
+@Table(
+        name = "user_items",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"user_id", "item_id"})
+        }
+)
 @Data
 public class UserItem {
 
@@ -16,14 +21,17 @@ public class UserItem {
     private Long id;
 
     private int quantity;
+    private boolean equipped;
 
     @Column(name = "purchased_at")
     @CreationTimestamp
     private LocalDateTime purchasedAt;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id")
     private ShopItem item;
 }

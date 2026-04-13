@@ -6,7 +6,10 @@ public record ShopItemResponse(
         Long id,
         String name,
         String description,
-        int priceCoin,
-        ItemType itemType
+        int price,
+        String imageUrl,
+        ItemType type,
+        Integer durationDays,
+        boolean active
 ) {
 }

@@ -3,39 +3,43 @@ import { Link, useParams } from "react-router";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faSeedling,
+  faBookOpen,
   faLock,
   faFire,
 } from "@fortawesome/free-solid-svg-icons";
-import { getLessonsBySectionProgress } from "@/api";
+import { getUnitsByGradeProgress } from "@/api";
 
-type LessonProgressItem = {
-  lessonId: number;
-  lessonTitle: string;
-  lessonNumber: number;
-  completed: boolean;
-  unlocked: boolean;
-  current: boolean;
+type UnitProgressItem = {
+  unitId: number;
+  unitTitle: string;
+  unitNumber: number;
+  progressPercent: number;
 };
 
-type PositionedLesson = LessonProgressItem & {
+type PositionedUnit = UnitProgressItem & {
   cx: number;
   cy: number;
 };
 
 const NODE_WIDTH = 220;
 const NODE_RADIUS = 58;
-const BASE_Y = 135;
-const Y_PATTERN = [-28, 44, -14, 54, -8, 34, -18];
-const MIN_STEP_X = 220;
-const MAX_STEP_X = 280;
-const SIDE_PADDING = 40;
+const BASE_Y = 100;
+const Y_PATTERN = [-34, 52, -18, 64, -10, 42, -26];
+const MIN_STEP_X = 230;
+const MAX_STEP_X = 300;
+const SIDE_PADDING = 20;
 const MIN_MAP_WIDTH = 720;
 
-function getLessonStyle(lesson: LessonProgressItem) {
-  const isLocked = !lesson.unlocked;
-  const isCurrent = lesson.current;
-  const isCompleted = lesson.completed;
+function clampProgress(value: number) {
+  if (Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getUnitStyle(unit: UnitProgressItem, index: number) {
+  const progress = clampProgress(unit.progressPercent);
+  const isLocked = index > 0 && progress === 0;
+  const isCurrent = !isLocked && progress === 0;
+  const isCompleted = progress >= 100;
 
   if (isLocked) {
     return {
@@ -51,6 +55,25 @@ function getLessonStyle(lesson: LessonProgressItem) {
       dot: "#e5e7eb",
       icon: faLock,
       statusText: "Locked",
+      locked: true,
+    };
+  }
+
+  if (isCompleted) {
+    return {
+      outerRing: "from-[#34d399] to-[#16a34a]",
+      outerBorder: "border-green-100",
+      middleBg: "bg-green-50",
+      innerBg: "bg-gradient-to-br from-[#34d399] to-[#16a34a]",
+      iconColor: "text-white",
+      badge: "bg-green-50 text-[#15803d] border-green-200",
+      title: "text-[#1e2e51]",
+      glow: "shadow-[0_0_35px_rgba(34,197,94,0.22)]",
+      connector: "#22c55e",
+      dot: "#22c55e",
+      icon: faBookOpen,
+      statusText: "Completed",
+      locked: false,
     };
   }
 
@@ -68,23 +91,7 @@ function getLessonStyle(lesson: LessonProgressItem) {
       dot: "#fb923c",
       icon: faFire,
       statusText: "Current",
-    };
-  }
-
-  if (isCompleted) {
-    return {
-      outerRing: "from-[#34d399] to-[#16a34a]",
-      outerBorder: "border-green-100",
-      middleBg: "bg-green-50",
-      innerBg: "bg-gradient-to-br from-[#34d399] to-[#16a34a]",
-      iconColor: "text-white",
-      badge: "bg-green-50 text-[#15803d] border-green-200",
-      title: "text-[#1e2e51]",
-      glow: "shadow-[0_0_35px_rgba(34,197,94,0.22)]",
-      connector: "#22c55e",
-      dot: "#22c55e",
-      icon: faSeedling,
-      statusText: "Completed",
+      locked: false,
     };
   }
 
@@ -99,14 +106,15 @@ function getLessonStyle(lesson: LessonProgressItem) {
     glow: "shadow-[0_0_28px_rgba(74,222,128,0.18)]",
     connector: "#4ade80",
     dot: "#4ade80",
-    icon: faSeedling,
+    icon: faBookOpen,
     statusText: "Unlocked",
+    locked: false,
   };
 }
 
-function buildLessonPath(
-  current: PositionedLesson,
-  next: PositionedLesson,
+function buildUnitPath(
+  current: PositionedUnit,
+  next: PositionedUnit,
   color: string,
   dot: string,
   index: number,
@@ -123,7 +131,7 @@ function buildLessonPath(
   const controlY = (startY + endY) / 2 + curvature;
 
   return (
-    <g key={`path-${current.lessonId}-${next.lessonId}`}>
+    <g key={`path-${current.unitId}-${next.unitId}`}>
       <path
         d={`M ${startX} ${startY} Q ${midX} ${controlY} ${endX} ${endY}`}
         fill="none"
@@ -139,18 +147,18 @@ function buildLessonPath(
   );
 }
 
-export function LessonSelection() {
-  const { sectionId } = useParams();
-  const [lessons, setLessons] = useState<LessonProgressItem[]>([]);
+export function GradeUnits() {
+  const { gradeId } = useParams();
+  const [units, setUnits] = useState<UnitProgressItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const sectionIdNumber = useMemo(() => Number(sectionId), [sectionId]);
+  const gradeIdNumber = useMemo(() => Number(gradeId), [gradeId]);
 
   useEffect(() => {
-    const loadLessons = async () => {
-      if (!sectionIdNumber || Number.isNaN(sectionIdNumber)) {
-        setError("Section ID không hợp lệ");
+    const loadUnits = async () => {
+      if (!gradeIdNumber || Number.isNaN(gradeIdNumber)) {
+        setError("Grade ID không hợp lệ");
         setLoading(false);
         return;
       }
@@ -159,33 +167,33 @@ export function LessonSelection() {
         setLoading(true);
         setError(null);
 
-        const res = await getLessonsBySectionProgress(sectionIdNumber);
+        const res = await getUnitsByGradeProgress(gradeIdNumber);
 
         if (res.success) {
           const sorted = [...(res.data ?? [])].sort(
-            (a, b) => a.lessonNumber - b.lessonNumber || a.lessonId - b.lessonId,
+            (a, b) => a.unitNumber - b.unitNumber || a.unitId - b.unitId,
           );
-          setLessons(sorted);
+          setUnits(sorted);
         } else {
-          setError(res.error?.message || "Không tải được danh sách lesson");
+          setError(res.error?.message || "Không tải được danh sách unit");
         }
       } catch (err) {
-        console.error("Error loading lessons:", err);
-        setError("Có lỗi xảy ra khi tải danh sách lesson");
+        console.error("Error loading units:", err);
+        setError("Có lỗi xảy ra khi tải danh sách unit");
       } finally {
         setLoading(false);
       }
     };
 
-    loadLessons();
-  }, [sectionIdNumber]);
+    loadUnits();
+  }, [gradeIdNumber]);
 
   const layout = useMemo(() => {
-    const count = lessons.length;
+    const count = units.length;
 
     if (count === 0) {
       return {
-        positionedLessons: [] as PositionedLesson[],
+        positionedUnits: [] as PositionedUnit[],
         mapWidth: MIN_MAP_WIDTH,
         containerHeight: 430,
       };
@@ -215,32 +223,32 @@ export function LessonSelection() {
         ? mapWidth / 2
         : Math.max(SIDE_PADDING, (mapWidth - (count - 1) * stepX) / 2);
 
-    const positionedLessons: PositionedLesson[] = lessons.map((lesson, index) => ({
-      ...lesson,
+    const positionedUnits: PositionedUnit[] = units.map((unit, index) => ({
+      ...unit,
       cx: startX + index * stepX,
       cy: BASE_Y + Y_PATTERN[index % Y_PATTERN.length],
     }));
 
-    const minCy = Math.min(...positionedLessons.map((item) => item.cy));
-    const maxCy = Math.max(...positionedLessons.map((item) => item.cy));
+    const minCy = Math.min(...positionedUnits.map((item) => item.cy));
+    const maxCy = Math.max(...positionedUnits.map((item) => item.cy));
 
     const containerHeight = Math.max(430, maxCy - minCy + 260);
 
     return {
-      positionedLessons,
+      positionedUnits,
       mapWidth,
       containerHeight,
     };
-  }, [lessons]);
+  }, [units]);
 
-  const { positionedLessons, mapWidth, containerHeight } = layout;
+  const { positionedUnits, mapWidth, containerHeight } = layout;
 
   if (loading) {
     return (
       <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Đang tải các lesson...</p>
+          <p className="text-gray-600 font-medium">Đang tải các unit...</p>
         </div>
       </main>
     );
@@ -256,7 +264,7 @@ export function LessonSelection() {
             className="inline-flex items-center gap-2 mt-4 px-5 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
           >
             <ChevronLeft className="w-4 h-4" />
-            Quay lại
+            Quay lại Grade
           </Link>
         </div>
       </main>
@@ -264,33 +272,33 @@ export function LessonSelection() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 pb-28">
+    <main className="max-w-7xl mx-auto px-6 py-10 pb-24">
       <section className="mb-10">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
-          Quay lại Dashboard
+          Quay lại Grade
         </Link>
 
         <div className="mt-4">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
-            Section {sectionId}
+            Grade {gradeId}
           </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
-            Chọn Lesson
+            Chọn Unit
           </h1>
           <p className="text-gray-600 mt-2 text-lg">
-            Lesson đang học sẽ màu cam, hoàn thành sẽ màu xanh, chưa mở khóa sẽ màu xám.
+            Đi theo lộ trình học. Các unit được sắp theo thứ tự và có progress riêng.
           </p>
         </div>
       </section>
 
-      {lessons.length === 0 ? (
+      {units.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
           <p className="text-lg font-bold text-[#1e2e51]">
-            Section này chưa có lesson nào
+            Khối này chưa có unit nào
           </p>
         </div>
       ) : (
@@ -309,12 +317,12 @@ export function LessonSelection() {
                 height={containerHeight}
                 viewBox={`0 0 ${mapWidth} ${containerHeight}`}
               >
-                {positionedLessons.slice(0, -1).map((lesson, index) => {
-                  const next = positionedLessons[index + 1];
-                  const nextStyle = getLessonStyle(next);
+                {positionedUnits.slice(0, -1).map((unit, index) => {
+                  const next = positionedUnits[index + 1];
+                  const nextStyle = getUnitStyle(next, index + 1);
 
-                  return buildLessonPath(
-                    lesson,
+                  return buildUnitPath(
+                    unit,
                     next,
                     nextStyle.connector,
                     nextStyle.dot,
@@ -323,26 +331,26 @@ export function LessonSelection() {
                 })}
               </svg>
 
-              {positionedLessons.map((lesson) => {
-                const style = getLessonStyle(lesson);
-                const isLocked = !lesson.unlocked;
+              {positionedUnits.map((unit, index) => {
+                const style = getUnitStyle(unit, index);
+                const progress = clampProgress(unit.progressPercent);
 
                 return (
                   <div
-                    key={lesson.lessonId}
+                    key={unit.unitId}
                     className="absolute"
                     style={{
-                      left: `${lesson.cx - NODE_WIDTH / 2}px`,
-                      top: `${lesson.cy - NODE_RADIUS}px`,
+                      left: `${unit.cx - NODE_WIDTH / 2}px`,
+                      top: `${unit.cy - NODE_RADIUS}px`,
                       width: `${NODE_WIDTH}px`,
                     }}
                   >
                     <Link
-                      to={isLocked ? "#" : `/lessons/${lesson.lessonId}`}
+                      to={style.locked ? "#" : `/units/${unit.unitId}/sections`}
                       onClick={(e) => {
-                        if (isLocked) e.preventDefault();
+                        if (style.locked) e.preventDefault();
                       }}
-                      className={`group block text-center ${isLocked ? "cursor-not-allowed" : ""}`}
+                      className={`group block text-center ${style.locked ? "cursor-not-allowed" : ""}`}
                     >
                       <div className="relative mx-auto w-32 h-32">
                         <div
@@ -361,19 +369,21 @@ export function LessonSelection() {
                             </div>
                           </div>
                         </div>
+
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white border border-[#dbe7f7] shadow-sm text-xs font-black text-[#1e2e51]">
+                          {progress}%
+                        </div>
                       </div>
 
                       <div className="mt-5">
                         <div
                           className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
                         >
-                          Lesson {lesson.lessonNumber}
+                          Unit {unit.unitNumber}
                         </div>
 
-                        <h3
-                          className={`mt-3 text-base font-black leading-tight px-3 ${style.title}`}
-                        >
-                          {lesson.lessonTitle}
+                        <h3 className={`mt-3 text-base font-black leading-tight px-3 ${style.title}`}>
+                          {unit.unitTitle}
                         </h3>
 
                         <p className="mt-2 text-xs font-semibold text-gray-500">

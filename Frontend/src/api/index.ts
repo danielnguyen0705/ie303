@@ -40,6 +40,10 @@ export * as shopApi from "./shop";
 // Notifications API
 export * as notificationApi from "./notifications";
 
+export * as gradeApi from "./grades";
+export * as sectionApi from "./sections";
+export * as questionApi from "./questions";
+
 // ============================================
 // ADMIN API
 // ============================================
@@ -47,12 +51,6 @@ export * as notificationApi from "./notifications";
 // Admin API - All modules
 export * as adminApi from "./admin";
 
-<<<<<<< Updated upstream
-// Admin Types
-export * from "./admin/types";
-
-=======
->>>>>>> Stashed changes
 // Re-export for convenience
 export {
   // Auth
@@ -70,22 +68,6 @@ export {
   getUserHistory,
 } from "./users";
 
-<<<<<<< Updated upstream
-export {
-  // Units
-  getAllUnits,
-  getUnit,
-  getUnitProgress,
-  getCurriculumOverview,
-} from "./units";
-
-export {
-  // Lessons
-  getLessonsByUnit,
-  getLesson,
-  completeLesson,
-} from "./lessons";
-=======
 export { getUnitsByGradeProgress, getUnit } from "./units";
 
 export { getAllGrades, getGrade } from "./grades";
@@ -95,7 +77,6 @@ export { getSectionsByUnitProgress, getSection } from "./sections";
 export { getQuestionsByLesson } from "./questions";
 
 export { getLessonsBySectionProgress } from "./lessons";
->>>>>>> Stashed changes
 
 export {
   // Exercises
