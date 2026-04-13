@@ -1,24 +1,24 @@
 # IE303 - UIFIVE
 
-UIFIVE la mot nen tang hoc tieng Anh truc tuyen danh cho hoc sinh THPT, tap trung vao lo trinh hoc theo khoi lop, unit, section va lesson. Project hien duoc to chuc theo kieu monorepo voi frontend React, backend Spring Boot va mot thu muc `MLService` dang o muc thu nghiem.
+UIFIVE là một nền tảng học tiếng Anh trực tuyến dành cho học sinh THPT, tập trung vào lộ trình học theo khối lớp, unit, section và lesson. Project hiện được tổ chức theo kiểu monorepo với frontend React, backend Spring Boot và một thư mục `MLService` đang ở mức thử nghiệm.
 
-## Tong quan kien truc
+## Tổng quan kiến trúc
 
-- `Frontend`: giao dien nguoi dung va admin, xay dung bang React + TypeScript + Vite.
-- `Backend`: REST API, xac thuc JWT/OAuth2, truy cap PostgreSQL, email, Cloudinary va Gemini.
-- `MLService`: hien tai chi moi co file thu nghiem `hello.py`.
+- `Frontend`: giao diện người dùng và admin, xây dựng bằng React + TypeScript + Vite.
+- `Backend`: REST API, xác thực JWT/OAuth2, truy cập PostgreSQL, email, Cloudinary và Gemini.
+- `MLService`: hiện tại chỉ mới có file thử nghiệm `hello.py`.
 
-## Tinh nang chinh
+## Tính năng chính
 
-- Luong hoc theo cau truc `Grade -> Unit -> Section -> Lesson`.
-- Dashboard hien thong tin hoc tap, XP, coins, streak va accuracy.
-- Cac man bai tap: quiz, reading, listening, pronunciation.
-- Khu vuc test/review: ket qua bai test, xem lai cau hoi, bai kiem tra on tap.
-- Bang xep hang, quests, profile va shop vat pham.
-- Trang admin duoc bao ve boi auth de quan ly user, noi dung, question bank, reports, VIP, shop, notifications va settings.
-- Backend ho tro dang nhap/dang ky, xac minh email, leaderboard, tien do hoc tap, ngan hang cau hoi, shop item va cham bai writing bang AI.
+- Luồng học theo cấu trúc `Grade -> Unit -> Section -> Lesson`.
+- Dashboard hiển thị thông tin học tập, XP, coins, streak và accuracy.
+- Các màn bài tập: quiz, reading, listening, pronunciation.
+- Khu vực test/review: kết quả bài test, xem lại câu hỏi, bài kiểm tra ôn tập.
+- Bảng xếp hạng, quests, profile và shop vật phẩm.
+- Trang admin được bảo vệ bởi auth để quản lý user, nội dung, question bank, reports, VIP, shop, notifications và settings.
+- Backend hỗ trợ đăng nhập/đăng ký, xác minh email, leaderboard, tiến độ học tập, ngân hàng câu hỏi, shop item và chấm bài writing bằng AI.
 
-## Cong nghe su dung
+## Công nghệ sử dụng
 
 ### Frontend
 
@@ -42,7 +42,7 @@ UIFIVE la mot nen tang hoc tieng Anh truc tuyen danh cho hoc sinh THPT, tap trun
 - Cloudinary
 - Google Gemini
 
-## Cau truc thu muc
+## Cấu trúc thư mục
 
 ```text
 ie303/
@@ -63,15 +63,15 @@ ie303/
 `-- README.md
 ```
 
-## Cac route frontend noi bat
+## Các route frontend nổi bật
 
 ### User
 
 - `/`: dashboard
-- `/grades/:gradeId/units`: danh sach unit theo khoi lop
-- `/units/:unitId/sections`: danh sach section cua unit
-- `/sections/:sectionId/lessons`: danh sach lesson cua section
-- `/lessons/:lessonId`: chay bai hoc
+- `/grades/:gradeId/units`: danh sách unit theo khối lớp
+- `/units/:unitId/sections`: danh sách section của unit
+- `/sections/:sectionId/lessons`: danh sách lesson của section
+- `/lessons/:lessonId`: chạy bài học
 - `/leaderboard`, `/quests`, `/profile`, `/shop`
 - `/test/results`, `/test/review`, `/test/revision`
 - `/exercise/pronunciation`, `/exercise/reading`, `/exercise/quiz`, `/exercise/listening`
@@ -88,14 +88,14 @@ ie303/
 - `/admin/notifications`
 - `/admin/settings`
 
-## API backend chinh
+## API backend chính
 
-Mot so nhom API dang co trong project:
+Một số nhóm API đang có trong project:
 
 - `/api/auth`: login, register, verify email, logout
-- `/api/users`: thong tin user va profile hien tai
+- `/api/users`: thông tin user và profile hiện tại
 - `/api/grades`, `/api/units`, `/api/sections`, `/api/lessons`
-- `/api/progress`: tien do hoc theo grade/unit/section
+- `/api/progress`: tiến độ học theo grade/unit/section
 - `/api/questions`, `/api/question-groups`, `/api/question-options`
 - `/api/semester-tests`, `/api/group-reviews`, `/api/unit-reviews`
 - `/api/leaderboards`
@@ -103,31 +103,31 @@ Mot so nhom API dang co trong project:
 - `/api/user-question-histories`
 - `/api/ai/essay/submit`
 
-## Yeu cau moi truong
+## Yêu cầu môi trường
 
-Can cai dat truoc:
+Cần cài đặt trước:
 
 - Node.js 18+
 - npm
 - Java 21
-- Maven Wrapper (da co san trong `Backend`)
+- Maven Wrapper (đã có sẵn trong `Backend`)
 - PostgreSQL
 
-## Bien moi truong
+## Biến môi trường
 
 ### Frontend
 
-Frontend doc bien sau:
+Frontend đọc biến sau:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
-Neu khong cung cap, frontend mac dinh goi den `http://localhost:8080/api`.
+Nếu không cung cấp, frontend mặc định gọi đến `http://localhost:8080/api`.
 
 ### Backend
 
-Backend doc bien moi truong tu file `.env` thong qua `dotenv-java` hoac tu environment cua he thong.
+Backend đọc biến môi trường từ file `.env` thông qua `dotenv-java` hoặc từ environment của hệ thống.
 
 ```env
 DB_URL=jdbc:postgresql://localhost:5432/uifive
@@ -150,42 +150,42 @@ API_KEY=your_cloudinary_api_key
 API_SECRET=your_cloudinary_api_secret
 ```
 
-## Cach chay project
+## Cách chạy project
 
-### 1. Chay backend
+### 1. Chạy backend
 
-Tu thu muc `Backend`:
+Từ thư mục `Backend`:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Tren Windows co the dung:
+Trên Windows có thể dùng:
 
 ```bash
 mvnw.cmd spring-boot:run
 ```
 
-Backend mac dinh chay o `http://localhost:8080`.
+Backend mặc định chạy ở `http://localhost:8080`.
 
-### 2. Chay frontend
+### 2. Chạy frontend
 
-Tu thu muc `Frontend`:
+Từ thư mục `Frontend`:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Frontend mac dinh chay o `http://localhost:5173`.
+Frontend mặc định chạy ở `http://localhost:5173`.
 
-### 3. Dang nhap va CORS
+### 3. Đăng nhập và CORS
 
-- Backend dang cho phep CORS cho `http://localhost:5173`.
-- Co che auth hien tai su dung cookie `token` dang `HttpOnly`.
-- Tat ca route ngoai `/api/auth/**` va OAuth2 deu yeu cau xac thuc.
+- Backend đang cho phép CORS cho `http://localhost:5173`.
+- Cơ chế auth hiện tại sử dụng cookie `token` dạng `HttpOnly`.
+- Tất cả route ngoài `/api/auth/**` và OAuth2 đều yêu cầu xác thực.
 
-## Build va test
+## Build và test
 
 ### Frontend
 
@@ -200,22 +200,22 @@ npm run build
 ./mvnw package
 ```
 
-Tren Windows:
+Trên Windows:
 
 ```bash
 mvnw.cmd test
 mvnw.cmd package
 ```
 
-## Ghi chu hien trang
+## Ghi chú hiện trạng
 
-- Thu muc `Frontend/src/api` dang co ca phan goi API that va mot so utility mo phong API.
-- `MLService` chua duoc tich hop thanh mot service rieng.
-- `spring.jpa.hibernate.ddl-auto=update` dang bat trong backend, phu hop moi truong phat trien hon la production.
+- Thư mục `Frontend/src/api` đang có cả phần gọi API thật và một số utility mô phỏng API.
+- `MLService` chưa được tích hợp thành một service riêng.
+- `spring.jpa.hibernate.ddl-auto=update` đang bật trong backend, phù hợp môi trường phát triển hơn là production.
 
-## Huong phat trien tiep theo
+## Hướng phát triển tiếp theo
 
-- Hoan thien tai lieu API va file mau `.env.example` cho tung service.
-- Dong bo cac luong frontend con dang dung mock/simulate voi backend that.
-- Tach rieng `MLService` thanh service doc lap neu can xu ly AI/ML chuyen sau.
-- Bo sung Docker/Docker Compose de khoi dong toan bo stack nhanh hon.
+- Hoàn thiện tài liệu API và file mẫu `.env.example` cho từng service.
+- Đồng bộ các luồng frontend còn đang dùng mock/simulate với backend thật.
+- Tách riêng `MLService` thành service độc lập nếu cần xử lý AI/ML chuyên sâu.
+- Bổ sung Docker/Docker Compose để khởi động toàn bộ stack nhanh hơn.
