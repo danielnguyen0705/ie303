@@ -13,9 +13,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-
 @Component
 @RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
@@ -44,6 +41,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 "token=" + token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax"
         );
 
-        response.sendRedirect("http://localhost:5173/oauth2/success");
+        response.sendRedirect("http://localhost:5173/");
     }
 }
