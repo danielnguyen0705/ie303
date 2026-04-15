@@ -1,6 +1,7 @@
 // Authentication API (REAL)
 
 import type { ApiResponse, LoginRequest, RegisterRequest } from "./types";
+import { ENV } from "@/config/env";
 import { createError, request } from "./utils/http";
 
 const PASSWORD_MIN_LENGTH = 6;
@@ -116,4 +117,11 @@ export async function changePassword(
     method: "POST",
     body: JSON.stringify({ oldPassword, newPassword }),
   });
+}
+
+// =========================
+// OAUTH2 GOOGLE LOGIN
+// =========================
+export function getGoogleOAuth2AuthorizeUrl(): string {
+  return `${ENV.BACKEND_BASE_URL}/oauth2/authorization/google`;
 }

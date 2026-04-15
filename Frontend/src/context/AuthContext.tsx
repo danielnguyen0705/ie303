@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   getCurrentUser,
+  getGoogleOAuth2AuthorizeUrl,
   login as loginApi,
   logout as logoutApi,
   register as registerApi,
@@ -34,6 +35,7 @@ type AuthContextValue = {
     email: string,
     password: string,
   ) => Promise<boolean>;
+  loginWithGoogle: () => void;
   logout: () => Promise<boolean>;
 };
 
@@ -210,6 +212,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loginWithGoogle = useCallback((): void => {
+    setError(null);
+    window.location.href = getGoogleOAuth2AuthorizeUrl();
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -219,9 +226,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       login,
       register,
+      loginWithGoogle,
       logout,
     }),
-    [user, loading, isReady, error, isAuthenticated, login, register, logout],
+    [
+      user,
+      loading,
+      isReady,
+      error,
+      isAuthenticated,
+      login,
+      register,
+      loginWithGoogle,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
