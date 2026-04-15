@@ -23,11 +23,81 @@ import java.util.Set;
 @Transactional
 public class LearningProgressService {
 
+    private static final int LESSON_COMPLETION_COIN_REWARD = 10;
+    private static final int LESSON_COMPLETION_EXP_REWARD = 20;
+
     private final UserService userService;
+    private final UserRepo userRepo;
     private final UnitRepo unitRepo;
     private final SectionRepo sectionRepo;
     private final LessonRepo lessonRepo;
     private final UserLessonProgressRepo userLessonProgressRepo;
+    private final UserLessonProgressMapper userLessonProgressMapper;
+
+    public UserLessonProgressResponse completeLesson(UserLessonProgressRequest request) {
+        User user = userService.getCurrentUser();
+        int expEarned = 0;
+
+        Lesson lesson = lessonRepo.findById(request.lessonId())
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+
+        Long gradeId = lesson.getSection().getUnit().getGrade().getId();
+        List<Lesson> allLessonsInGrade = lessonRepo.findAllByGradeIdOrder(gradeId);
+        Set<Long> completedLessonIds = userLessonProgressRepo.findCompletedLessonIdsByUserAndGrade(user, gradeId);
+
+        boolean alreadyCompleted = completedLessonIds.contains(lesson.getId());
+        Long currentLessonId = resolveCurrentLessonId(allLessonsInGrade, completedLessonIds);
+
+        if (!alreadyCompleted && currentLessonId != null && !currentLessonId.equals(lesson.getId())) {
+            throw new AppException(ErrorCode.LESSON_LOCKED);
+        }
+
+        UserLessonProgress progress = userLessonProgressRepo
+                .findByUserIdAndLessonId(user.getId(), lesson.getId())
+                .orElseGet(() -> {
+                    UserLessonProgress created = userLessonProgressMapper.toEntity(request);
+                    created.setUser(user);
+                    created.setLesson(lesson);
+                    created.setCompleted(false);
+                    created.setCoinsEarned(0);
+                    return created;
+                });
+
+        userLessonProgressMapper.updateEntityFromRequest(request, progress);
+        progress.setUser(user);
+        progress.setLesson(lesson);
+        progress.setCompleted(true);
+        progress.setProgressPercent(100.0);
+        progress.setLastAccessedAt(LocalDateTime.now());
+
+        if (progress.getCompletedAt() == null) {
+            progress.setCompletedAt(LocalDateTime.now());
+        }
+
+        if (!alreadyCompleted) {
+            user.setCoin(user.getCoin() + LESSON_COMPLETION_COIN_REWARD);
+            user.setExp(user.getExp() + LESSON_COMPLETION_EXP_REWARD);
+            expEarned = LESSON_COMPLETION_EXP_REWARD;
+            progress.setCoinsEarned(LESSON_COMPLETION_COIN_REWARD);
+            userRepo.save(user);
+        }
+
+        UserLessonProgress saved = userLessonProgressRepo.save(progress);
+        return new UserLessonProgressResponse(
+                saved.getId(),
+                saved.isCompleted(),
+                saved.getScore(),
+                saved.getAccuracy(),
+                saved.getProgressPercent(),
+                saved.getCoinsEarned(),
+                expEarned,
+                user.getExp(),
+                saved.getLastAccessedAt(),
+                saved.getCompletedAt(),
+                saved.getUser().getId(),
+                saved.getLesson().getId()
+        );
+    }
 
     public List<UnitProgressResponse> getUnitsByGrade(Long gradeId) {
         User user = userService.getCurrentUser();

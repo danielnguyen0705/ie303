@@ -10,6 +10,7 @@ import org.mapstruct.MappingTarget;
 @Mapper(componentModel = "spring")
 public interface UserQuestionHistoryMapper {
 
+    @Mapping(target = "answerText", source = "answerText")
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "questionId", source = "question.id")
     UserQuestionHistoryResponse toResponse(UserQuestionHistory entity);
@@ -18,11 +19,13 @@ public interface UserQuestionHistoryMapper {
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "question", ignore = true)
     @Mapping(target = "correct", ignore = true)
+    @Mapping(target = "answerText", source = "answerText")
     UserQuestionHistory toEntity(UserQuestionHistoryRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "question", ignore = true)
     @Mapping(target = "correct", ignore = true)
+    @Mapping(target = "answerText", source = "answerText")
     void updateEntityFromRequest(UserQuestionHistoryRequest request, @MappingTarget UserQuestionHistory entity);
 }

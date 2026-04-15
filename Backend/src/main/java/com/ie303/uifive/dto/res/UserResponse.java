@@ -11,6 +11,7 @@ public record UserResponse(
         String email,
         Role role,
         int coin,
+        int exp,
         int score,
         int streak,
         LocalDate lastStudyDate,

@@ -4,6 +4,8 @@ import com.ie303.uifive.dto.res.CoinLeaderboardEntryResponse;
 import com.ie303.uifive.dto.res.CoinLeaderboardResponse;
 import com.ie303.uifive.dto.res.CollectorLeaderboardEntryResponse;
 import com.ie303.uifive.dto.res.CollectorLeaderboardResponse;
+import com.ie303.uifive.dto.res.ExpLeaderboardEntryResponse;
+import com.ie303.uifive.dto.res.ExpLeaderboardResponse;
 import com.ie303.uifive.entity.ItemType;
 import com.ie303.uifive.entity.Role;
 import com.ie303.uifive.entity.User;
@@ -69,6 +71,19 @@ public class LeaderboardService {
                 totalCollectibleItems,
                 rankedEntries.stream().limit(safeLimit).toList(),
                 findCurrentCollectorEntry(rankedEntries)
+        );
+    }
+
+    public ExpLeaderboardResponse getExpLeaderboard(int limit) {
+        int safeLimit = normalizeLimit(limit);
+        List<User> users = getLeaderboardUsers();
+        User currentUser = userService.getCurrentUser();
+
+        List<ExpLeaderboardEntryResponse> rankedEntries = buildExpEntries(users, currentUser);
+        return new ExpLeaderboardResponse(
+                rankedEntries.size(),
+                rankedEntries.stream().limit(safeLimit).toList(),
+                findCurrentExpEntry(rankedEntries)
         );
     }
 
@@ -178,6 +193,34 @@ public class LeaderboardService {
                 .orElse(null);
     }
 
+        private List<ExpLeaderboardEntryResponse> buildExpEntries(List<User> users, User currentUser) {
+        Comparator<User> comparator = Comparator
+            .comparingInt(User::getExp).reversed()
+            .thenComparing(Comparator.comparingInt(User::getStreak).reversed())
+            .thenComparing(Comparator.comparingInt(User::getCoin).reversed())
+            .thenComparing(User::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
+
+        List<User> sortedUsers = users.stream()
+            .sorted(comparator)
+            .toList();
+
+        List<ExpLeaderboardEntryResponse> entries = new ArrayList<>();
+        for (int i = 0; i < sortedUsers.size(); i++) {
+            User user = sortedUsers.get(i);
+            entries.add(new ExpLeaderboardEntryResponse(
+                user.getId(),
+                i + 1,
+                user.getUsername(),
+                user.getAvatar(),
+                user.getExp(),
+                user.getStreak(),
+                currentUser != null && user.getId().equals(currentUser.getId())
+            ));
+        }
+
+        return entries;
+        }
+
     private CollectorStats getStats(Map<Long, CollectorStats> statsByUserId, User user) {
         return statsByUserId.getOrDefault(user.getId(), new CollectorStats());
     }
@@ -185,6 +228,13 @@ public class LeaderboardService {
     private CollectorLeaderboardEntryResponse findCurrentCollectorEntry(List<CollectorLeaderboardEntryResponse> entries) {
         return entries.stream()
                 .filter(CollectorLeaderboardEntryResponse::currentUser)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private ExpLeaderboardEntryResponse findCurrentExpEntry(List<ExpLeaderboardEntryResponse> entries) {
+        return entries.stream()
+                .filter(ExpLeaderboardEntryResponse::currentUser)
                 .findFirst()
                 .orElse(null);
     }

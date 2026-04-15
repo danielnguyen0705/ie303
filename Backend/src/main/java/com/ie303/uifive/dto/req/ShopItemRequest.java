@@ -22,6 +22,7 @@ public record ShopItemRequest(
         ItemType type,
 
         Integer durationDays,
+        Double expMultiplier,
 
         Boolean active
 ) {

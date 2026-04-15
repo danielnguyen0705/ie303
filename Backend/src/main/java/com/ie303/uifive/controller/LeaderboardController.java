@@ -3,6 +3,7 @@ package com.ie303.uifive.controller;
 import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.CoinLeaderboardResponse;
 import com.ie303.uifive.dto.res.CollectorLeaderboardResponse;
+import com.ie303.uifive.dto.res.ExpLeaderboardResponse;
 import com.ie303.uifive.service.LeaderboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,6 +35,16 @@ public class LeaderboardController {
         return ApiResponse.<CollectorLeaderboardResponse>builder()
                 .code(1000)
                 .result(leaderboardService.getCollectorLeaderboard(limit))
+                .build();
+    }
+
+    @GetMapping("/exp")
+    public ApiResponse<ExpLeaderboardResponse> getExpLeaderboard(
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        return ApiResponse.<ExpLeaderboardResponse>builder()
+                .code(1000)
+                .result(leaderboardService.getExpLeaderboard(limit))
                 .build();
     }
 }

@@ -5,7 +5,6 @@ import com.ie303.uifive.dto.res.*;
 import com.ie303.uifive.service.LearningProgressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +15,15 @@ import java.util.List;
 public class UserLessonProgressController {
 
     private final LearningProgressService learningProgressService;
+
+    @PostMapping("/lessons/complete")
+    public ApiResponse<UserLessonProgressResponse> completeLesson(@RequestBody @Valid UserLessonProgressRequest request) {
+        return ApiResponse.<UserLessonProgressResponse>builder()
+                .code(1000)
+                .message("Lesson completion saved")
+                .result(learningProgressService.completeLesson(request))
+                .build();
+    }
 
     @GetMapping("/grades/{gradeId}/units")
     public ApiResponse<List<UnitProgressResponse>> getUnitsByGrade(@PathVariable Long gradeId) {

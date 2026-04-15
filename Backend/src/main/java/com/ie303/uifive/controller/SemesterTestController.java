@@ -20,8 +20,11 @@ public class SemesterTestController {
 
     @PostMapping
     @RolesAllowed("ADMIN")
-    public SemesterTestResponse create(@RequestBody @Valid SemesterTestRequest request) {
-        return service.create(request);
+    public ApiResponse<SemesterTestResponse> create(@RequestBody @Valid SemesterTestRequest request) {
+        return ApiResponse.<SemesterTestResponse>builder()
+                .code(1000)
+                .result(service.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -42,15 +45,22 @@ public class SemesterTestController {
 
     @PutMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public SemesterTestResponse update(@PathVariable Long id,
-                                       @RequestBody @Valid SemesterTestRequest request) {
-        return service.update(id, request);
+    public ApiResponse<SemesterTestResponse> update(@PathVariable Long id,
+                                                    @RequestBody @Valid SemesterTestRequest request) {
+        return ApiResponse.<SemesterTestResponse>builder()
+                .code(1000)
+                .result(service.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
-        return "Deleted semester test";
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted semester test")
+                .result("Deleted semester test")
+                .build();
     }
 }

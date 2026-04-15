@@ -122,6 +122,7 @@ public class ShopItemService {
 
         switch (item.getType()) {
             case VIP -> handleVipPurchase(user, item);
+            case EXP -> handleExpBoostPurchase(user, item);
             case SKIP -> handleSkipPurchase(user, item);
             case AVATAR, BACKGROUND -> handlePermanentItemPurchase(user, item);
             default -> throw new AppException(ErrorCode.INVALID_ITEM_TYPE);
@@ -183,6 +184,16 @@ public class ShopItemService {
                 throw new AppException(ErrorCode.INVALID_SHOP_ITEM_REQUEST, "VIP item must have durationDays greater than 0");
             }
         }
+
+        if (request.type() == ItemType.EXP) {
+            if (request.durationDays() == null || request.durationDays() <= 0) {
+                throw new AppException(ErrorCode.INVALID_SHOP_ITEM_REQUEST, "EXP item must have durationDays greater than 0");
+            }
+
+            if (request.expMultiplier() == null || request.expMultiplier() <= 1.0) {
+                throw new AppException(ErrorCode.INVALID_SHOP_ITEM_REQUEST, "EXP item must have expMultiplier > 1.0");
+            }
+        }
     }
 
     private String resolveImageUrl(ShopItemRequest request, String currentImageUrl) {
@@ -199,8 +210,12 @@ public class ShopItemService {
     }
 
     private void normalizeByType(ShopItem entity) {
-        if (entity.getType() != ItemType.VIP) {
+        if (entity.getType() != ItemType.VIP && entity.getType() != ItemType.EXP) {
             entity.setDurationDays(null);
+        }
+
+        if (entity.getType() != ItemType.EXP) {
+            entity.setExpMultiplier(null);
         }
     }
 
@@ -216,6 +231,28 @@ public class ShopItemService {
         } else {
             user.setVipExpiredAt(user.getVipExpiredAt().plusDays(item.getDurationDays()));
         }
+    }
+
+    private void handleExpBoostPurchase(User user, ShopItem item) {
+        if (item.getDurationDays() == null || item.getDurationDays() <= 0) {
+            throw new AppException(ErrorCode.INVALID_SHOP_ITEM_REQUEST, "EXP item durationDays is invalid");
+        }
+
+        if (item.getExpMultiplier() == null || item.getExpMultiplier() <= 1.0) {
+            throw new AppException(ErrorCode.INVALID_SHOP_ITEM_REQUEST, "EXP item multiplier is invalid");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime currentExpiry = user.getExpBoostExpiredAt();
+
+        if (currentExpiry == null || currentExpiry.isBefore(now)) {
+            user.setExpBoostMultiplier(item.getExpMultiplier());
+            user.setExpBoostExpiredAt(now.plusDays(item.getDurationDays()));
+            return;
+        }
+
+        user.setExpBoostMultiplier(Math.max(user.getExpBoostMultiplier(), item.getExpMultiplier()));
+        user.setExpBoostExpiredAt(currentExpiry.plusDays(item.getDurationDays()));
     }
 
     private void handleSkipPurchase(User user, ShopItem item) {

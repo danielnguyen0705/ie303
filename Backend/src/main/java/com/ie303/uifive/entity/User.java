@@ -31,6 +31,7 @@ public class User {
     private Role role;
 
     private int coin;
+    private int exp;
     private int score;
     private int streak;
     private boolean verified = false;
@@ -44,6 +45,12 @@ public class User {
 
     @Column(name = "vip_expired_at")
     private LocalDateTime vipExpiredAt;
+
+    @Column(name = "exp_boost_multiplier")
+    private double expBoostMultiplier;
+
+    @Column(name = "exp_boost_expired_at")
+    private LocalDateTime expBoostExpiredAt;
 
     @CreationTimestamp
     @Column(name = "created_at")

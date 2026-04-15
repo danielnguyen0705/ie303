@@ -20,8 +20,11 @@ public class GradeController {
 
     @PostMapping
     @RolesAllowed("ADMIN")
-    public GradeResponse create(@RequestBody GradeRequest request) {
-        return gradeService.create(request);
+    public ApiResponse<GradeResponse> create(@RequestBody GradeRequest request) {
+        return ApiResponse.<GradeResponse>builder()
+                .code(1000)
+                .result(gradeService.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -42,15 +45,22 @@ public class GradeController {
 
     @PutMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public GradeResponse update(@PathVariable Long id,
-                                @RequestBody GradeRequest request) {
-        return gradeService.update(id, request);
+    public ApiResponse<GradeResponse> update(@PathVariable Long id,
+                                             @RequestBody GradeRequest request) {
+        return ApiResponse.<GradeResponse>builder()
+                .code(1000)
+                .result(gradeService.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         gradeService.delete(id);
-        return "Deleted grade";
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted grade")
+                .result("Deleted grade")
+                .build();
     }
 }

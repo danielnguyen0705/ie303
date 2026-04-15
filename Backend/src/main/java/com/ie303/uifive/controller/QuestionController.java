@@ -23,8 +23,11 @@ public class QuestionController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RolesAllowed("ADMIN")
-    public QuestionResponse create(@ModelAttribute @Valid QuestionRequest request) {
-        return questionService.create(request);
+    public ApiResponse<QuestionResponse> create(@ModelAttribute @Valid QuestionRequest request) {
+        return ApiResponse.<QuestionResponse>builder()
+                .code(1000)
+                .result(questionService.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -45,16 +48,23 @@ public class QuestionController {
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RolesAllowed("ADMIN")
-    public QuestionResponse update(@PathVariable Long id,
-                                   @ModelAttribute @Valid QuestionRequest request) {
-        return questionService.update(id, request);
+    public ApiResponse<QuestionResponse> update(@PathVariable Long id,
+                                                @ModelAttribute @Valid QuestionRequest request) {
+        return ApiResponse.<QuestionResponse>builder()
+                .code(1000)
+                .result(questionService.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         questionService.delete(id);
-        return "Deleted question with id: " + id;
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted question")
+                .result("Deleted question with id: " + id)
+                .build();
     }
 
     @GetMapping("/lesson/{lessonId}")
