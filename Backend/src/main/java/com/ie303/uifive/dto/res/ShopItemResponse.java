@@ -10,6 +10,7 @@ public record ShopItemResponse(
         String imageUrl,
         ItemType type,
         Integer durationDays,
+        Double expMultiplier,
         boolean active
 ) {
 }

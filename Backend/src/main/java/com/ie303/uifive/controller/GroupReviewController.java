@@ -20,8 +20,11 @@ public class GroupReviewController {
 
     @PostMapping
     @RolesAllowed("ADMIN")
-    public GroupReviewResponse create(@RequestBody @Valid GroupReviewRequest request) {
-        return service.create(request);
+    public ApiResponse<GroupReviewResponse> create(@RequestBody @Valid GroupReviewRequest request) {
+        return ApiResponse.<GroupReviewResponse>builder()
+                .code(1000)
+                .result(service.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -42,15 +45,22 @@ public class GroupReviewController {
 
     @PutMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public GroupReviewResponse update(@PathVariable Long id,
-                                      @RequestBody GroupReviewRequest request) {
-        return service.update(id, request);
+    public ApiResponse<GroupReviewResponse> update(@PathVariable Long id,
+                                                   @RequestBody GroupReviewRequest request) {
+        return ApiResponse.<GroupReviewResponse>builder()
+                .code(1000)
+                .result(service.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
-        return "Deleted successfully";
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted successfully")
+                .result("Deleted successfully")
+                .build();
     }
 }

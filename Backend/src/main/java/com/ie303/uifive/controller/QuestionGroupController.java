@@ -6,8 +6,6 @@ import com.ie303.uifive.dto.res.QuestionGroupResponse;
 import com.ie303.uifive.service.QuestionGroupService;
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,9 +19,11 @@ public class QuestionGroupController {
 
     @PostMapping
     @RolesAllowed("ADMIN")
-    public ResponseEntity<QuestionGroupResponse> create(@RequestBody QuestionGroupRequest request) {
-        QuestionGroupResponse response = questionGroupService.create(request);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    public ApiResponse<QuestionGroupResponse> create(@RequestBody QuestionGroupRequest request) {
+        return ApiResponse.<QuestionGroupResponse>builder()
+                .code(1000)
+                .result(questionGroupService.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -44,17 +44,23 @@ public class QuestionGroupController {
 
     @PutMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public ResponseEntity<QuestionGroupResponse> update(
+    public ApiResponse<QuestionGroupResponse> update(
             @PathVariable Long id,
             @RequestBody QuestionGroupRequest request) {
-        QuestionGroupResponse response = questionGroupService.update(id, request);
-        return ResponseEntity.ok(response);
+        return ApiResponse.<QuestionGroupResponse>builder()
+                .code(1000)
+                .result(questionGroupService.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         questionGroupService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted question group")
+                .result("Deleted question group")
+                .build();
     }
 }

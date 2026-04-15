@@ -17,8 +17,11 @@ public class UserQuestionHistoryController {
     private final UserQuestionHistoryService service;
 
     @PostMapping("/submit")
-    public UserQuestionHistoryResponse submit(@RequestBody UserQuestionHistoryRequest request) {
-        return service.submit(request);
+    public ApiResponse<UserQuestionHistoryResponse> submit(@RequestBody UserQuestionHistoryRequest request) {
+        return ApiResponse.<UserQuestionHistoryResponse>builder()
+                .code(1000)
+                .result(service.submit(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -46,8 +49,12 @@ public class UserQuestionHistoryController {
     }
 
     @DeleteMapping("/{id}")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
-        return "Deleted user question history";
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted user question history")
+                .result("Deleted user question history")
+                .build();
     }
 }

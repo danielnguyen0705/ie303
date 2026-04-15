@@ -20,8 +20,11 @@ public class UnitController {
 
     @PostMapping
     @RolesAllowed("ADMIN")
-    public UnitResponse create(@RequestBody @Valid UnitRequest request) {
-        return service.create(request);
+    public ApiResponse<UnitResponse> create(@RequestBody @Valid UnitRequest request) {
+        return ApiResponse.<UnitResponse>builder()
+                .code(1000)
+                .result(service.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -42,15 +45,22 @@ public class UnitController {
 
     @PutMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public UnitResponse update(@PathVariable Long id,
-                               @RequestBody @Valid UnitRequest request) {
-        return service.update(id, request);
+    public ApiResponse<UnitResponse> update(@PathVariable Long id,
+                                            @RequestBody @Valid UnitRequest request) {
+        return ApiResponse.<UnitResponse>builder()
+                .code(1000)
+                .result(service.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
-        return "Deleted unit";
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted unit")
+                .result("Deleted unit")
+                .build();
     }
 }

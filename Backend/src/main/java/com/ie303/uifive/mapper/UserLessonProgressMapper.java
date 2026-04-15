@@ -12,6 +12,8 @@ public interface UserLessonProgressMapper {
 
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "lessonId", source = "lesson.id")
+    @Mapping(target = "expEarned", constant = "0")
+    @Mapping(target = "currentExp", source = "user.exp")
     UserLessonProgressResponse toResponse(UserLessonProgress entity);
 
     @Mapping(target = "id", ignore = true)

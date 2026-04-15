@@ -22,6 +22,7 @@ public class QuestionOptionService {
 
     public QuestionOptionResponse create(QuestionOptionRequest request) {
         QuestionOption entity = mapper.toEntity(request);
+        entity.setCorrect(request.isCorrect());
 
         Question question = questionRepo.findById(request.questionId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Question với id = " + request.questionId()));
@@ -58,6 +59,7 @@ public class QuestionOptionService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionOption với id = " + id));
 
         mapper.updateEntityFromRequest(request, entity);
+        entity.setCorrect(request.isCorrect());
 
         Question question = questionRepo.findById(request.questionId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Question với id = " + request.questionId()));

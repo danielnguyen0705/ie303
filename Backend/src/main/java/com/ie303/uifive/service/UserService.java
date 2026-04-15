@@ -53,8 +53,11 @@ public class UserService implements UserDetailsService {
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setCoin(0);
+        user.setExp(0);
         user.setScore(0);
         user.setStreak(0);
+        user.setExpBoostMultiplier(1.0);
+        user.setExpBoostExpiredAt(null);
 
         user.setVerified(false);
         user.setVerificationToken(UUID.randomUUID().toString());
@@ -161,6 +164,21 @@ public class UserService implements UserDetailsService {
         User user = repo.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        updateStreak(user);
+        user.setCoin(user.getCoin() + 10);
+
+        repo.save(user);
+    }
+
+    public void touchStudyStreak(Long userId) {
+        User user = repo.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        updateStreak(user);
+        repo.save(user);
+    }
+
+    private void updateStreak(User user) {
         LocalDate today = LocalDate.now();
 
         if (user.getLastStudyDate() == null) {
@@ -172,9 +190,6 @@ public class UserService implements UserDetailsService {
         }
 
         user.setLastStudyDate(today);
-        user.setCoin(user.getCoin() + 10);
-
-        repo.save(user);
     }
 
     public void spendCoin(Long userId, int amount) {
@@ -228,8 +243,11 @@ public class UserService implements UserDetailsService {
         user.setPassword("");
         user.setRole(Role.USER);
         user.setCoin(0);
+        user.setExp(0);
         user.setScore(0);
         user.setStreak(0);
+        user.setExpBoostMultiplier(1.0);
+        user.setExpBoostExpiredAt(null);
         user.setVerified(true);
         user.setVerificationToken(null);
         user.setVerificationExpiry(null);
@@ -279,6 +297,6 @@ public class UserService implements UserDetailsService {
                 })
                 .toList();
 
-        return new UserProfileResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getCoin(), user.getScore(), user.getStreak(), user.getLastStudyDate(), user.getVipExpiredAt(), user.getCreatedAt(), studyingGrades);
+        return new UserProfileResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getCoin(), user.getExp(), user.getScore(), user.getStreak(), user.getLastStudyDate(), user.getVipExpiredAt(), user.getCreatedAt(), studyingGrades);
     }
 }

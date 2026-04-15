@@ -18,8 +18,11 @@ public class UnitReviewController {
     private final UnitReviewService service;
 
     @PostMapping
-    public UnitReviewResponse create(@RequestBody @Valid UnitReviewRequest request) {
-        return service.create(request);
+    public ApiResponse<UnitReviewResponse> create(@RequestBody @Valid UnitReviewRequest request) {
+        return ApiResponse.<UnitReviewResponse>builder()
+                .code(1000)
+                .result(service.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -38,14 +41,21 @@ public class UnitReviewController {
                 .build();
     }
     @PutMapping("/{id}")
-    public UnitReviewResponse update(@PathVariable Long id,
-                                     @RequestBody @Valid UnitReviewRequest request) {
-        return service.update(id, request);
+    public ApiResponse<UnitReviewResponse> update(@PathVariable Long id,
+                                                  @RequestBody @Valid UnitReviewRequest request) {
+        return ApiResponse.<UnitReviewResponse>builder()
+                .code(1000)
+                .result(service.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
-        return "Deleted unit review";
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted unit review")
+                .result("Deleted unit review")
+                .build();
     }
 }

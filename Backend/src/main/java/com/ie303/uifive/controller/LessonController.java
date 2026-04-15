@@ -20,8 +20,11 @@ public class LessonController {
 
     @PostMapping
     @RolesAllowed("ADMIN")
-    public LessonResponse create(@RequestBody @Valid LessonRequest request) {
-        return lessonService.create(request);
+    public ApiResponse<LessonResponse> create(@RequestBody @Valid LessonRequest request) {
+        return ApiResponse.<LessonResponse>builder()
+                .code(1000)
+                .result(lessonService.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -42,15 +45,22 @@ public class LessonController {
 
     @PutMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public LessonResponse update(@PathVariable Long id,
-                                 @RequestBody @Valid LessonRequest request) {
-        return lessonService.update(id, request);
+    public ApiResponse<LessonResponse> update(@PathVariable Long id,
+                                              @RequestBody @Valid LessonRequest request) {
+        return ApiResponse.<LessonResponse>builder()
+                .code(1000)
+                .result(lessonService.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         lessonService.delete(id);
-        return "Deleted lesson with id: " + id;
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted lesson")
+                .result("Deleted lesson with id: " + id)
+                .build();
     }
 }

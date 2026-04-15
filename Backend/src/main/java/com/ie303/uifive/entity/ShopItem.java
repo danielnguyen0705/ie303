@@ -24,5 +24,6 @@ public class ShopItem {
     private ItemType type;
 
     private Integer durationDays;
+    private Double expMultiplier;
     private boolean active = true;
 }

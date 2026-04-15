@@ -24,8 +24,11 @@ public class ShopItemController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RolesAllowed("ADMIN")
-    public ShopItemResponse create(@ModelAttribute @Valid ShopItemRequest request) {
-        return service.create(request);
+    public ApiResponse<ShopItemResponse> create(@ModelAttribute @Valid ShopItemRequest request) {
+        return ApiResponse.<ShopItemResponse>builder()
+                .code(1000)
+                .result(service.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -48,16 +51,23 @@ public class ShopItemController {
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RolesAllowed("ADMIN")
-    public ShopItemResponse update(@PathVariable Long id,
-                                   @ModelAttribute @Valid ShopItemRequest request) {
-        return service.update(id, request);
+    public ApiResponse<ShopItemResponse> update(@PathVariable Long id,
+                                                @ModelAttribute @Valid ShopItemRequest request) {
+        return ApiResponse.<ShopItemResponse>builder()
+                .code(1000)
+                .result(service.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
-        return "Deleted shop item";
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted shop item")
+                .result("Deleted shop item")
+                .build();
     }
 
     @GetMapping
@@ -75,22 +85,34 @@ public class ShopItemController {
     }
 
     @PostMapping("/buy/{itemId}")
-    public BuyItemResponse buyItem(@PathVariable Long itemId) {
-        return service.buyItem(itemId);
+    public ApiResponse<BuyItemResponse> buyItem(@PathVariable Long itemId) {
+        return ApiResponse.<BuyItemResponse>builder()
+                .code(1000)
+                .result(service.buyItem(itemId))
+                .build();
     }
 
     @PostMapping("/use-skip/{userItemId}")
-    public String useSkip(@PathVariable Long userItemId) {
-        return service.useSkip(userItemId);
+    public ApiResponse<String> useSkip(@PathVariable Long userItemId) {
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .result(service.useSkip(userItemId))
+                .build();
     }
 
     @PostMapping("/equip/avatar/{shopItemId}")
-    public String equipAvatar(@PathVariable Long shopItemId) {
-        return service.equipAvatar(shopItemId);
+    public ApiResponse<String> equipAvatar(@PathVariable Long shopItemId) {
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .result(service.equipAvatar(shopItemId))
+                .build();
     }
 
     @PostMapping("/equip/background/{shopItemId}")
-    public String equipBackground(@PathVariable Long shopItemId) {
-        return service.equipBackground(shopItemId);
+    public ApiResponse<String> equipBackground(@PathVariable Long shopItemId) {
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .result(service.equipBackground(shopItemId))
+                .build();
     }
 }

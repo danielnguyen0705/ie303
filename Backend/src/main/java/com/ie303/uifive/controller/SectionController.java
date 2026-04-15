@@ -20,8 +20,11 @@ public class SectionController {
 
     @PostMapping
     @RolesAllowed("ADMIN")
-    public SectionResponse create(@RequestBody @Valid SectionRequest request) {
-        return service.create(request);
+    public ApiResponse<SectionResponse> create(@RequestBody @Valid SectionRequest request) {
+        return ApiResponse.<SectionResponse>builder()
+                .code(1000)
+                .result(service.create(request))
+                .build();
     }
 
     @GetMapping("/{id}")
@@ -42,15 +45,22 @@ public class SectionController {
 
     @PutMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public SectionResponse update(@PathVariable Long id,
-                                  @RequestBody @Valid SectionRequest request) {
-        return service.update(id, request);
+    public ApiResponse<SectionResponse> update(@PathVariable Long id,
+                                               @RequestBody @Valid SectionRequest request) {
+        return ApiResponse.<SectionResponse>builder()
+                .code(1000)
+                .result(service.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @RolesAllowed("ADMIN")
-    public String delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
-        return "Deleted section with id: " + id;
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted section")
+                .result("Deleted section with id: " + id)
+                .build();
     }
 }
