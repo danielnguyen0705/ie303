@@ -188,7 +188,7 @@ export interface DeleteLessonRequest {
 ========================= */
 export interface QuestionOption {
   id: number;
-  questionId: number;
+  questionId?: number;
   optionKey?: string;
   content: string;
   isCorrect?: boolean;
@@ -217,36 +217,6 @@ export interface UpdateQuestionOptionRequest {
 }
 
 /* =========================
-   QUESTION GROUP
-========================= */
-export interface QuestionGroup {
-  id: number;
-  lessonId?: number;
-  title?: string;
-  description?: string;
-  groupType?: string;
-  orderIndex?: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateQuestionGroupRequest {
-  lessonId?: number;
-  title?: string;
-  description?: string;
-  groupType?: string;
-  orderIndex?: number;
-}
-
-export interface UpdateQuestionGroupRequest {
-  lessonId?: number;
-  title?: string;
-  description?: string;
-  groupType?: string;
-  orderIndex?: number;
-}
-
-/* =========================
    QUESTION
 ========================= */
 export interface Question {
@@ -270,11 +240,11 @@ export interface CreateQuestionRequest {
   questionType: string;
   content?: string;
   instruction?: string;
-  audioUrl?: string;
-  imageUrl?: string;
-  questionData?: string;
-  explanation?: string;
-  correctAnswer?: string;
+  audioUrl?: string | File | null;
+  imageUrl?: string | File | null;
+  questionData?: string | null;
+  explanation?: string | null;
+  correctAnswer?: string | null;
   lessonId?: number;
   questionGroupId?: number | null;
 }
@@ -283,11 +253,11 @@ export interface UpdateQuestionRequest {
   questionType?: string;
   content?: string;
   instruction?: string;
-  audioUrl?: string;
-  imageUrl?: string;
-  questionData?: string;
-  explanation?: string;
-  correctAnswer?: string;
+  audioUrl?: string | File | null;
+  imageUrl?: string | File | null;
+  questionData?: string | null;
+  explanation?: string | null;
+  correctAnswer?: string | null;
   lessonId?: number;
   questionGroupId?: number | null;
 }
@@ -297,10 +267,50 @@ export interface DeleteQuestionRequest {
 }
 
 /* =========================
+   QUESTION GROUP
+========================= */
+export interface QuestionGroup {
+  id: number;
+  groupType?: string;
+  title?: string;
+  instruction?: string;
+  sharedContent?: string;
+  audioUrl?: string | null;
+  imageUrl?: string | null;
+  groupData?: string | null;
+  lessonId?: number;
+  questions?: Question[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateQuestionGroupRequest {
+  lessonId?: number;
+  title?: string;
+  instruction?: string;
+  sharedContent?: string;
+  audioUrl?: string | File | null;
+  imageUrl?: string | File | null;
+  groupData?: string | null;
+  groupType?: string;
+}
+
+export interface UpdateQuestionGroupRequest {
+  lessonId?: number;
+  title?: string;
+  instruction?: string;
+  sharedContent?: string;
+  audioUrl?: string | File | null;
+  imageUrl?: string | File | null;
+  groupData?: string | null;
+  groupType?: string;
+}
+
+/* =========================
    LESSON QUESTION RESPONSE
 ========================= */
 export interface LessonQuestionResponse {
   lessonId?: number;
-  lessonName?: string;
-  questions: Question[];
+  singleQuestions?: Question[];
+  questionGroups?: QuestionGroup[];
 }

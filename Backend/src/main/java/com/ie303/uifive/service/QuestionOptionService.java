@@ -28,6 +28,7 @@ public class QuestionOptionService {
 
         entity.setQuestion(question);
 
+        entity.setCorrect(request.isCorrect());
         entity = repo.save(entity);
 
         QuestionOptionResponse response = mapper.toResponse(entity);

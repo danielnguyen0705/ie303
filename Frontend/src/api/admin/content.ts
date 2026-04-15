@@ -140,6 +140,33 @@ function mapLesson(raw: RawLesson): Lesson {
   } as Lesson;
 }
 
+function appendStringIfPresent(
+  formData: FormData,
+  key: string,
+  value?: string | number | null,
+) {
+  if (value !== undefined && value !== null && String(value).trim() !== "") {
+    formData.append(key, String(value));
+  }
+}
+
+function appendMediaField(
+  formData: FormData,
+  key: string,
+  value?: string | File | null,
+) {
+  if (value == null) return;
+
+  if (value instanceof File) {
+    formData.append(key, value);
+    return;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    formData.append(key, value);
+  }
+}
+
 /* =========================
    GRADE
 ========================= */
@@ -547,9 +574,12 @@ export async function getQuestionsByLesson(params: {
     return createError("Lesson id is required", "VALIDATION_ERROR");
   }
 
-  return request<LessonQuestionResponse>(`/questions/lesson/${params.lessonId}`, {
-    method: "GET",
-  });
+  return request<LessonQuestionResponse>(
+    `/questions/lesson/${params.lessonId}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
 export async function getQuestion(params: {
@@ -575,20 +605,24 @@ export async function createQuestion(
     return createError("Question type is required", "VALIDATION_ERROR");
   }
 
+  const formData = new FormData();
+
+  appendStringIfPresent(formData, "questionType", payload.questionType);
+  appendStringIfPresent(formData, "content", payload.content);
+  appendStringIfPresent(formData, "instruction", payload.instruction);
+  appendStringIfPresent(formData, "questionData", payload.questionData);
+  appendStringIfPresent(formData, "explanation", payload.explanation);
+  appendStringIfPresent(formData, "correctAnswer", payload.correctAnswer);
+  appendStringIfPresent(formData, "lessonId", payload.lessonId);
+  appendStringIfPresent(formData, "questionGroupId", payload.questionGroupId);
+
+  appendMediaField(formData, "audioUrl", payload.audioUrl);
+  appendMediaField(formData, "imageUrl", payload.imageUrl);
+
   return request<Question>("/questions", {
     method: "POST",
-    body: JSON.stringify({
-      questionType: payload.questionType,
-      content: payload.content,
-      instruction: payload.instruction,
-      audioUrl: payload.audioUrl,
-      imageUrl: payload.imageUrl,
-      questionData: payload.questionData,
-      explanation: payload.explanation,
-      correctAnswer: payload.correctAnswer,
-      lessonId: payload.lessonId,
-      questionGroupId: payload.questionGroupId ?? null,
-    }),
+    body: formData,
+    headers: {},
   });
 }
 
@@ -600,12 +634,24 @@ export async function updateQuestion(params: {
     return createError("Question id is required", "VALIDATION_ERROR");
   }
 
+  const formData = new FormData();
+
+  appendStringIfPresent(formData, "questionType", params.data.questionType);
+  appendStringIfPresent(formData, "content", params.data.content);
+  appendStringIfPresent(formData, "instruction", params.data.instruction);
+  appendStringIfPresent(formData, "questionData", params.data.questionData);
+  appendStringIfPresent(formData, "explanation", params.data.explanation);
+  appendStringIfPresent(formData, "correctAnswer", params.data.correctAnswer);
+  appendStringIfPresent(formData, "lessonId", params.data.lessonId);
+  appendStringIfPresent(formData, "questionGroupId", params.data.questionGroupId);
+
+  appendMediaField(formData, "audioUrl", params.data.audioUrl);
+  appendMediaField(formData, "imageUrl", params.data.imageUrl);
+
   return request<Question>(`/questions/${params.questionId}`, {
     method: "PUT",
-    body: JSON.stringify({
-      ...params.data,
-      correctAnswer: params.data.correctAnswer,
-    }),
+    body: formData,
+    headers: {},
   });
 }
 
