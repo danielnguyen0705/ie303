@@ -40,6 +40,9 @@ export * as shopApi from "./shop";
 // Notifications API
 export * as notificationApi from "./notifications";
 
+// Payments API
+export * as paymentApi from "./payments";
+
 export * as gradeApi from "./grades";
 export * as sectionApi from "./sections";
 export * as questionApi from "./questions";
@@ -127,3 +130,14 @@ export {
   getUnreadCount,
   markAsRead,
 } from "./notifications";
+
+export {
+  // Payments
+  getActivePaymentOffers,
+  createCheckoutTransaction,
+  paymentWebhook,
+  mockConfirmPayment,
+  getMyTransactions,
+  getMyTransactionDetail,
+  cancelMyTransaction,
+} from "./payments";

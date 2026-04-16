@@ -11,8 +11,14 @@ import {
   Sparkles,
   Wallet,
 } from "lucide-react";
-import { getCoinBalance } from "@/api";
+import {
+  createCheckoutTransaction,
+  getActivePaymentOffers,
+  getCoinBalance,
+  mockConfirmPayment,
+} from "@/api";
 import type {
+  PaymentOffer,
   TopupBillingCycle,
   TopupCoinPack,
   TopupCoinPackIcon,
@@ -116,7 +122,7 @@ function PackIcon({ icon }: { icon: TopupCoinPackIcon }) {
 
 export function Topup() {
   const [balance, setBalance] = useState(0);
-  const [billingCycle, setBillingCycle] = useState<TopupBillingCycle>("annual");
+  const [activeOffers, setActiveOffers] = useState<PaymentOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -127,27 +133,40 @@ export function Topup() {
   });
 
   useEffect(() => {
-    const loadBalance = async () => {
+    const loadTopupData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await getCoinBalance();
-        if (!response.success) {
-          setError(response.error?.message || "Failed to load coin balance");
+        const [balanceResponse, offersResponse] = await Promise.all([
+          getCoinBalance(),
+          getActivePaymentOffers(),
+        ]);
+
+        if (!balanceResponse.success) {
+          setError(
+            balanceResponse.error?.message || "Failed to load coin balance",
+          );
           return;
         }
 
-        setBalance(response.data?.balance || 0);
+        setBalance(balanceResponse.data?.balance || 0);
+
+        if (!offersResponse.success) {
+          setError(offersResponse.error?.message || "Failed to load offers");
+          return;
+        }
+
+        setActiveOffers(offersResponse.data || []);
       } catch (err) {
-        console.error("Error loading coin balance:", err);
-        setError("Failed to load coin balance");
+        console.error("Error loading topup data:", err);
+        setError("Failed to load top-up data");
       } finally {
         setLoading(false);
       }
     };
 
-    loadBalance();
+    loadTopupData();
   }, []);
 
   const heroSubtitle = useMemo(() => {
@@ -156,30 +175,138 @@ export function Topup() {
     return `Your current balance is ${balance.toLocaleString()} coins.`;
   }, [balance, error, loading]);
 
+  const findVipOffer = (plan: TopupVipPlan): PaymentOffer | undefined => {
+    const durationDaysMap: Record<TopupVipPlan["id"], number> = {
+      month: 30,
+      "half-year": 180,
+      year: 365,
+    };
+
+    return activeOffers.find(
+      (offer) =>
+        offer.active &&
+        offer.type === "VIP" &&
+        offer.durationDays === durationDaysMap[plan.id],
+    );
+  };
+
+  const findCoinOffer = (pack: TopupCoinPack): PaymentOffer | undefined => {
+    return activeOffers.find(
+      (offer) =>
+        offer.active &&
+        offer.type === "COIN" &&
+        offer.coinAmount === pack.coins,
+    );
+  };
+
+  const visibleVipPlans = VIP_PLANS.filter((plan) => findVipOffer(plan));
+  const visibleCoinPacks = useMemo(() => {
+    return activeOffers
+      .filter((offer) => offer.active && offer.type === "COIN")
+      .map((offer) => ({
+        id: `coin-${offer.id}`,
+        label: offer.name,
+        coins: offer.coinAmount || 0,
+        priceUsd: offer.price / 25000, // convert VND to approximate USD for icon display
+        icon: "wallet" as const,
+        offer,
+      }));
+  }, [activeOffers]);
+
+  const refreshBalance = async () => {
+    const response = await getCoinBalance();
+    if (response.success) {
+      setBalance(response.data?.balance || 0);
+    }
+  };
+
+  const runMockCheckout = async (
+    offer: PaymentOffer,
+    successTitle: string,
+    successMessage: string,
+  ) => {
+    const checkoutResponse = await createCheckoutTransaction(offer.id, {
+      provider: "MOCK",
+      returnUrl: `${window.location.origin}/topup`,
+    });
+
+    if (!checkoutResponse.success || !checkoutResponse.data) {
+      popup.error({
+        title: "Checkout failed",
+        message:
+          checkoutResponse.error?.message || "Unable to create transaction",
+      });
+      return;
+    }
+
+    const confirmResponse = await mockConfirmPayment(
+      checkoutResponse.data.transactionCode,
+    );
+
+    if (!confirmResponse.success) {
+      popup.warning({
+        title: "Transaction pending",
+        message: "Checkout created, waiting for payment confirmation.",
+      });
+      return;
+    }
+
+    await refreshBalance();
+
+    popup.success({
+      title: successTitle,
+      message: successMessage,
+      description: `Transaction: ${checkoutResponse.data.transactionCode}`,
+    });
+  };
+
   const handleBuyVip = async (plan: TopupVipPlan) => {
     try {
       setProcessingId(plan.id);
-      const selectedPrice = planPrice(plan, billingCycle);
-      const cycleLabel = billingCycle === "annual" ? "annual" : "monthly";
 
-      popup.success({
-        title: "VIP plan selected",
-        message: `${plan.title} (${cycleLabel}) • ${toUsd(selectedPrice)}/mo`,
-      });
+      const offer = findVipOffer(plan);
+      if (!offer) {
+        popup.error({
+          title: "Offer not available",
+          message: `No active VIP offer found for ${plan.title}.`,
+        });
+        return;
+      }
+
+      const priceDisplay = `${offer.price.toLocaleString()} VND`;
+
+      await runMockCheckout(
+        offer,
+        "VIP activated",
+        `${plan.title} • ${priceDisplay}`,
+      );
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleBuyCoins = async (pack: TopupCoinPack) => {
+  const handleBuyCoins = async (pack: any) => {
     try {
       setProcessingId(pack.id);
 
-      popup.info({
-        title: "Top-up request created",
-        message: `${pack.coins.toLocaleString()} coins • ${toUsd(pack.priceUsd)}`,
-        description: "Payment gateway is being integrated in this iteration.",
-      });
+      // If pack has offer property (from visibleCoinPacks), use it directly
+      const offer = pack.offer || findCoinOffer(pack);
+      if (!offer) {
+        popup.error({
+          title: "Offer not available",
+          message: `No active coin offer found for ${pack.coins.toLocaleString()} coins.`,
+        });
+        return;
+      }
+
+      const priceDisplay =
+        offer.price > 0 ? `${offer.price.toLocaleString()} VND` : "Free";
+
+      await runMockCheckout(
+        offer,
+        "Top-up successful",
+        `${pack.coins.toLocaleString()} coins • ${priceDisplay}`,
+      );
     } finally {
       setProcessingId(null);
     }
@@ -267,106 +394,94 @@ export function Topup() {
             </p>
           </div>
 
-          <div className="inline-flex items-center gap-2 bg-white/70 rounded-full p-1.5">
-            <button
-              type="button"
-              onClick={() => setBillingCycle("monthly")}
-              className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${
-                billingCycle === "monthly"
-                  ? "bg-white text-slate-900"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillingCycle("annual")}
-              className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${
-                billingCycle === "annual"
-                  ? "bg-[#155ca5] text-white"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Annual
-            </button>
+          <div className="text-sm font-semibold text-slate-500">
+            {visibleVipPlans.length + visibleCoinPacks.length} active offers
+            available
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {VIP_PLANS.map((plan) => {
-            const price = planPrice(plan, billingCycle);
-            const isProcessing = processingId === plan.id;
+        {visibleVipPlans.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {visibleVipPlans.map((plan) => {
+              const apiOffer = findVipOffer(plan);
+              const price = apiOffer?.price || 0;
+              const isProcessing = processingId === plan.id;
 
-            return (
-              <article
-                key={plan.id}
-                className={`rounded-[2rem] p-8 lg:p-10 transition-transform duration-300 hover:-translate-y-1 ${
-                  plan.highlighted
-                    ? "bg-white shadow-[0px_20px_40px_rgba(26,95,168,0.12)]"
-                    : "bg-[#eef3f9]"
-                }`}
-              >
-                <div className="mb-8">
-                  <p
-                    className={`text-xs uppercase tracking-[0.18em] font-bold ${plan.highlighted ? "text-[#155ca5]" : "text-slate-500"}`}
-                  >
-                    {plan.subtitle}
-                  </p>
-                  <h3 className="text-3xl font-black text-slate-900 mt-2">
-                    {plan.title}
-                  </h3>
-                  <p className="mt-3 text-5xl font-black tracking-tight text-slate-900">
-                    ${price}
-                    <span className="text-lg text-slate-500 font-semibold">
-                      /mo
-                    </span>
-                  </p>
-                  {plan.note && billingCycle === "annual" && (
-                    <p className="mt-2 text-sm font-bold text-[#155ca5]">
-                      {plan.note}
-                    </p>
-                  )}
-                </div>
-
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-center gap-3 text-slate-700"
-                    >
-                      <CheckCircle2
-                        className={`w-5 h-5 ${plan.highlighted ? "text-[#155ca5]" : "text-slate-400"}`}
-                      />
-                      <span
-                        className={`${plan.highlighted ? "font-semibold" : "font-medium"}`}
-                      >
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  type="button"
-                  onClick={() => handleBuyVip(plan)}
-                  disabled={isProcessing}
-                  className={`w-full py-3 rounded-xl font-bold transition-colors ${
+              return (
+                <article
+                  key={plan.id}
+                  className={`rounded-[2rem] p-8 lg:p-10 transition-transform duration-300 hover:-translate-y-1 ${
                     plan.highlighted
-                      ? "bg-gradient-to-r from-[#1a5fa8] to-[#005095] text-white"
-                      : "bg-white text-slate-900 hover:bg-slate-100"
-                  } ${isProcessing ? "opacity-70" : ""}`}
+                      ? "bg-white shadow-[0px_20px_40px_rgba(26,95,168,0.12)]"
+                      : "bg-[#eef3f9]"
+                  }`}
                 >
-                  {isProcessing
-                    ? "Processing..."
-                    : plan.highlighted
-                      ? "Get VIP Gold"
-                      : "Select Plan"}
-                </button>
-              </article>
-            );
-          })}
-        </div>
+                  <div className="mb-8">
+                    <p
+                      className={`text-xs uppercase tracking-[0.18em] font-bold ${plan.highlighted ? "text-[#155ca5]" : "text-slate-500"}`}
+                    >
+                      {plan.subtitle}
+                    </p>
+                    <h3 className="text-3xl font-black text-slate-900 mt-2">
+                      {plan.title}
+                    </h3>
+                    <p className="mt-3 text-5xl font-black tracking-tight text-slate-900">
+                      {price.toLocaleString()}
+                      <span className="text-lg text-slate-500 font-semibold">
+                        {" "}
+                        VND
+                      </span>
+                    </p>
+                    {apiOffer?.description && (
+                      <p className="mt-2 text-sm font-bold text-[#155ca5]">
+                        {apiOffer.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((feature) => (
+                      <li
+                        key={feature}
+                        className="flex items-center gap-3 text-slate-700"
+                      >
+                        <CheckCircle2
+                          className={`w-5 h-5 ${plan.highlighted ? "text-[#155ca5]" : "text-slate-400"}`}
+                        />
+                        <span
+                          className={`${plan.highlighted ? "font-semibold" : "font-medium"}`}
+                        >
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button
+                    type="button"
+                    onClick={() => handleBuyVip(plan)}
+                    disabled={isProcessing}
+                    className={`w-full py-3 rounded-xl font-bold transition-colors ${
+                      plan.highlighted
+                        ? "bg-gradient-to-r from-[#1a5fa8] to-[#005095] text-white"
+                        : "bg-white text-slate-900 hover:bg-slate-100"
+                    } ${isProcessing ? "opacity-70" : ""}`}
+                  >
+                    {isProcessing
+                      ? "Processing..."
+                      : plan.highlighted
+                        ? "Get VIP Gold"
+                        : "Select Plan"}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-slate-600 font-medium">
+            No active VIP offers available right now.
+          </div>
+        )}
       </section>
 
       <section className="space-y-8">
@@ -377,54 +492,53 @@ export function Topup() {
           <div className="h-[2px] flex-1 bg-slate-300/50" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {COIN_PACKS.map((pack) => {
-            const isProcessing = processingId === pack.id;
+        {visibleCoinPacks.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {visibleCoinPacks.map((pack) => {
+              const price = pack.offer?.price || 0;
+              const isProcessing = processingId === pack.id;
 
-            return (
-              <article
-                key={pack.id}
-                className={`rounded-[1.5rem] p-6 text-center flex flex-col items-center ${
-                  pack.highlighted
-                    ? "bg-white shadow-[0px_20px_35px_rgba(26,95,168,0.1)]"
-                    : "bg-[#f1f4f8]"
-                }`}
-              >
-                <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 ${
-                    pack.highlighted
-                      ? "bg-gradient-to-br from-[#1a5fa8] to-[#005095] text-white"
-                      : "bg-white text-[#155ca5]"
-                  }`}
+              return (
+                <article
+                  key={pack.id}
+                  className={`rounded-[1.5rem] p-6 text-center flex flex-col items-center bg-[#f1f4f8]`}
                 >
-                  <PackIcon icon={pack.icon} />
-                </div>
+                  <div
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 bg-white text-[#155ca5]`}
+                  >
+                    <PackIcon icon={pack.icon} />
+                  </div>
 
-                <p
-                  className={`text-xs uppercase tracking-[0.18em] font-bold mb-2 ${
-                    pack.highlighted ? "text-[#155ca5]" : "text-slate-500"
-                  }`}
-                >
-                  {pack.label}
-                </p>
-                <h3 className="text-3xl font-black text-slate-900 mb-5">
-                  {pack.coins.toLocaleString()} Coins
-                </h3>
+                  <p
+                    className={`text-xs uppercase tracking-[0.18em] font-bold mb-2 text-slate-500`}
+                  >
+                    {pack.label}
+                  </p>
+                  <h3 className="text-3xl font-black text-slate-900 mb-5">
+                    {pack.coins.toLocaleString()} Coins
+                  </h3>
 
-                <button
-                  type="button"
-                  onClick={() => handleBuyCoins(pack)}
-                  disabled={isProcessing}
-                  className="mt-auto w-full rounded-xl py-3 bg-gradient-to-r from-[#1a5fa8] to-[#005095] text-white font-bold hover:brightness-105 transition-all disabled:opacity-70"
-                >
-                  {isProcessing
-                    ? "Processing..."
-                    : `${toUsd(pack.priceUsd)} Buy`}
-                </button>
-              </article>
-            );
-          })}
-        </div>
+                  <button
+                    type="button"
+                    onClick={() => handleBuyCoins(pack)}
+                    disabled={isProcessing}
+                    className="mt-auto w-full rounded-xl py-3 bg-gradient-to-r from-[#1a5fa8] to-[#005095] text-white font-bold hover:brightness-105 transition-all disabled:opacity-70"
+                  >
+                    {isProcessing
+                      ? "Processing..."
+                      : price > 0
+                        ? `${price.toLocaleString()} VND`
+                        : "Free"}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-slate-600 font-medium">
+            No active coin offers available right now.
+          </div>
+        )}
       </section>
 
       <section className="rounded-[1.5rem] bg-gradient-to-r from-[#1a5fa8] to-[#005095] text-white p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
