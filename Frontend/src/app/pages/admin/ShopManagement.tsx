@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Edit, Eye, Loader2, Plus, Trash2 } from "lucide-react";
 import { adminApi } from "@/api";
 import type {
@@ -7,7 +7,13 @@ import type {
   ShopItemUpsertRequest,
 } from "@/api/types";
 
-const ITEM_TYPES: ShopItemType[] = ["SKIP", "VIP", "AVATAR", "BACKGROUND"];
+const ITEM_TYPES: ShopItemType[] = [
+  "SKIP",
+  "VIP",
+  "AVATAR",
+  "BACKGROUND",
+  "EXP",
+];
 
 const emptyForm: ShopItemUpsertRequest = {
   name: "",
@@ -15,11 +21,13 @@ const emptyForm: ShopItemUpsertRequest = {
   price: 0,
   type: "SKIP",
   durationDays: null,
+  expMultiplier: null,
   active: true,
   imageUrl: "",
 };
 
 export function ShopManagement() {
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const [items, setItems] = useState<ShopItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -65,6 +73,18 @@ export function ShopManagement() {
       return;
     }
 
+    if (form.type === "EXP") {
+      if (!form.durationDays || form.durationDays <= 0) {
+        setError("EXP item cần durationDays > 0");
+        return;
+      }
+
+      if (!form.expMultiplier || form.expMultiplier <= 1) {
+        setError("EXP item cần expMultiplier > 1.0");
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -91,6 +111,7 @@ export function ShopManagement() {
       price: item.price,
       type: item.type,
       durationDays: item.durationDays,
+      expMultiplier: item.expMultiplier,
       active: item.active,
       imageUrl: item.imageUrl || "",
     });
@@ -142,9 +163,6 @@ export function ShopManagement() {
         <h1 className="text-2xl font-black text-slate-900">
           Shop Item Management
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          CRUD item tại /api/shop-items (admin only)
-        </p>
       </div>
 
       {error && (
@@ -193,10 +211,18 @@ export function ShopManagement() {
           <select
             value={form.type}
             onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                type: e.target.value as ShopItemType,
-              }))
+              setForm((prev) => {
+                const nextType = e.target.value as ShopItemType;
+                return {
+                  ...prev,
+                  type: nextType,
+                  durationDays:
+                    nextType === "VIP" || nextType === "EXP"
+                      ? prev.durationDays
+                      : null,
+                  expMultiplier: nextType === "EXP" ? prev.expMultiplier : null,
+                };
+              })
             }
             className="px-3 py-2 border border-slate-200 rounded-md"
           >
@@ -206,36 +232,75 @@ export function ShopManagement() {
               </option>
             ))}
           </select>
-          <input
-            value={form.durationDays ?? ""}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                durationDays:
-                  e.target.value === "" ? null : Number(e.target.value),
-              }))
-            }
-            type="number"
-            min={0}
-            placeholder="durationDays (VIP only)"
-            className="px-3 py-2 border border-slate-200 rounded-md"
-          />
-          <input
-            value={form.imageUrl || ""}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, imageUrl: e.target.value }))
-            }
-            placeholder="imageUrl"
-            className="px-3 py-2 border border-slate-200 rounded-md md:col-span-2"
-          />
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, imageFile: e.target.files?.[0] }))
-            }
-            className="px-3 py-2 border border-slate-200 rounded-md md:col-span-2"
-          />
+          {(form.type === "VIP" || form.type === "EXP") && (
+            <input
+              value={form.durationDays ?? ""}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  durationDays:
+                    e.target.value === "" ? null : Number(e.target.value),
+                }))
+              }
+              type="number"
+              min={0}
+              placeholder={`durationDays (${form.type} only)`}
+              className="px-3 py-2 border border-slate-200 rounded-md"
+            />
+          )}
+          {form.type === "EXP" && (
+            <input
+              value={form.expMultiplier ?? ""}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  expMultiplier:
+                    e.target.value === "" ? null : Number(e.target.value),
+                }))
+              }
+              type="number"
+              min={1.01}
+              step="0.01"
+              placeholder="expMultiplier (> 1.0)"
+              className="px-3 py-2 border border-slate-200 rounded-md"
+            />
+          )}
+          <div className="md:col-span-2 space-y-1">
+            <div className="relative">
+              <input
+                value={form.imageUrl || ""}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, imageUrl: e.target.value }))
+                }
+                placeholder="imageUrl"
+                className="w-full px-3 pr-24 py-2 border border-slate-200 rounded-md"
+              />
+              <input
+                ref={imageFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    imageFile: e.target.files?.[0],
+                  }))
+                }
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => imageFileInputRef.current?.click()}
+                className="absolute right-1 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-bold text-slate-700 bg-slate-100 rounded border border-slate-200 hover:bg-slate-200"
+              >
+                Select
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 truncate">
+              {form.imageFile
+                ? `Selected file: ${form.imageFile.name}`
+                : "Chưa chọn file ảnh"}
+            </p>
+          </div>
           <textarea
             value={form.description || ""}
             onChange={(e) =>

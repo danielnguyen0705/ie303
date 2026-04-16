@@ -15,6 +15,7 @@ const TYPE_TO_DISPLAY: Record<ShopItemType, ShopItem["type"]> = {
   VIP: "subscription",
   AVATAR: "cosmetic",
   BACKGROUND: "cosmetic",
+  EXP: "boost",
 };
 
 const TYPE_TO_ICON: Record<ShopItemType, string> = {
@@ -22,6 +23,7 @@ const TYPE_TO_ICON: Record<ShopItemType, string> = {
   VIP: "Crown",
   AVATAR: "Sparkles",
   BACKGROUND: "Palette",
+  EXP: "Shield",
 };
 
 const TYPE_TO_EFFECT: Record<ShopItemType, string | undefined> = {
@@ -29,6 +31,7 @@ const TYPE_TO_EFFECT: Record<ShopItemType, string | undefined> = {
   VIP: "Premium benefits during subscription",
   AVATAR: "Unlock avatar cosmetic",
   BACKGROUND: "Unlock background cosmetic",
+  EXP: "Increase experience gain while active",
 };
 
 const toNumberId = (value: string | number): number => {

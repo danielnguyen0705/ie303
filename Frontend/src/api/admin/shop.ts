@@ -17,6 +17,10 @@ const buildShopItemFormData = (payload: ShopItemUpsertRequest): FormData => {
     formData.append("durationDays", String(payload.durationDays));
   }
 
+  if (payload.expMultiplier !== undefined && payload.expMultiplier !== null) {
+    formData.append("expMultiplier", String(payload.expMultiplier));
+  }
+
   if (payload.active !== undefined) {
     formData.append("active", String(payload.active));
   }
@@ -50,10 +54,26 @@ export async function createShopItem(
     return createError("Item type is required", "VALIDATION_ERROR");
   }
 
+  if (payload.type === "EXP") {
+    if (!payload.durationDays || payload.durationDays <= 0) {
+      return createError(
+        "EXP item requires durationDays > 0",
+        "VALIDATION_ERROR",
+      );
+    }
+
+    if (!payload.expMultiplier || payload.expMultiplier <= 1) {
+      return createError(
+        "EXP item requires expMultiplier > 1.0",
+        "VALIDATION_ERROR",
+      );
+    }
+  }
+
   if (!payload.imageFile && !payload.imageUrl) {
     return createError("imageFile or imageUrl is required", "VALIDATION_ERROR");
   }
-
+  console.log("Creating shop item with payload:", payload);
   return request<ShopItemResponse>("/shop-items", {
     method: "POST",
     body: buildShopItemFormData(payload),
@@ -81,6 +101,22 @@ export async function updateShopItem(
 
   if (!payload.type) {
     return createError("Item type is required", "VALIDATION_ERROR");
+  }
+
+  if (payload.type === "EXP") {
+    if (!payload.durationDays || payload.durationDays <= 0) {
+      return createError(
+        "EXP item requires durationDays > 0",
+        "VALIDATION_ERROR",
+      );
+    }
+
+    if (!payload.expMultiplier || payload.expMultiplier <= 1) {
+      return createError(
+        "EXP item requires expMultiplier > 1.0",
+        "VALIDATION_ERROR",
+      );
+    }
   }
 
   return request<ShopItemResponse>(`/shop-items/${id}`, {

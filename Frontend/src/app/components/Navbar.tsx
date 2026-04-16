@@ -11,18 +11,9 @@ export function Navbar() {
 function NavbarContent() {
   const location = useLocation();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user, loading, isAuthenticated, logout, error } = useAuth();
-  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const { user, loading, isAuthenticated } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
-
-  const handleLogout = async (): Promise<void> => {
-    setLogoutError(null);
-    const isSuccess = await logout();
-    if (!isSuccess) {
-      setLogoutError("Unable to logout right now. Please try again.");
-    }
-  };
 
   return (
     <>
@@ -78,6 +69,16 @@ function NavbarContent() {
             >
               Shop
             </Link>
+            <Link
+              to="/topup"
+              className={`transition-all duration-200 ${
+                isActive("/topup")
+                  ? "text-[#155ca5] font-bold border-b-2 border-[#155ca5] pb-1"
+                  : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
+              }`}
+            >
+              Topup
+            </Link>
           </div>
 
           {/* User Stats & Avatar */}
@@ -99,14 +100,6 @@ function NavbarContent() {
                 <span className="hidden lg:block text-sm font-semibold text-slate-700">
                   Hello, {user.username}
                 </span>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  disabled={loading}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loading ? "Logging out..." : "Logout"}
-                </button>
 
                 {/* Avatar with VIP Badge */}
                 <Link
@@ -135,12 +128,6 @@ function NavbarContent() {
             )}
           </div>
         </div>
-
-        {(error || logoutError) && (
-          <div className="max-w-7xl mx-auto px-6 pb-2">
-            <p className="text-sm text-red-600">{logoutError || error}</p>
-          </div>
-        )}
       </nav>
 
       {/* Mobile Navigation */}
@@ -168,6 +155,12 @@ function NavbarContent() {
           className={`flex flex-col items-center gap-1 ${isActive("/shop") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
           <span className="text-xs font-bold">Shop</span>
+        </Link>
+        <Link
+          to="/topup"
+          className={`flex flex-col items-center gap-1 ${isActive("/topup") ? "text-[#155ca5]" : "text-slate-400"}`}
+        >
+          <span className="text-xs font-bold">Topup</span>
         </Link>
       </div>
 

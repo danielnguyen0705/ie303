@@ -9,6 +9,7 @@ import {
   Loader2,
   CheckCircle,
 } from "lucide-react";
+import { Link } from "react-router";
 import { buyShopItem, getActiveShopItems, getCoinBalance } from "@/api";
 import type { ShopItem } from "@/api";
 import { NotificationPopup } from "@/utils/NotificationPopup";
@@ -24,7 +25,7 @@ export function Shop() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [balance, setBalance] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<
-    "all" | "powerup" | "cosmetic" | "subscription"
+    "all" | "powerup" | "cosmetic" | "subscription" | "boost"
   >("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -238,6 +239,17 @@ export function Shop() {
             <Crown className="w-5 h-5" />
             Subscriptions
           </button>
+          <button
+            onClick={() => setSelectedCategory("boost")}
+            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
+              selectedCategory === "boost"
+                ? "bg-[#155ca5] text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <Shield className="w-5 h-5" />
+            EXP Boosts
+          </button>
         </div>
       </section>
 
@@ -364,9 +376,12 @@ export function Shop() {
               Complete lessons, quests, and challenges to earn more coins!
             </p>
           </div>
-          <button className="bg-white text-[#155ca5] px-6 py-3 rounded-md font-bold hover:bg-gray-100 transition-colors whitespace-nowrap">
-            View Quests →
-          </button>
+          <Link
+            to="/topup"
+            className="bg-white text-[#155ca5] px-6 py-3 rounded-md font-bold hover:bg-gray-100 transition-colors whitespace-nowrap"
+          >
+            Top Up Coins →
+          </Link>
         </div>
       </section>
 

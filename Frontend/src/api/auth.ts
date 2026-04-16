@@ -113,10 +113,23 @@ export async function changePassword(
     );
   }
 
-  return request<boolean>("/auth/change-password", {
-    method: "POST",
+  const response = await request<string>("/users/me/change-password", {
+    method: "PUT",
     body: JSON.stringify({ oldPassword, newPassword }),
   });
+
+  if (!response.success) {
+    return {
+      success: false,
+      error: response.error,
+      message: response.message,
+    };
+  }
+
+  return {
+    success: true,
+    data: true,
+  };
 }
 
 // =========================
