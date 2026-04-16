@@ -88,7 +88,7 @@ export interface ShopFilter {
   isPurchased?: boolean;
 }
 
-export type ShopItemType = "SKIP" | "VIP" | "AVATAR" | "BACKGROUND";
+export type ShopItemType = "SKIP" | "VIP" | "AVATAR" | "BACKGROUND" | "EXP";
 
 export interface ShopItemResponse {
   id: number;
@@ -98,6 +98,7 @@ export interface ShopItemResponse {
   imageUrl: string;
   type: ShopItemType;
   durationDays: number | null;
+  expMultiplier: number | null;
   active: boolean;
 }
 
@@ -107,6 +108,7 @@ export interface ShopItemUpsertRequest {
   price: number;
   type: ShopItemType;
   durationDays?: number | null;
+  expMultiplier?: number | null;
   active?: boolean;
   imageFile?: File;
   imageUrl?: string;
@@ -141,6 +143,31 @@ export interface ShopItem {
   imageUrl?: string;
   backendId?: number;
   active?: boolean;
+}
+
+// Topup page types
+export type TopupBillingCycle = "monthly" | "annual";
+
+export interface TopupVipPlan {
+  id: "month" | "year" | "half-year";
+  title: string;
+  subtitle: string;
+  monthlyPrice: number;
+  annualPrice?: number;
+  note?: string;
+  features: string[];
+  highlighted?: boolean;
+}
+
+export type TopupCoinPackIcon = "wallet" | "coins" | "gem" | "sparkles";
+
+export interface TopupCoinPack {
+  id: string;
+  label: string;
+  coins: number;
+  priceUsd: number;
+  icon: TopupCoinPackIcon;
+  highlighted?: boolean;
 }
 
 // Leaderboard domain types
@@ -178,6 +205,22 @@ export interface CoinLeaderboardResponse {
   totalPlayers: number;
   leaderboard: CoinLeaderboardEntryResponse[];
   currentUser: CoinLeaderboardEntryResponse | null;
+}
+
+export interface ExpLeaderboardEntryResponse {
+  userId: number;
+  rank: number;
+  username: string;
+  avatar: string | null;
+  exp: number;
+  streak: number;
+  currentUser: boolean;
+}
+
+export interface ExpLeaderboardResponse {
+  totalPlayers: number;
+  leaderboard: ExpLeaderboardEntryResponse[];
+  currentUser: ExpLeaderboardEntryResponse | null;
 }
 
 export interface CollectorLeaderboardEntryRaw {

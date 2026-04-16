@@ -103,6 +103,7 @@ export {
 export {
   // Leaderboard
   getCoinLeaderboard,
+  getExpLeaderboard,
   getCollectorLeaderboard,
 } from "./leaderboard";
 

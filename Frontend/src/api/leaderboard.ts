@@ -1,6 +1,7 @@
 import type {
   ApiResponse,
   CoinLeaderboardResponse,
+  ExpLeaderboardResponse,
   CollectorLeaderboardEntryRaw,
   CollectorLeaderboardRawResponse,
   CollectorLeaderboardEntryResponse,
@@ -153,6 +154,51 @@ export async function getCollectorLeaderboard(
       currentUser: response.data.currentUser
         ? enrich(response.data.currentUser)
         : null,
+    },
+  };
+}
+
+export async function getExpLeaderboard(
+  limit: number = DEFAULT_LIMIT,
+): Promise<ApiResponse<ExpLeaderboardResponse>> {
+  const authResponse = await ensureAuthenticated();
+  if (!authResponse.success) {
+    return createError(
+      authResponse.error?.message || "Vui long dang nhap de xem bang xep hang",
+      authResponse.error?.code || "AUTH_REQUIRED",
+    );
+  }
+
+  const safeLimit = normalizeLimit(limit);
+  const response = await request<ExpLeaderboardResponse>(
+    `/leaderboards/exp?limit=${safeLimit}`,
+    {
+      method: "GET",
+    },
+  );
+
+  if (!response.success) {
+    return createError(
+      response.error?.message || "Failed to fetch exp leaderboard",
+      response.error?.code || "API_ERROR",
+    );
+  }
+
+  if (!response.data) {
+    return createError("Exp leaderboard data is missing", "INVALID_RESPONSE");
+  }
+
+  const sorted = [...response.data.leaderboard].sort((a, b) => {
+    if (b.exp !== a.exp) return b.exp - a.exp;
+    if (b.streak !== a.streak) return b.streak - a.streak;
+    return a.rank - b.rank;
+  });
+
+  return {
+    success: true,
+    data: {
+      ...response.data,
+      leaderboard: sorted,
     },
   };
 }

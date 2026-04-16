@@ -6,7 +6,7 @@ import { UnitSelection } from "./pages/UnitSelection";
 import { GradeUnits } from "./pages/GradeUnits";
 import { SectionSelection } from "./pages/SectionSelection";
 import { LessonSelection } from "./pages/LessonSelection";
-import  LessonRunner  from "./pages/LessonRunner";
+import LessonRunner from "./pages/LessonRunner";
 import { PronunciationExercise } from "./pages/exercises/PronunciationExercise";
 import { ReadingExercise } from "./pages/exercises/ReadingExercise";
 import { QuizExercise } from "./pages/exercises/QuizExercise";
@@ -15,6 +15,7 @@ import { Leaderboard } from "./pages/Leaderboard";
 import { Quests } from "./pages/Quests";
 import { Profile } from "./pages/Profile";
 import { Shop } from "./pages/Shop";
+import { Topup } from "./pages/Topup";
 import { TestResults } from "./pages/TestResults";
 import { TestReview } from "./pages/TestReview";
 import { RevisionTest } from "./pages/RevisionTest";
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
       { path: "quests", Component: Quests },
       { path: "profile", Component: Profile },
       { path: "shop", Component: Shop },
+      { path: "topup", Component: Topup },
     ],
   },
   {

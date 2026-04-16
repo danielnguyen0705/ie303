@@ -47,22 +47,37 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return;
     }
 
-    let isSuccess = false;
-
     if (mode === "register") {
       if (!email.trim()) {
         setFormError("Email is required.");
         return;
       }
 
-      isSuccess = await register(username.trim(), email.trim(), password);
-    } else {
-      isSuccess = await login(username.trim(), password);
-    }
+      const registerResult = await register(
+        username.trim(),
+        email.trim(),
+        password,
+      );
 
-    if (isSuccess) {
-      resetForm();
-      onClose();
+      if (registerResult.success) {
+        if (registerResult.requiresEmailVerification) {
+          window.alert(
+            "Đăng ký thành công. Vui lòng mở email để xác minh tài khoản trước khi đăng nhập.",
+          );
+        }
+
+        resetForm();
+        switchMode("login");
+      }
+
+      return;
+    } else {
+      const isSuccess = await login(username.trim(), password);
+
+      if (isSuccess) {
+        resetForm();
+        onClose();
+      }
     }
   };
 

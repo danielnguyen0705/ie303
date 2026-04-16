@@ -23,6 +23,11 @@ type AuthUser = {
   [key: string]: unknown;
 };
 
+type RegisterResult = {
+  success: boolean;
+  requiresEmailVerification?: boolean;
+};
+
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
@@ -34,7 +39,7 @@ type AuthContextValue = {
     username: string,
     email: string,
     password: string,
-  ) => Promise<boolean>;
+  ) => Promise<RegisterResult>;
   loginWithGoogle: () => void;
   logout: () => Promise<boolean>;
 };
@@ -163,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: string,
       email: string,
       password: string,
-    ): Promise<boolean> => {
+    ): Promise<RegisterResult> => {
       setLoading(true);
       setError(null);
 
@@ -176,18 +181,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!response.success) {
           setError(response.error?.message ?? "Registration failed.");
-          return false;
+          return { success: false };
         }
 
-        return await loadCurrentUser(true);
+        setUser(null);
+        setError(null);
+
+        return {
+          success: true,
+          requiresEmailVerification: true,
+        };
       } catch (unknownError: unknown) {
         setError(getErrorMessage(unknownError));
-        return false;
+        return { success: false };
       } finally {
         setLoading(false);
       }
     },
-    [loadCurrentUser],
+    [],
   );
 
   const logout = useCallback(async (): Promise<boolean> => {
