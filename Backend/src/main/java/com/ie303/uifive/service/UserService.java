@@ -1,6 +1,7 @@
 package com.ie303.uifive.service;
 
 import com.ie303.uifive.dto.req.ChangePasswordRequest;
+import com.ie303.uifive.dto.req.UpdateUserProfileRequest;
 import com.ie303.uifive.dto.req.UserRequest;
 import com.ie303.uifive.dto.res.StudyingGradeResponse;
 import com.ie303.uifive.dto.res.UserProfileResponse;
@@ -22,6 +23,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -279,6 +281,64 @@ public class UserService implements UserDetailsService {
 
         repo.save(user);
     }
+
+    @Transactional
+    public UserProfileResponse updateProfile(String username, UpdateUserProfileRequest request) {
+        User user = repo.findByUsername(username);
+
+        if (user == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // Check username uniqueness (if changed)
+        if (request.username() != null && !user.getUsername().equals(request.username())
+                && repo.findByUsername(request.username()) != null) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        // Check email uniqueness (if changed)
+        if (request.email() != null && !user.getEmail().equals(request.email())
+                && repo.findByEmail(request.email()) != null) {
+            throw new AppException(ErrorCode.EMAIL_EXISTED);
+        }
+
+        // Update fields if provided
+        if (request.username() != null && !request.username().isBlank()) {
+            user.setUsername(request.username());
+        }
+
+        if (request.email() != null && !request.email().isBlank()) {
+            user.setEmail(request.email());
+        }
+
+        if (request.avatar() != null) {
+            user.setAvatar(request.avatar());
+        }
+
+        if (request.background() != null) {
+            user.setBackground(request.background());
+        }
+
+        User savedUser = repo.save(user);
+
+        List<Grade> grades = userLessonProgressRepo.findDistinctGradesByUser(savedUser);
+
+        List<StudyingGradeResponse> studyingGrades = grades.stream()
+                .map(grade -> {
+                    int totalLessons = userLessonProgressRepo.countTotalLessonsByGradeId(grade.getId());
+                    int completedLessons = userLessonProgressRepo.countCompletedLessonsByUserAndGrade(savedUser, grade.getId());
+
+                    double progressPercent = totalLessons == 0
+                            ? 0
+                            : (completedLessons * 100.0 / totalLessons);
+
+                    return new StudyingGradeResponse(grade.getId(), grade.getName(), progressPercent);
+                })
+                .toList();
+
+        return new UserProfileResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail(), savedUser.getRole(), savedUser.getCoin(), savedUser.getExp(), savedUser.getScore(), savedUser.getStreak(), savedUser.getLastStudyDate(), savedUser.getVipExpiredAt(), savedUser.getCreatedAt(), studyingGrades);
+    }
+
     public UserProfileResponse getMyProfile(String username) {
         User user = repo.findByUsername(username);
 

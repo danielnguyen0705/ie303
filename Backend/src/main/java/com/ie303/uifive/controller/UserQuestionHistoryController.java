@@ -4,6 +4,7 @@ import com.ie303.uifive.dto.req.UserQuestionHistoryRequest;
 import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UserQuestionHistoryResponse;
 import com.ie303.uifive.service.UserQuestionHistoryService;
+import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +34,7 @@ public class UserQuestionHistoryController {
     }
 
     @GetMapping
+    @RolesAllowed("ADMIN")
     public ApiResponse<List<UserQuestionHistoryResponse>> getAll() {
         return ApiResponse.<List<UserQuestionHistoryResponse>>builder()
                 .code(1000)
@@ -41,6 +43,7 @@ public class UserQuestionHistoryController {
     }
 
     @GetMapping("/user/{userId}")
+    @RolesAllowed("ADMIN")
     public ApiResponse<List<UserQuestionHistoryResponse>> getByUserId(@PathVariable Long userId) {
         return ApiResponse.<List<UserQuestionHistoryResponse>>builder()
                 .code(1000)
@@ -49,6 +52,7 @@ public class UserQuestionHistoryController {
     }
 
     @DeleteMapping("/{id}")
+    @RolesAllowed("ADMIN")
     public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
         return ApiResponse.<String>builder()

@@ -60,7 +60,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers( "/api/auth/**", "/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers( "/api/auth/**", "/oauth2/**", "/login/oauth2/**", "/api/payments/mock-confirm/**", "/api/payments/webhook").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
