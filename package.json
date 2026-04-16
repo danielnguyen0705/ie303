@@ -1,6 +1,28 @@
 {
   "devDependencies": {
     "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3"
-  }
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^9.2.1"
+  },
+  "name": "ie303",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run fe\" \"npm run be\"",
+    "fe": "cd Frontend && npm run dev",
+    "be": "cd Backend && mvn spring-boot:run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielnguyen0705/ie303.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/danielnguyen0705/ie303/issues"
+  },
+  "homepage": "https://github.com/danielnguyen0705/ie303#readme"
 }
