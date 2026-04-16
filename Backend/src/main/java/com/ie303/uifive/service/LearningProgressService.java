@@ -23,8 +23,8 @@ import java.util.Set;
 @Transactional
 public class LearningProgressService {
 
-    private static final int LESSON_COMPLETION_COIN_REWARD = 10;
-    private static final int LESSON_COMPLETION_EXP_REWARD = 20;
+    private static final int LESSON_COMPLETION_COIN_REWARD = 18;
+    private static final int LESSON_COMPLETION_EXP_REWARD = 36;
 
     private final UserService userService;
     private final UserRepo userRepo;
@@ -66,7 +66,7 @@ public class LearningProgressService {
         userLessonProgressMapper.updateEntityFromRequest(request, progress);
         progress.setUser(user);
         progress.setLesson(lesson);
-        progress.setCompleted(true);
+        progress.setCompleted(request.accuracy() >= 50.0);
         progress.setProgressPercent(100.0);
         progress.setLastAccessedAt(LocalDateTime.now());
 

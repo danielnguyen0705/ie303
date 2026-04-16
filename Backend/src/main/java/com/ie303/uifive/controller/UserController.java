@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.ChangePasswordRequest;
+import com.ie303.uifive.dto.req.UpdateUserProfileRequest;
 import com.ie303.uifive.dto.req.UserRequest;
 import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UserProfileResponse;
@@ -46,7 +47,18 @@ public class UserController {
                 .result("OK")
                 .build();
     }
+    @PutMapping("/me")
+    public ApiResponse<UserProfileResponse> updateProfile(@RequestBody @Valid UpdateUserProfileRequest request,
+                                                          Authentication authentication) {
 
+        String username = authentication.getName();
+
+        return ApiResponse.<UserProfileResponse>builder()
+                .code(1000)
+                .message("Profile updated successfully")
+                .result(userService.updateProfile(username, request))
+                .build();
+    }
     @GetMapping("/{id}")
     @RolesAllowed("ADMIN")
     public ApiResponse<UserResponse> getById(@PathVariable Long id) {
