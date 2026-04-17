@@ -16,6 +16,7 @@ import { Quests } from "./pages/Quests";
 import { Profile } from "./pages/Profile";
 import { Shop } from "./pages/Shop";
 import { Topup } from "./pages/Topup";
+import { PaymentHistory } from "./pages/PaymentHistory";
 import { TestResults } from "./pages/TestResults";
 import { TestReview } from "./pages/TestReview";
 import { RevisionTest } from "./pages/RevisionTest";
@@ -26,6 +27,7 @@ import { ContentManagement } from "./pages/admin/ContentManagement";
 import { QuestionBank } from "./pages/admin/QuestionBank";
 import { Reports } from "./pages/admin/Reports";
 import { VIPManagement } from "./pages/admin/VIPManagement";
+import { PaymentOffers } from "./pages/admin/PaymentOffers";
 import { Notifications } from "./pages/admin/Notifications";
 import { Settings } from "./pages/admin/Settings";
 import { ShopManagement } from "./pages/admin/ShopManagement";
@@ -62,6 +64,7 @@ export const router = createBrowserRouter([
       { path: "profile", Component: Profile },
       { path: "shop", Component: Shop },
       { path: "topup", Component: Topup },
+      { path: "payment-history", Component: PaymentHistory },
     ],
   },
   {
@@ -77,6 +80,7 @@ export const router = createBrowserRouter([
           { path: "questions", Component: QuestionBank },
           { path: "reports", Component: Reports },
           { path: "vip", Component: VIPManagement },
+          { path: "payments", Component: PaymentOffers },
           { path: "shop", Component: ShopManagement },
           { path: "notifications", Component: Notifications },
           { path: "settings", Component: Settings },

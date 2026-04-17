@@ -33,6 +33,9 @@ export * as adminShopApi from "./shop";
 // Activity Logs API
 export * as adminActivityApi from "./activityLogs";
 
+// Payments API
+export * as adminPaymentApi from "./payments";
+
 // Re-export for convenience
 export {
   // Dashboard
@@ -180,6 +183,16 @@ export {
   getActivityStats,
   getSecurityEvents,
 } from "./activityLogs";
+
+export {
+  // Payments
+  createPaymentOffer,
+  updatePaymentOffer,
+  getPaymentOffer,
+  getAllPaymentOffers,
+  softDeletePaymentOffer,
+  getAllPaymentTransactions,
+} from "./payments";
 
 // Import for wrapper function
 import { getDashboardStats } from "./dashboard";

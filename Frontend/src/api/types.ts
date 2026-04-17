@@ -170,6 +170,74 @@ export interface TopupCoinPack {
   highlighted?: boolean;
 }
 
+// Payment domain types
+export type PaymentOfferType = "VIP" | "COIN";
+
+export type PaymentProvider = "MOCK" | "MOMO" | "VNPAY" | "BANK";
+
+export type PaymentTransactionStatus =
+  | "PENDING"
+  | "SUCCESS"
+  | "FAILED"
+  | "CANCELLED";
+
+export interface PaymentOffer {
+  id: number;
+  name: string;
+  description?: string;
+  type: PaymentOfferType;
+  price: number;
+  coinAmount?: number | null;
+  durationDays?: number | null;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PaymentOfferUpsertRequest {
+  name: string;
+  description?: string;
+  type: PaymentOfferType;
+  price: number;
+  coinAmount?: number | null;
+  durationDays?: number | null;
+  active?: boolean;
+}
+
+export interface PaymentCheckoutRequest {
+  provider: PaymentProvider;
+  returnUrl: string;
+}
+
+export interface PaymentCheckoutResponse {
+  transactionId?: number;
+  transactionCode: string;
+  paymentUrl: string;
+  status?: PaymentTransactionStatus;
+}
+
+export interface PaymentWebhookRequest {
+  transactionCode: string;
+  provider: PaymentProvider;
+  status: Extract<PaymentTransactionStatus, "SUCCESS" | "FAILED">;
+  providerTransactionId?: string;
+  signature?: string;
+}
+
+export interface PaymentTransaction {
+  id: number;
+  transactionCode: string;
+  userId?: number;
+  offerId?: number;
+  provider: PaymentProvider;
+  status: PaymentTransactionStatus;
+  amount?: number;
+  providerTransactionId?: string;
+  paymentUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Leaderboard domain types
 export type LeaderboardLeague =
   | "bronze"

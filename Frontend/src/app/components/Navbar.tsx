@@ -1,8 +1,33 @@
-import { Link, useLocation } from "react-router";
-import { Flame, Coins, User } from "lucide-react";
-import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { Flame, Coins, User, LogOut, History } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
+
+function getNumericField(
+  source: Record<string, unknown> | null,
+  keys: string[],
+): number {
+  if (!source) {
+    return 0;
+  }
+
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  return 0;
+}
 
 export function Navbar() {
   return <NavbarContent />;
@@ -10,10 +35,58 @@ export function Navbar() {
 
 function NavbarContent() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user, loading, isAuthenticated } = useAuth();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { user, loading, isAuthenticated, logout } = useAuth();
+  const userProfile = (user ?? null) as Record<string, unknown> | null;
+
+  const streakDays = getNumericField(userProfile, [
+    "streak",
+    "currentStreak",
+    "streakCount",
+  ]);
+  const coinAmount = getNumericField(userProfile, [
+    "coin",
+    "coins",
+    "totalCoins",
+    "balance",
+    "remainingCoin",
+  ]);
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    }
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  const handleLogout = async () => {
+    await logout();
+    setIsDropdownOpen(false);
+    navigate("/");
+  };
+
+  const handleNavigateAndClose = (path: string) => {
+    navigate(path);
+    setIsDropdownOpen(false);
+  };
 
   return (
     <>
@@ -86,13 +159,17 @@ function NavbarContent() {
             {/* Streak */}
             <div className="hidden sm:flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-full hover:scale-105 transition-all cursor-pointer">
               <Flame className="w-4 h-4 text-[#f39c12]" fill="#f39c12" />
-              <span className="font-bold text-sm">15 Days</span>
+              <span className="font-bold text-sm">
+                {isAuthenticated ? `${streakDays} Days` : "0 Days"}
+              </span>
             </div>
 
             {/* Coins */}
             <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-full hover:scale-105 transition-all cursor-pointer">
               <Coins className="w-4 h-4 text-[#f1c40f]" fill="#f1c40f" />
-              <span className="font-bold text-sm">1,250</span>
+              <span className="font-bold text-sm">
+                {isAuthenticated ? coinAmount.toLocaleString() : "0"}
+              </span>
             </div>
 
             {isAuthenticated && user ? (
@@ -101,20 +178,56 @@ function NavbarContent() {
                   Hello, {user.username}
                 </span>
 
-                {/* Avatar with VIP Badge */}
-                <Link
-                  to="/profile"
-                  className="relative group cursor-pointer hover:scale-105 transition-transform"
-                >
-                  <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 to-yellow-600 shadow-md">
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                      <User className="w-6 h-6 text-slate-400" />
+                {/* Avatar with Dropdown */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="relative group cursor-pointer hover:scale-105 transition-transform"
+                  >
+                    <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 to-yellow-600 shadow-md">
+                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                        <User className="w-6 h-6 text-slate-400" />
+                      </div>
                     </div>
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
-                    VIP
-                  </div>
-                </Link>
+                    <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
+                      VIP
+                    </div>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateAndClose("/profile")}
+                        className="w-full px-4 py-2.5 text-left hover:bg-slate-100 text-slate-700 font-medium text-sm transition-colors flex items-center gap-3"
+                      >
+                        <User className="w-4 h-4 text-[#155ca5]" />
+                        Profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleNavigateAndClose("/payment-history")
+                        }
+                        className="w-full px-4 py-2.5 text-left hover:bg-slate-100 text-slate-700 font-medium text-sm transition-colors flex items-center gap-3"
+                      >
+                        <History className="w-4 h-4 text-[#155ca5]" />
+                        Lịch sử nạp
+                      </button>
+                      <hr className="my-1" />
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="w-full px-4 py-2.5 text-left hover:bg-red-50 text-red-600 font-medium text-sm transition-colors flex items-center gap-3"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Đăng xuất
+                      </button>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <button
