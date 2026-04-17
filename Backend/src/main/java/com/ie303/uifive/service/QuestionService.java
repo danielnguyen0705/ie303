@@ -15,8 +15,10 @@ import com.ie303.uifive.mapper.QuestionMapper;
 import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.QuestionGroupRepo;
 import com.ie303.uifive.repo.QuestionRepo;
+import com.ie303.uifive.repo.UserQuestionHistoryRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -30,6 +32,7 @@ public class QuestionService {
     private final QuestionGroupRepo questionGroupRepo;
     private final QuestionMapper questionMapper;
     private final CloudinaryService cloudinaryService;
+    private final UserQuestionHistoryRepo userQuestionHistoryRepo;
 
     public QuestionResponse create(QuestionRequest request) {
         Question question = questionMapper.toEntity(request);
@@ -90,10 +93,13 @@ public class QuestionService {
         return questionMapper.toResponse(question);
     }
 
+    @Transactional
     public void delete(Long id) {
         if (!questionRepo.existsById(id)) {
             throw new AppException(ErrorCode.QUESTION_NOT_FOUND);
         }
+
+        userQuestionHistoryRepo.deleteByQuestionIdIn(List.of(id));
         questionRepo.deleteById(id);
     }
     public LessonQuestionResponse getQuestionsByLesson(Long lessonId) {
@@ -173,14 +179,18 @@ public class QuestionService {
     }
 
     private void applyMedia(Question question, QuestionRequest request) {
-        String audioUrl = uploadIfPresent(request.audioUrl(), "learning-app/questions/audio");
-        if (audioUrl != null) {
-            question.setAudioUrl(audioUrl);
+        String uploadedAudioUrl = uploadIfPresent(request.audioFile(), "learning-app/questions/audio");
+        if (uploadedAudioUrl != null) {
+            question.setAudioUrl(uploadedAudioUrl);
+        } else if (hasText(request.audioUrl())) {
+            question.setAudioUrl(request.audioUrl().trim());
         }
 
-        String imageUrl = uploadIfPresent(request.imageUrl(), "learning-app/questions/images");
-        if (imageUrl != null) {
-            question.setImageUrl(imageUrl);
+        String uploadedImageUrl = uploadIfPresent(request.imageFile(), "learning-app/questions/images");
+        if (uploadedImageUrl != null) {
+            question.setImageUrl(uploadedImageUrl);
+        } else if (hasText(request.imageUrl())) {
+            question.setImageUrl(request.imageUrl().trim());
         }
     }
 
@@ -188,5 +198,9 @@ public class QuestionService {
         return (file == null || file.isEmpty())
                 ? null
                 : cloudinaryService.uploadFile(file, folder);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

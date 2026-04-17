@@ -5,7 +5,9 @@ import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.QuestionGroupResponse;
 import com.ie303.uifive.service.QuestionGroupService;
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,9 +19,9 @@ public class QuestionGroupController {
 
     private final QuestionGroupService questionGroupService;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RolesAllowed("ADMIN")
-    public ApiResponse<QuestionGroupResponse> create(@RequestBody QuestionGroupRequest request) {
+    public ApiResponse<QuestionGroupResponse> create(@ModelAttribute @Valid QuestionGroupRequest request) {
         return ApiResponse.<QuestionGroupResponse>builder()
                 .code(1000)
                 .result(questionGroupService.create(request))
@@ -42,11 +44,11 @@ public class QuestionGroupController {
                 .build();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RolesAllowed("ADMIN")
     public ApiResponse<QuestionGroupResponse> update(
             @PathVariable Long id,
-            @RequestBody QuestionGroupRequest request) {
+            @ModelAttribute @Valid QuestionGroupRequest request) {
         return ApiResponse.<QuestionGroupResponse>builder()
                 .code(1000)
                 .result(questionGroupService.update(id, request))

@@ -25,6 +25,7 @@ public class LearningProgressService {
 
     private static final int LESSON_COMPLETION_COIN_REWARD = 18;
     private static final int LESSON_COMPLETION_EXP_REWARD = 36;
+    private static final double LESSON_PASS_ACCURACY = 80.0;
 
     private final UserService userService;
     private final UserRepo userRepo;
@@ -66,8 +67,8 @@ public class LearningProgressService {
         userLessonProgressMapper.updateEntityFromRequest(request, progress);
         progress.setUser(user);
         progress.setLesson(lesson);
-        progress.setCompleted(request.accuracy() >= 50.0);
-        progress.setProgressPercent(100.0);
+        progress.setCompleted(request.accuracy() >= LESSON_PASS_ACCURACY);
+        progress.setProgressPercent(Math.max(0.0, Math.min(100.0, request.accuracy())));
         progress.setLastAccessedAt(LocalDateTime.now());
 
         if (progress.getCompletedAt() == null) {

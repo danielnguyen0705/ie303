@@ -10,8 +10,10 @@ public record QuestionRequest(
 
         String content,
         String instruction,
-        MultipartFile audioUrl,
-        MultipartFile imageUrl,
+        String audioUrl,
+        String imageUrl,
+        MultipartFile audioFile,
+        MultipartFile imageFile,
         String questionData,
         String explanation,
         String correctAnswer,

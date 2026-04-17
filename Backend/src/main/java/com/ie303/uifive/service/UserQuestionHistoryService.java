@@ -1,9 +1,12 @@
 package com.ie303.uifive.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ie303.uifive.dto.req.UserLessonProgressRequest;
 import com.ie303.uifive.dto.req.UserQuestionHistoryRequest;
 import com.ie303.uifive.dto.res.UserQuestionHistoryResponse;
 import com.ie303.uifive.entity.Question;
+import com.ie303.uifive.entity.QuestionType;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.entity.UserQuestionHistory;
 import com.ie303.uifive.exception.AppException;
@@ -18,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +40,7 @@ public class UserQuestionHistoryService {
     private final UserQuestionHistoryMapper mapper;
     private final LearningProgressService learningProgressService;
     private final UserService userService;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public UserQuestionHistoryResponse submit(UserQuestionHistoryRequest request) {
@@ -92,6 +98,10 @@ public class UserQuestionHistoryService {
             return false;
         }
 
+        if (question.getQuestionType() == QuestionType.MATCHING) {
+            return isCorrectMatchingAnswer(question, answerText);
+        }
+
         String normalizedAnswer = answerText.trim();
 
         boolean matchedCorrectOption = questionOptionRepo.findByQuestionId(question.getId()).stream()
@@ -108,6 +118,118 @@ public class UserQuestionHistoryService {
         }
 
         return correctAnswer.trim().equalsIgnoreCase(normalizedAnswer);
+    }
+
+    private boolean isCorrectMatchingAnswer(Question question, String answerText) {
+        Map<String, String> submittedMap = parseStringMap(answerText);
+        if (submittedMap == null || submittedMap.isEmpty()) {
+            return false;
+        }
+
+        Map<String, String> expectedMap = resolveExpectedMatchingMap(question);
+        if (expectedMap == null || expectedMap.isEmpty()) {
+            return false;
+        }
+
+        for (Map.Entry<String, String> entry : expectedMap.entrySet()) {
+            String left = normalize(entry.getKey());
+            String expectedRight = normalize(entry.getValue());
+
+            String submittedRight = normalize(submittedMap.get(entry.getKey()));
+            if (submittedRight == null) {
+                String matchedKey = submittedMap.keySet().stream()
+                        .filter(key -> normalize(key).equals(left))
+                        .findFirst()
+                        .orElse(null);
+                submittedRight = matchedKey == null ? null : normalize(submittedMap.get(matchedKey));
+            }
+
+            if (submittedRight == null || !submittedRight.equals(expectedRight)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private Map<String, String> resolveExpectedMatchingMap(Question question) {
+        Map<String, String> fromCorrectAnswer = parseStringMap(question.getCorrectAnswer());
+        if (fromCorrectAnswer != null && !fromCorrectAnswer.isEmpty()) {
+            return fromCorrectAnswer;
+        }
+
+        if (question.getQuestionData() == null || question.getQuestionData().isBlank()) {
+            return null;
+        }
+
+        try {
+            Map<String, Object> data = objectMapper.readValue(
+                    question.getQuestionData(),
+                    new TypeReference<>() {
+                    }
+            );
+
+            Object answersObj = data.get("answers");
+            if (answersObj instanceof Map<?, ?> answersMap) {
+                Map<String, String> normalizedMap = new LinkedHashMap<>();
+                answersMap.forEach((k, v) -> {
+                    if (k != null && v != null) {
+                        normalizedMap.put(String.valueOf(k), String.valueOf(v));
+                    }
+                });
+                if (!normalizedMap.isEmpty()) {
+                    return normalizedMap;
+                }
+            }
+
+            Object leftObj = data.get("left");
+            Object rightObj = data.get("right");
+            if (leftObj instanceof List<?> leftList && rightObj instanceof List<?> rightList) {
+                int size = Math.min(leftList.size(), rightList.size());
+                Map<String, String> byOrderMap = new LinkedHashMap<>();
+
+                for (int i = 0; i < size; i += 1) {
+                    Object left = leftList.get(i);
+                    Object right = rightList.get(i);
+                    if (left != null && right != null) {
+                        byOrderMap.put(String.valueOf(left), String.valueOf(right));
+                    }
+                }
+
+                if (!byOrderMap.isEmpty()) {
+                    return byOrderMap;
+                }
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+
+        return null;
+    }
+
+    private Map<String, String> parseStringMap(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            Map<String, String> parsed = objectMapper.readValue(
+                    value,
+                    new TypeReference<>() {
+                    }
+            );
+
+            return parsed == null || parsed.isEmpty() ? null : parsed;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.trim().replaceAll("\\s+", " ").toLowerCase();
     }
 
     private Long resolveLessonId(Question question) {

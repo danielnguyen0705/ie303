@@ -1,7 +1,9 @@
 package com.ie303.uifive.repo;
 
 import com.ie303.uifive.entity.UserQuestionHistory;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -14,6 +16,10 @@ public interface UserQuestionHistoryRepo extends JpaRepository<UserQuestionHisto
     List<UserQuestionHistory> findByUserId(Long userId);
 
     List<UserQuestionHistory> findByQuestionId(Long questionId);
+
+    @Modifying
+    @Transactional
+    void deleteByQuestionIdIn(List<Long> questionIds);
 
     @Query("""
         select count(distinct q.id)

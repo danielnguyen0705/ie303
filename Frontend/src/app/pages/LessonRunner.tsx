@@ -1,14 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   ChevronLeft,
   CheckCircle2,
   Loader2,
+  Mic,
+  MicOff,
   RotateCcw,
   Volume2,
   XCircle,
 } from "lucide-react";
-import { getQuestionsByLesson } from "@/api";
+import {
+  completeLesson,
+  getLessonById,
+  getQuestionsByLesson,
+  submitQuestionHistory,
+} from "@/api";
+import { ENV } from "@/config/env";
 import type {
   LessonQuestionResponse,
   QuestionDto,
@@ -33,6 +41,13 @@ type AnswerState = Record<
     correct: boolean | null;
   }
 >;
+
+type LessonRewardState = {
+  coinsEarned: number;
+  expEarned: number;
+  progressPercent: number;
+  currentExp: number;
+};
 
 function flattenQuestions(data: LessonQuestionResponse): FlatQuestionItem[] {
   const flat: FlatQuestionItem[] = [];
@@ -115,6 +130,10 @@ function isManualType(type: QuestionType) {
   ].includes(type);
 }
 
+function isAutoGradedType(type: QuestionType) {
+  return !isManualType(type);
+}
+
 function normalizeText(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
@@ -128,12 +147,30 @@ function parseJsonSafe<T>(value?: string | null): T | null {
   }
 }
 
+function resolveMediaUrl(value?: string | null): string | null {
+  if (!value) return null;
+
+  const normalized = value.trim().replace(/\\/g, "/");
+  if (!normalized) return null;
+
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(normalized)) {
+    return normalized;
+  }
+
+  try {
+    const path = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return new URL(path, ENV.BACKEND_BASE_URL).toString();
+  } catch {
+    return normalized;
+  }
+}
+
 function getQuestionImageUrl(group: QuestionGroupDto | null, question: QuestionDto) {
-  return question.imageUrl || group?.imageUrl || null;
+  return resolveMediaUrl(question.imageUrl || group?.imageUrl || null);
 }
 
 function getQuestionAudioUrl(group: QuestionGroupDto | null, question: QuestionDto) {
-  return question.audioUrl || group?.audioUrl || null;
+  return resolveMediaUrl(question.audioUrl || group?.audioUrl || null);
 }
 
 function MediaBlock({
@@ -226,6 +263,7 @@ function GroupSharedContent({
 
 function LessonRunner() {
   const { lessonId } = useParams();
+  const navigate = useNavigate();
   const lessonIdNumber = useMemo(() => Number(lessonId), [lessonId]);
 
   const [data, setData] = useState<LessonQuestionResponse | null>(null);
@@ -235,6 +273,29 @@ function LessonRunner() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerState>({});
   const [finished, setFinished] = useState(false);
+  const [submittingCurrent, setSubmittingCurrent] = useState(false);
+  const [submitApiError, setSubmitApiError] = useState<string | null>(null);
+  const [completingLesson, setCompletingLesson] = useState(false);
+  const [completeApiError, setCompleteApiError] = useState<string | null>(null);
+  const [lessonReward, setLessonReward] = useState<LessonRewardState | null>(null);
+  const [sectionId, setSectionId] = useState<number | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const [speechPreview, setSpeechPreview] = useState("");
+  const [speechSessionQuestionId, setSpeechSessionQuestionId] = useState<
+    number | null
+  >(null);
+  const speechRecognitionRef = useRef<{
+    stop: () => void;
+    start: () => void;
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    onresult: ((event: any) => void) | null;
+    onerror: ((event: { error?: string }) => void) | null;
+    onend: (() => void) | null;
+  } | null>(null);
 
   useEffect(() => {
     const loadQuestions = async () => {
@@ -267,6 +328,19 @@ function LessonRunner() {
     loadQuestions();
   }, [lessonIdNumber]);
 
+  useEffect(() => {
+    const loadLessonMeta = async () => {
+      if (!lessonIdNumber || Number.isNaN(lessonIdNumber)) return;
+
+      const res = await getLessonById(lessonIdNumber);
+      if (res.success && res.data?.sectionId) {
+        setSectionId(res.data.sectionId);
+      }
+    };
+
+    void loadLessonMeta();
+  }, [lessonIdNumber]);
+
   const currentItem = questions[currentIndex];
   const currentQuestion = currentItem?.question;
   const currentGroup = currentItem?.group;
@@ -286,9 +360,30 @@ function LessonRunner() {
     return Object.values(answers).filter((a) => a.correct === true).length;
   }, [answers]);
 
+  const questionTypeById = useMemo(() => {
+    return new Map(questions.map((item) => [item.question.id, item.question.questionType]));
+  }, [questions]);
+
+  const autoGradedSubmitted = useMemo(() => {
+    return Object.entries(answers).filter(([questionId, state]) => {
+      if (!state.submitted) return false;
+      const type = questionTypeById.get(Number(questionId));
+      return !!type && isAutoGradedType(type);
+    });
+  }, [answers, questionTypeById]);
+
+  const autoGradedCorrectCount = useMemo(() => {
+    return autoGradedSubmitted.filter(([, state]) => state.correct === true).length;
+  }, [autoGradedSubmitted]);
+
+  const autoGradedSubmittedCount = autoGradedSubmitted.length;
+
   const totalSubmitted = useMemo(() => {
     return Object.values(answers).filter((a) => a.submitted).length;
   }, [answers]);
+
+  const submittedPercent =
+    questions.length > 0 ? Math.round((totalSubmitted / questions.length) * 100) : 0;
 
   const progressPercent =
     questions.length > 0
@@ -334,6 +429,7 @@ function LessonRunner() {
   }, [currentQuestion]);
 
   const setAnswer = (questionId: number, answer: UserAnswer) => {
+    setSubmitApiError(null);
     setAnswers((prev) => ({
       ...prev,
       [questionId]: {
@@ -344,6 +440,150 @@ function LessonRunner() {
     }));
   };
 
+  const toAnswerText = (answer: UserAnswer, question: QuestionDto) => {
+    if (typeof answer === "string") {
+      if (isMCQ(question.questionType)) {
+        const normalizedAnswer = normalizeText(answer);
+        const selectedOption = question.options.find(
+          (option) =>
+            normalizeText(option.optionKey) === normalizedAnswer ||
+            normalizeText(option.content) === normalizedAnswer,
+        );
+
+        return (selectedOption?.content || answer).trim();
+      }
+
+      return answer.trim();
+    }
+
+    if (Array.isArray(answer)) {
+      return answer
+        .map((item) => {
+          const [_, value] = item.split("|||");
+          return value ?? item;
+        })
+        .join(" ")
+        .trim();
+    }
+
+    return JSON.stringify(answer);
+  };
+
+  const stopSpeechCapture = () => {
+    speechRecognitionRef.current?.stop();
+    speechRecognitionRef.current = null;
+    setIsListening(false);
+    setSpeechPreview("");
+    setSpeechSessionQuestionId(null);
+  };
+
+  const startSpeechCapture = () => {
+    if (!currentQuestion || currentAnswer?.submitted) return;
+
+    const speechWindow = window as Window & {
+      SpeechRecognition?: new () => {
+        stop: () => void;
+        start: () => void;
+        lang: string;
+        continuous: boolean;
+        interimResults: boolean;
+        onresult: ((event: any) => void) | null;
+        onerror: ((event: { error?: string }) => void) | null;
+        onend: (() => void) | null;
+      };
+      webkitSpeechRecognition?: new () => {
+        stop: () => void;
+        start: () => void;
+        lang: string;
+        continuous: boolean;
+        interimResults: boolean;
+        onresult: ((event: any) => void) | null;
+        onerror: ((event: { error?: string }) => void) | null;
+        onend: (() => void) | null;
+      };
+    };
+
+    const SpeechRecognitionCtor =
+      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      setSpeechSupported(false);
+      setSpeechError("Trình duyệt chưa hỗ trợ nhận diện giọng nói.");
+      return;
+    }
+
+    setSpeechSupported(true);
+    setSpeechError(null);
+    stopSpeechCapture();
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: any) => {
+      let finalText = "";
+      let interimText = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const transcript = event.results[i][0]?.transcript ?? "";
+
+        if (event.results[i].isFinal) {
+          finalText += transcript;
+        } else {
+          interimText += transcript;
+        }
+      }
+
+      if (interimText.trim()) {
+        setSpeechPreview(interimText.trim());
+      }
+
+      if (finalText.trim()) {
+        const previous =
+          typeof answers[currentQuestion.id]?.answer === "string"
+            ? answers[currentQuestion.id].answer
+            : "";
+
+        const nextText = `${previous} ${finalText}`.replace(/\s+/g, " ").trim();
+        setAnswer(currentQuestion.id, nextText);
+        setSpeechPreview("");
+      }
+    };
+
+    recognition.onerror = (event) => {
+      setSpeechError(event.error || "Không thể nhận diện giọng nói.");
+      setIsListening(false);
+      setSpeechSessionQuestionId(null);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setSpeechPreview("");
+      setSpeechSessionQuestionId(null);
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.start();
+    speechRecognitionRef.current = recognition;
+    setIsListening(true);
+    setSpeechSessionQuestionId(currentQuestion.id);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopSpeechCapture();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentQuestion) return;
+
+    if (isListening && speechSessionQuestionId !== currentQuestion.id) {
+      stopSpeechCapture();
+    }
+  }, [currentQuestion, isListening, speechSessionQuestionId]);
+
   const updateMatchingAnswer = (leftItem: string, selectedRight: string) => {
     if (!currentQuestion) return;
 
@@ -353,6 +593,17 @@ function LessonRunner() {
         ? { ...current, [leftItem]: selectedRight }
         : { [leftItem]: selectedRight };
 
+    setAnswer(currentQuestion.id, next);
+  };
+
+  const removeMatchingAnswer = (leftItem: string) => {
+    if (!currentQuestion) return;
+
+    const current = answers[currentQuestion.id]?.answer;
+    if (!current || typeof current !== "object" || Array.isArray(current)) return;
+
+    const next = { ...current };
+    delete next[leftItem];
     setAnswer(currentQuestion.id, next);
   };
 
@@ -413,71 +664,154 @@ function LessonRunner() {
     }
 
     if (typeof answer === "object" && answer !== null) {
+      if (currentQuestion.questionType === "MATCHING") {
+        const answerMap = !Array.isArray(answer) ? answer : {};
+        const leftItems = matchingData?.left ?? [];
+
+        if (leftItems.length === 0) {
+          return Object.keys(answerMap).length > 0;
+        }
+
+        return leftItems.every(
+          (leftItem) =>
+            typeof answerMap[leftItem] === "string" &&
+            String(answerMap[leftItem]).trim().length > 0,
+        );
+      }
+
       return Object.keys(answer).length > 0;
     }
 
     return false;
-  }, [currentAnswer, currentQuestion]);
+  }, [currentAnswer, currentQuestion, matchingData]);
 
-  const submitCurrent = () => {
+  const submitCurrent = async () => {
     if (!currentQuestion) return;
 
     const saved = answers[currentQuestion.id];
     if (!saved) return;
 
-    let correct: boolean | null = false;
+    setSubmittingCurrent(true);
+    setSubmitApiError(null);
 
-    if (isMCQ(currentQuestion.questionType)) {
-      const selected = String(saved.answer);
-      const correctOption = currentQuestion.options.find((o) => o.isCorrect);
-      correct = correctOption ? correctOption.optionKey === selected : false;
-    } else if (currentQuestion.questionType === "TRUE_FALSE_NG") {
-      const selected = normalizeText(String(saved.answer));
-      const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
-      correct = selected === expected;
-    } else if (isFillType(currentQuestion.questionType)) {
-      const typed = normalizeText(String(saved.answer));
-      const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
-      correct = typed === expected;
-    } else if (currentQuestion.questionType === "SENTENCE_REORDER") {
-      const builtSentence = getDisplayedReorderSentence();
-      const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
-      correct = normalizeText(builtSentence) === expected;
-    } else if (currentQuestion.questionType === "MATCHING") {
-      const answerMap =
-        saved.answer && typeof saved.answer === "object" && !Array.isArray(saved.answer)
-          ? saved.answer
-          : {};
+    try {
+      let correct: boolean | null = false;
 
-      const expectedMap =
-        parseJsonSafe<Record<string, string>>(currentQuestion.correctAnswer || "") ||
-        matchingData?.answers ||
-        null;
+      if (isMCQ(currentQuestion.questionType)) {
+        const selected = normalizeText(String(saved.answer));
+        const correctOption = currentQuestion.options.find((o) => o.isCorrect);
+        correct = correctOption
+          ? normalizeText(correctOption.optionKey) === selected ||
+            normalizeText(correctOption.content) === selected
+          : false;
+      } else if (currentQuestion.questionType === "TRUE_FALSE_NG") {
+        const selected = normalizeText(String(saved.answer));
+        const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
+        correct = selected === expected;
+      } else if (isFillType(currentQuestion.questionType)) {
+        const typed = normalizeText(String(saved.answer));
+        const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
+        correct = typed === expected;
+      } else if (currentQuestion.questionType === "SENTENCE_REORDER") {
+        const builtSentence = getDisplayedReorderSentence();
+        const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
+        correct = normalizeText(builtSentence) === expected;
+      } else if (currentQuestion.questionType === "MATCHING") {
+        const answerMap =
+          saved.answer &&
+          typeof saved.answer === "object" &&
+          !Array.isArray(saved.answer)
+            ? saved.answer
+            : {};
 
-      if (!expectedMap) {
+        const expectedMap =
+          parseJsonSafe<Record<string, string>>(currentQuestion.correctAnswer || "") ||
+          matchingData?.answers ||
+          null;
+
+        if (!expectedMap) {
+          correct = null;
+        } else {
+          const leftItems = Object.keys(expectedMap);
+          correct = leftItems.every(
+            (left) =>
+              normalizeText(answerMap[left] || "") ===
+              normalizeText(expectedMap[left] || ""),
+          );
+        }
+      } else if (isManualType(currentQuestion.questionType)) {
         correct = null;
-      } else {
-        const leftItems = Object.keys(expectedMap);
-        correct = leftItems.every(
-          (left) => normalizeText(answerMap[left] || "") === normalizeText(expectedMap[left] || ""),
+      }
+
+      const answerText = toAnswerText(saved.answer, currentQuestion);
+
+      const res = await submitQuestionHistory({
+        questionId: currentQuestion.id,
+        answer_text: answerText,
+      });
+
+      if (res.success && res.data) {
+        correct = res.data.correct;
+      } else if (!res.success) {
+        setSubmitApiError(
+          res.error?.message || "Không gửi được câu trả lời lên hệ thống.",
         );
       }
-    } else if (isManualType(currentQuestion.questionType)) {
-      correct = null;
-    }
 
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestion.id]: {
-        ...prev[currentQuestion.id],
-        submitted: true,
-        correct,
-      },
-    }));
+      setAnswers((prev) => ({
+        ...prev,
+        [currentQuestion.id]: {
+          ...prev[currentQuestion.id],
+          submitted: true,
+          correct,
+        },
+      }));
+    } finally {
+      setSubmittingCurrent(false);
+    }
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     if (currentIndex >= questions.length - 1) {
+      if (!lessonIdNumber || Number.isNaN(lessonIdNumber)) {
+        setCompleteApiError("Không thể lưu lesson vì lessonId không hợp lệ.");
+        setFinished(true);
+        return;
+      }
+
+      const accuracyRaw =
+        autoGradedSubmittedCount > 0
+          ? (autoGradedCorrectCount / autoGradedSubmittedCount) * 100
+          : 0;
+      const accuracy = Number(accuracyRaw.toFixed(1));
+      const score = Number((accuracy / 10).toFixed(1));
+
+      setCompletingLesson(true);
+      setCompleteApiError(null);
+
+      try {
+        const res = await completeLesson({
+          lessonId: lessonIdNumber,
+          score,
+          accuracy,
+        });
+
+        if (res.success && res.data) {
+          setLessonReward({
+            coinsEarned: res.data.coinsEarned,
+            expEarned: res.data.expEarned,
+            progressPercent: res.data.progressPercent,
+            currentExp: res.data.currentExp,
+          });
+        } else if (!res.success) {
+          setCompleteApiError(
+            res.error?.message || "Không lưu được trạng thái hoàn thành lesson.",
+          );
+        }
+      } finally {
+        setCompletingLesson(false);
+      }
+
       setFinished(true);
       return;
     }
@@ -711,32 +1045,99 @@ function LessonRunner() {
           ? currentAnswer.answer
           : {};
 
+      const usedRightValues = new Set(
+        Object.values(answerMap)
+          .map((value) => String(value || "").trim())
+          .filter(Boolean),
+      );
+
+      const availableRightItems = rightItems.filter(
+        (rightItem) => !usedRightValues.has(String(rightItem).trim()),
+      );
+
       return (
         <div className="space-y-4">
           {leftItems.length > 0 && rightItems.length > 0 ? (
-            <div className="space-y-3">
-              {leftItems.map((leftItem) => (
-                <div
-                  key={leftItem}
-                  className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3 items-center rounded-2xl border border-gray-200 p-4"
-                >
-                  <div className="font-semibold text-[#1e2e51]">{leftItem}</div>
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
+                <p className="text-sm font-bold text-[#155ca5] mb-3">
+                  Kéo thẻ nghĩa bên dưới vào từng từ bên trái
+                </p>
 
-                  <select
-                    disabled={currentAnswer?.submitted}
-                    value={answerMap[leftItem] || ""}
-                    onChange={(e) => updateMatchingAnswer(leftItem, e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#155ca5]"
-                  >
-                    <option value="">Select match</option>
-                    {rightItems.map((rightItem) => (
-                      <option key={`${leftItem}-${rightItem}`} value={rightItem}>
+                {availableRightItems.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {availableRightItems.map((rightItem) => (
+                      <button
+                        key={`matching-card-${rightItem}`}
+                        type="button"
+                        draggable={!currentAnswer?.submitted}
+                        disabled={currentAnswer?.submitted}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData("text/plain", rightItem);
+                          event.dataTransfer.effectAllowed = "move";
+                        }}
+                        className="px-4 py-2 rounded-xl border border-[#bfd8ff] bg-white text-[#155ca5] font-semibold hover:bg-[#eef6ff] disabled:opacity-60"
+                      >
                         {rightItem}
-                      </option>
+                      </button>
                     ))}
-                  </select>
-                </div>
-              ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Tất cả thẻ đã được ghép.</p>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {leftItems.map((leftItem) => {
+                  const selectedValue = answerMap[leftItem] || "";
+
+                  return (
+                    <div
+                      key={leftItem}
+                      className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-3 items-center rounded-2xl border border-gray-200 p-4"
+                    >
+                      <div className="font-semibold text-[#1e2e51]">{leftItem}</div>
+
+                      <div
+                        onDragOver={(event) => {
+                          if (currentAnswer?.submitted) return;
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(event) => {
+                          if (currentAnswer?.submitted) return;
+                          event.preventDefault();
+                          const dropped = event.dataTransfer.getData("text/plain");
+                          if (!dropped) return;
+                          if (!rightItems.includes(dropped)) return;
+                          updateMatchingAnswer(leftItem, dropped);
+                        }}
+                        className={`min-h-[56px] rounded-xl border-2 border-dashed px-3 py-2 flex items-center justify-between gap-2 ${
+                          selectedValue
+                            ? "border-[#bfd8ff] bg-[#f8fbff]"
+                            : "border-gray-300 bg-white"
+                        }`}
+                      >
+                        {selectedValue ? (
+                          <span className="text-[#155ca5] font-semibold">{selectedValue}</span>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Thả thẻ vào đây</span>
+                        )}
+
+                        {selectedValue && !currentAnswer?.submitted && (
+                          <button
+                            type="button"
+                            onClick={() => removeMatchingAnswer(leftItem)}
+                            className="text-xs px-2 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50"
+                          >
+                            Bỏ
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6">
@@ -784,21 +1185,64 @@ function LessonRunner() {
       currentQuestion.questionType === "PRONUNCIATION" ||
       currentQuestion.questionType === "TOPIC_SPEAKING"
     ) {
+      const speakingActive =
+        isListening && speechSessionQuestionId === currentQuestion.id;
+
       return (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 space-y-4">
           <p className="font-bold text-[#1e2e51]">
             Dạng {getQuestionTypeLabel(currentQuestion.questionType)}
           </p>
           <p className="text-sm text-gray-600">
-            Tạm thời chưa tích hợp ghi âm. Hiện tại có thể dùng ô text dưới đây để lưu câu trả lời tạm.
+            Nhấn "Bắt đầu nói" để hệ thống nghe và tự hiện chữ vào ô transcript.
           </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {!speakingActive ? (
+              <button
+                type="button"
+                disabled={currentAnswer?.submitted || !speechSupported}
+                onClick={startSpeechCapture}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#bfd8ff] bg-white text-[#155ca5] font-semibold hover:bg-[#eef6ff] disabled:opacity-50"
+              >
+                <Mic className="w-4 h-4" />
+                Bắt đầu nói
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={currentAnswer?.submitted}
+                onClick={stopSpeechCapture}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 font-semibold hover:bg-red-100 disabled:opacity-50"
+              >
+                <MicOff className="w-4 h-4" />
+                Dừng nghe
+              </button>
+            )}
+
+            {speakingActive && (
+              <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200 rounded-full px-3 py-1">
+                Đang nghe... nói để hiện chữ
+              </span>
+            )}
+          </div>
+
+          {speechPreview && (
+            <p className="text-sm text-[#155ca5]">
+              Đang nghe: <span className="font-semibold">{speechPreview}</span>
+            </p>
+          )}
+
+          {speechError && (
+            <p className="text-sm text-red-600">Lỗi voice: {speechError}</p>
+          )}
 
           <textarea
             rows={4}
             disabled={currentAnswer?.submitted}
             value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
             onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
-            placeholder="Nhập transcript hoặc ghi chú..."
+            placeholder="Transcript se hien tai day khi ban noi..."
             className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-none bg-white"
           />
         </div>
@@ -938,31 +1382,72 @@ function LessonRunner() {
               Hoàn thành lesson
             </h1>
             <p className="text-gray-600 mt-3 text-lg">
-              Bạn làm đúng {totalCorrect}/{questions.length} câu đã chấm tự động.
+              Auto-grade: đúng {autoGradedCorrectCount}/{autoGradedSubmittedCount || 0} câu.
             </p>
             <p className="text-sm text-gray-500 mt-2">
               Đã nộp: {totalSubmitted}/{questions.length} câu
             </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Điều kiện qua bài: accuracy từ 80% trở lên.
+            </p>
+
+            {lessonReward && (
+              <p className="text-sm text-[#1e2e51] mt-2 font-semibold">
+                Thưởng: +{lessonReward.coinsEarned} coins, +{lessonReward.expEarned} EXP
+              </p>
+            )}
+
+            {lessonReward && (
+              <p className="text-sm text-gray-600 mt-1">
+                Tiến độ lesson (BE2): {lessonReward.progressPercent}% | Tổng EXP: {lessonReward.currentExp}
+              </p>
+            )}
+
+            {completeApiError && (
+              <p className="text-sm text-red-600 mt-2">{completeApiError}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-center gap-4">
             <button
               onClick={() => {
+                stopSpeechCapture();
                 setFinished(false);
                 setCurrentIndex(0);
                 setAnswers({});
+                setSubmitApiError(null);
+                setCompleteApiError(null);
+                setLessonReward(null);
               }}
               className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold hover:bg-[#0f4c88]"
             >
               Làm lại
             </button>
 
-            <Link
-              to="/"
-              className="px-6 py-3 rounded-xl border border-gray-300 font-bold text-[#1e2e51] hover:bg-gray-50"
-            >
-              Về dashboard
-            </Link>
+            {sectionId ? (
+              <Link
+                to={`/sections/${sectionId}/lessons`}
+                className="px-6 py-3 rounded-xl border border-gray-300 font-bold text-[#1e2e51] hover:bg-gray-50"
+              >
+                Về danh sách lesson
+              </Link>
+            ) : (
+              <Link
+                to="/"
+                className="px-6 py-3 rounded-xl border border-gray-300 font-bold text-[#1e2e51] hover:bg-gray-50"
+              >
+                Về dashboard
+              </Link>
+            )}
+
+            {sectionId && (
+              <button
+                onClick={() => navigate(`/sections/${sectionId}/lessons`)}
+                className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d]"
+              >
+                End lesson
+              </button>
+            )}
           </div>
         </div>
       </main>
@@ -1044,27 +1529,36 @@ function LessonRunner() {
 
       <footer className="mt-8 flex items-center justify-between gap-4 flex-wrap">
         <div className="text-sm text-gray-500 font-medium">
-          Đúng {totalCorrect}/{questions.length} câu
+          Đúng {totalCorrect}/{questions.length} câu | Hoàn thành {submittedPercent}%
         </div>
 
         <div className="flex items-center gap-3">
           {!currentAnswer?.submitted ? (
             <button
               onClick={submitCurrent}
-              disabled={!canSubmitCurrent}
+              disabled={!canSubmitCurrent || submittingCurrent}
               className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0f4c88]"
             >
-              Kiểm tra
+              {submittingCurrent ? "Đang nộp..." : "Nộp câu trả lời"}
             </button>
           ) : (
             <button
               onClick={goNext}
-              className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d]"
+              disabled={currentIndex === questions.length - 1 && completingLesson}
+              className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d] disabled:opacity-60"
             >
-              {currentIndex === questions.length - 1 ? "Kết thúc" : "Câu tiếp"}
+              {currentIndex === questions.length - 1
+                ? completingLesson
+                  ? "Đang lưu kết quả..."
+                  : "Kết thúc"
+                : "Câu tiếp"}
             </button>
           )}
         </div>
+
+        {submitApiError && (
+          <p className="w-full text-sm text-red-600">{submitApiError}</p>
+        )}
       </footer>
     </main>
   );

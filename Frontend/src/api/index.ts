@@ -77,9 +77,9 @@ export { getAllGrades, getGrade } from "./grades";
 
 export { getSectionsByUnitProgress, getSection } from "./sections";
 
-export { getQuestionsByLesson } from "./questions";
+export { getQuestionsByLesson, submitQuestionHistory } from "./questions";
 
-export { getLessonsBySectionProgress } from "./lessons";
+export { getLessonsBySectionProgress, completeLesson, getLessonById } from "./lessons";
 
 export {
   // Exercises

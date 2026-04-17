@@ -15,9 +15,13 @@ public interface QuestionGroupMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "lesson", ignore = true)
+    @Mapping(target = "audioUrl", ignore = true)
+    @Mapping(target = "imageUrl", ignore = true)
     QuestionGroup toEntity(QuestionGroupRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "lesson", ignore = true)
+    @Mapping(target = "audioUrl", ignore = true)
+    @Mapping(target = "imageUrl", ignore = true)
     void updateEntityFromRequest(QuestionGroupRequest request, @MappingTarget QuestionGroup entity);
 }

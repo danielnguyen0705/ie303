@@ -152,18 +152,19 @@ function appendStringIfPresent(
 
 function appendMediaField(
   formData: FormData,
-  key: string,
+  urlKey: string,
+  fileKey: string,
   value?: string | File | null,
 ) {
   if (value == null) return;
 
   if (value instanceof File) {
-    formData.append(key, value);
+    formData.append(fileKey, value);
     return;
   }
 
   if (typeof value === "string" && value.trim() !== "") {
-    formData.append(key, value);
+    formData.append(urlKey, value);
   }
 }
 
@@ -616,8 +617,8 @@ export async function createQuestion(
   appendStringIfPresent(formData, "lessonId", payload.lessonId);
   appendStringIfPresent(formData, "questionGroupId", payload.questionGroupId);
 
-  appendMediaField(formData, "audioUrl", payload.audioUrl);
-  appendMediaField(formData, "imageUrl", payload.imageUrl);
+  appendMediaField(formData, "audioUrl", "audioFile", payload.audioUrl);
+  appendMediaField(formData, "imageUrl", "imageFile", payload.imageUrl);
 
   return request<Question>("/questions", {
     method: "POST",
@@ -645,8 +646,8 @@ export async function updateQuestion(params: {
   appendStringIfPresent(formData, "lessonId", params.data.lessonId);
   appendStringIfPresent(formData, "questionGroupId", params.data.questionGroupId);
 
-  appendMediaField(formData, "audioUrl", params.data.audioUrl);
-  appendMediaField(formData, "imageUrl", params.data.imageUrl);
+  appendMediaField(formData, "audioUrl", "audioFile", params.data.audioUrl);
+  appendMediaField(formData, "imageUrl", "imageFile", params.data.imageUrl);
 
   return request<Question>(`/questions/${params.questionId}`, {
     method: "PUT",
@@ -701,9 +702,21 @@ export async function deleteQuestionOption(payload: {
 export async function createQuestionGroup(
   payload: CreateQuestionGroupRequest,
 ): Promise<AdminApiResponse<QuestionGroup>> {
+  const formData = new FormData();
+
+  appendStringIfPresent(formData, "lessonId", payload.lessonId);
+  appendStringIfPresent(formData, "groupType", payload.groupType);
+  appendStringIfPresent(formData, "title", payload.title);
+  appendStringIfPresent(formData, "instruction", payload.instruction);
+  appendStringIfPresent(formData, "sharedContent", payload.sharedContent);
+  appendStringIfPresent(formData, "groupData", payload.groupData);
+  appendMediaField(formData, "audioUrl", "audioFile", payload.audioUrl);
+  appendMediaField(formData, "imageUrl", "imageFile", payload.imageUrl);
+
   return request<QuestionGroup>("/question-groups", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: formData,
+    headers: {},
   });
 }
 
@@ -711,9 +724,21 @@ export async function updateQuestionGroup(params: {
   groupId: number;
   data: UpdateQuestionGroupRequest;
 }): Promise<AdminApiResponse<QuestionGroup>> {
+  const formData = new FormData();
+
+  appendStringIfPresent(formData, "lessonId", params.data.lessonId);
+  appendStringIfPresent(formData, "groupType", params.data.groupType);
+  appendStringIfPresent(formData, "title", params.data.title);
+  appendStringIfPresent(formData, "instruction", params.data.instruction);
+  appendStringIfPresent(formData, "sharedContent", params.data.sharedContent);
+  appendStringIfPresent(formData, "groupData", params.data.groupData);
+  appendMediaField(formData, "audioUrl", "audioFile", params.data.audioUrl);
+  appendMediaField(formData, "imageUrl", "imageFile", params.data.imageUrl);
+
   return request<QuestionGroup>(`/question-groups/${params.groupId}`, {
     method: "PUT",
-    body: JSON.stringify(params.data),
+    body: formData,
+    headers: {},
   });
 }
 
