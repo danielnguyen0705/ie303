@@ -284,6 +284,21 @@ function createEmptyGroupForm(): GroupFormState {
   };
 }
 
+function DisabledField({
+  label,
+  placeholder,
+}: {
+  label: string;
+  placeholder: string;
+}) {
+  return (
+    <div className="space-y-2 opacity-70">
+      <label className="text-sm font-medium">{label}</label>
+      <Input disabled value="" placeholder={placeholder} className="bg-slate-100" />
+    </div>
+  );
+}
+
 function isOptionBasedType(type?: string) {
   return !!type && OPTION_BASED_TYPES.includes(type);
 }
@@ -375,7 +390,7 @@ function buildOptionsFromExcelRow(row: {
     optionKey: key,
     content: String(
       row[
-        `option${key}` as "optionA" | "optionB" | "optionC" | "optionD"
+      `option${key}` as "optionA" | "optionB" | "optionC" | "optionD"
       ] || "",
     ).trim(),
     isCorrect: correctOption === key,
@@ -386,14 +401,14 @@ function mapQuestionToSingleForm(question: QuestionItem): SingleFormState {
   const options =
     Array.isArray(question.options) && question.options.length > 0
       ? OPTION_KEYS.map((key) => {
-          const found = question.options?.find((opt) => opt.optionKey === key);
-          return {
-            id: found?.id,
-            optionKey: key,
-            content: found?.content || "",
-            isCorrect: Boolean(found?.isCorrect),
-          };
-        })
+        const found = question.options?.find((opt) => opt.optionKey === key);
+        return {
+          id: found?.id,
+          optionKey: key,
+          content: found?.content || "",
+          isCorrect: Boolean(found?.isCorrect),
+        };
+      })
       : createDefaultOptions();
 
   return {
@@ -415,14 +430,14 @@ function mapQuestionToGroupChildForm(question: QuestionItem): GroupChildFormStat
   const options =
     Array.isArray(question.options) && question.options.length > 0
       ? OPTION_KEYS.map((key) => {
-          const found = question.options?.find((opt) => opt.optionKey === key);
-          return {
-            id: found?.id,
-            optionKey: key,
-            content: found?.content || "",
-            isCorrect: Boolean(found?.isCorrect),
-          };
-        })
+        const found = question.options?.find((opt) => opt.optionKey === key);
+        return {
+          id: found?.id,
+          optionKey: key,
+          content: found?.content || "",
+          isCorrect: Boolean(found?.isCorrect),
+        };
+      })
       : createDefaultOptions();
 
   return {
@@ -906,7 +921,7 @@ export default function QuestionPanel({
         content: singleForm.content.trim(),
         instruction: singleForm.instruction.trim() || undefined,
         audioUrl: supportsSingleAudio(selectedSingleType)
-          ? singleForm.audioFile || undefined
+          ? singleForm.audioFile || singleForm.existingAudioUrl?.trim() || undefined
           : undefined,
         imageUrl: supportsSingleImage(selectedSingleType)
           ? singleForm.imageFile || undefined
@@ -925,15 +940,15 @@ export default function QuestionPanel({
 
       const questionRes = isEditing
         ? await adminApi.updateContentQuestion({
-            questionId: singleForm.id!,
-            data: payload,
-          })
+          questionId: singleForm.id!,
+          data: payload,
+        })
         : await adminApi.createContentQuestion(payload);
 
       if (!questionRes.success || !questionRes.data?.id) {
         throw new Error(
           questionRes.error?.message ||
-            (isEditing ? "Không thể cập nhật question" : "Không thể tạo question"),
+          (isEditing ? "Không thể cập nhật question" : "Không thể tạo question"),
         );
       }
 
@@ -978,64 +993,68 @@ export default function QuestionPanel({
       return;
     }
 
+    let createdGroupId: number | null = null;
+
     try {
       setSubmitting(true);
 
       const isEditing = dialogMode === "edit-group" && !!groupForm.id;
 
+      const groupAudioUrl = supportsGroupAudio(selectedGroupType)
+        ? groupForm.audioFile || groupForm.existingAudioUrl?.trim() || undefined
+        : undefined;
+      const groupImageUrl = supportsGroupImage(selectedGroupType)
+        ? groupForm.imageFile || groupForm.existingImageUrl?.trim() || undefined
+        : undefined;
+
       const groupRes = isEditing
         ? await adminApi.updateQuestionGroup({
-            groupId: groupForm.id!,
-            data: {
-              lessonId: selectedLesson!.id,
-              groupType: selectedGroupType as never,
-              title: groupForm.title.trim(),
-              instruction: groupForm.instruction.trim() || undefined,
-              sharedContent: groupForm.sharedContent.trim() || undefined,
-              audioUrl: supportsGroupAudio(selectedGroupType)
-                ? groupForm.audioFile || undefined
-                : undefined,
-              imageUrl: supportsGroupImage(selectedGroupType)
-                ? groupForm.imageFile || undefined
-                : undefined,
-              groupData: groupForm.groupData.trim() || undefined,
-            },
-          })
-        : await adminApi.createQuestionGroup({
+          groupId: groupForm.id!,
+          data: {
             lessonId: selectedLesson!.id,
             groupType: selectedGroupType as never,
             title: groupForm.title.trim(),
             instruction: groupForm.instruction.trim() || undefined,
             sharedContent: groupForm.sharedContent.trim() || undefined,
-            audioUrl: supportsGroupAudio(selectedGroupType)
-              ? groupForm.audioFile || undefined
-              : undefined,
-            imageUrl: supportsGroupImage(selectedGroupType)
-              ? groupForm.imageFile || undefined
-              : undefined,
+            audioUrl: groupAudioUrl,
+            imageUrl: groupImageUrl,
             groupData: groupForm.groupData.trim() || undefined,
-          });
+          },
+        })
+        : await adminApi.createQuestionGroup({
+          lessonId: selectedLesson!.id,
+          groupType: selectedGroupType as never,
+          title: groupForm.title.trim(),
+          instruction: groupForm.instruction.trim() || undefined,
+          sharedContent: groupForm.sharedContent.trim() || undefined,
+          audioUrl: groupAudioUrl,
+          imageUrl: groupImageUrl,
+          groupData: groupForm.groupData.trim() || undefined,
+        });
 
       if (!groupRes.success || !groupRes.data?.id) {
         throw new Error(
           groupRes.error?.message ||
-            (isEditing
-              ? "Không thể cập nhật question group"
-              : "Không thể tạo question group"),
+          (isEditing
+            ? "Không thể cập nhật question group"
+            : "Không thể tạo question group"),
         );
       }
 
       const groupId = groupRes.data.id;
+      if (!isEditing) {
+        createdGroupId = groupId;
+      }
       const childType = getDefaultChildType(selectedGroupType);
 
       const existingChildIds =
         isEditing && Array.isArray(questionsPayload?.questionGroups)
           ? (
-              questionsPayload.questionGroups.find((g) => g.id === groupForm.id)
-                ?.questions || []
-            )
-              .map((q) => q.id)
-              .filter((id): id is number => Boolean(id))
+            questionsPayload.questionGroups.find((g) => g.id === groupForm.id)
+              ?.questions || []
+          )
+            .map((q) => q.id)
+            .filter((id): id is number => Boolean(id))
           : [];
 
       const currentChildIds = groupForm.questions
@@ -1063,7 +1082,7 @@ export default function QuestionPanel({
           instruction:
             q.instruction.trim() || groupForm.instruction.trim() || undefined,
           audioUrl: supportsGroupAudio(selectedGroupType)
-            ? q.audioFile || undefined
+            ? q.audioFile || q.existingAudioUrl?.trim() || undefined
             : undefined,
           imageUrl: supportsGroupImage(selectedGroupType)
             ? q.imageFile || undefined
@@ -1082,17 +1101,16 @@ export default function QuestionPanel({
 
         const questionRes = q.id
           ? await adminApi.updateContentQuestion({
-              questionId: q.id,
-              data: payload,
-            })
+            questionId: q.id,
+            data: payload,
+          })
           : await adminApi.createContentQuestion(payload);
 
         if (!questionRes.success || !questionRes.data?.id) {
           throw new Error(
             questionRes.error?.message ||
-              `${q.id ? "Không thể cập nhật" : "Không thể tạo"} câu con ${
-                qIndex + 1
-              }`,
+            `${q.id ? "Không thể cập nhật" : "Không thể tạo"} câu con ${qIndex + 1
+            }`,
           );
         }
 
@@ -1112,6 +1130,11 @@ export default function QuestionPanel({
         showCancelButton: false,
       });
     } catch (e: any) {
+      // Avoid leaving orphaned groups when creating group children fails mid-flight.
+      if (dialogMode === "create-group" && createdGroupId) {
+        await adminApi.deleteQuestionGroup({ id: createdGroupId });
+      }
+
       error({
         title:
           dialogMode === "edit-group"
@@ -1361,11 +1384,10 @@ export default function QuestionPanel({
                               {question.options.map((option, optionIndex) => (
                                 <div
                                   key={`single-option-${question.id}-${option.id ?? optionIndex}`}
-                                  className={`text-sm rounded-lg px-3 py-2 border ${
-                                    option.isCorrect
+                                  className={`text-sm rounded-lg px-3 py-2 border ${option.isCorrect
                                       ? "bg-green-50 border-green-200 text-green-800"
                                       : "bg-slate-50 border-slate-200 text-slate-700"
-                                  }`}
+                                    }`}
                                 >
                                   <span className="font-semibold mr-2">
                                     {option.optionKey || OPTION_KEYS[optionIndex]}.
@@ -1498,6 +1520,20 @@ export default function QuestionPanel({
                             </div>
                           )}
 
+                          {group.audioUrl && (
+                            <div className="rounded-lg border border-slate-200 p-3 bg-white space-y-2">
+                              <p className="text-xs font-bold text-slate-500 uppercase">
+                                Group audio
+                              </p>
+                              <audio
+                                controls
+                                preload="none"
+                                src={group.audioUrl}
+                                className="w-full"
+                              />
+                            </div>
+                          )}
+
                           <div className="space-y-3">
                             {(group.questions || []).map((question, qIndex) => (
                               <div
@@ -1527,6 +1563,17 @@ export default function QuestionPanel({
                                     </p>
                                   )}
 
+                                  {question.audioUrl && (
+                                    <div className="mt-3">
+                                      <audio
+                                        controls
+                                        preload="none"
+                                        src={question.audioUrl}
+                                        className="w-full"
+                                      />
+                                    </div>
+                                  )}
+
                                   {question.correctAnswer && (
                                     <p className="text-xs text-emerald-600 mt-2 font-medium whitespace-pre-wrap break-words">
                                       Correct answer: {question.correctAnswer}
@@ -1540,11 +1587,10 @@ export default function QuestionPanel({
                                       {question.options.map((option, optionIndex) => (
                                         <div
                                           key={`group-option-${question.id}-${option.id ?? optionIndex}`}
-                                          className={`text-sm rounded-lg px-3 py-2 border ${
-                                            option.isCorrect
+                                          className={`text-sm rounded-lg px-3 py-2 border ${option.isCorrect
                                               ? "bg-green-50 border-green-200 text-green-800"
                                               : "bg-slate-50 border-slate-200 text-slate-700"
-                                          }`}
+                                            }`}
                                         >
                                           <span className="font-semibold mr-2">
                                             {option.optionKey ||
@@ -1609,11 +1655,10 @@ export default function QuestionPanel({
                     setDialogMode("create-single");
                     setSelectedGroupType("");
                   }}
-                  className={`rounded-xl border p-5 text-left transition ${
-                    dialogMode === "create-single"
+                  className={`rounded-xl border p-5 text-left transition ${dialogMode === "create-single"
                       ? "border-[#155ca5] bg-[#155ca5]/5"
                       : "border-slate-200 hover:border-slate-300"
-                  }`}
+                    }`}
                 >
                   <p className="font-bold text-slate-900">Single question</p>
                   <p className="text-sm text-slate-500 mt-1">
@@ -1627,11 +1672,10 @@ export default function QuestionPanel({
                     setDialogMode("create-group");
                     setSelectedSingleType("");
                   }}
-                  className={`rounded-xl border p-5 text-left transition ${
-                    dialogMode === "create-group"
+                  className={`rounded-xl border p-5 text-left transition ${dialogMode === "create-group"
                       ? "border-[#155ca5] bg-[#155ca5]/5"
                       : "border-slate-200 hover:border-slate-300"
-                  }`}
+                    }`}
                 >
                   <p className="font-bold text-slate-900">Question group</p>
                   <p className="text-sm text-slate-500 mt-1">
@@ -1651,11 +1695,10 @@ export default function QuestionPanel({
                     key={type}
                     type="button"
                     onClick={() => setSelectedSingleType(type)}
-                    className={`rounded-lg border px-4 py-3 text-left text-sm transition ${
-                      selectedSingleType === type
+                    className={`rounded-lg border px-4 py-3 text-left text-sm transition ${selectedSingleType === type
                         ? "border-[#155ca5] bg-[#155ca5]/5 text-[#155ca5]"
                         : "border-slate-200 hover:border-slate-300"
-                    }`}
+                      }`}
                   >
                     {type}
                   </button>
@@ -1673,11 +1716,10 @@ export default function QuestionPanel({
                     key={type}
                     type="button"
                     onClick={() => setSelectedGroupType(type)}
-                    className={`rounded-lg border px-4 py-3 text-left text-sm transition ${
-                      selectedGroupType === type
+                    className={`rounded-lg border px-4 py-3 text-left text-sm transition ${selectedGroupType === type
                         ? "border-[#155ca5] bg-[#155ca5]/5 text-[#155ca5]"
                         : "border-slate-200 hover:border-slate-300"
-                    }`}
+                      }`}
                   >
                     {type}
                   </button>
@@ -1729,13 +1771,31 @@ export default function QuestionPanel({
                     />
                   </div>
 
-                  {supportsSingleAudio(selectedSingleType) && (
+                  {supportsSingleAudio(selectedSingleType) ? (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Audio file</label>
+                      <Input
+                        value={singleForm.existingAudioUrl || ""}
+                        onChange={(e) =>
+                          setSingleForm((prev) => ({
+                            ...prev,
+                            existingAudioUrl: e.target.value,
+                          }))
+                        }
+                        placeholder="Dán audio URL (https://...) nếu có"
+                      />
                       {singleForm.existingAudioUrl && (
-                        <p className="text-xs text-slate-500 break-all">
-                          Current: {singleForm.existingAudioUrl}
-                        </p>
+                        <>
+                          <p className="text-xs text-slate-500 break-all">
+                            Current: {singleForm.existingAudioUrl}
+                          </p>
+                          <audio
+                            controls
+                            preload="none"
+                            src={singleForm.existingAudioUrl}
+                            className="w-full"
+                          />
+                        </>
                       )}
                       <Input
                         type="file"
@@ -1748,9 +1808,14 @@ export default function QuestionPanel({
                         }
                       />
                     </div>
+                  ) : (
+                    <DisabledField
+                      label="Audio file"
+                      placeholder="Không áp dụng cho loại câu hỏi này"
+                    />
                   )}
 
-                  {supportsSingleImage(selectedSingleType) && (
+                  {supportsSingleImage(selectedSingleType) ? (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Image file</label>
                       {singleForm.existingImageUrl && (
@@ -1769,6 +1834,11 @@ export default function QuestionPanel({
                         }
                       />
                     </div>
+                  ) : (
+                    <DisabledField
+                      label="Image file"
+                      placeholder="Không áp dụng cho loại câu hỏi này"
+                    />
                   )}
 
                   {shouldShowQuestionData(selectedSingleType) && (
@@ -1918,13 +1988,31 @@ export default function QuestionPanel({
                     />
                   </div>
 
-                  {supportsGroupAudio(selectedGroupType) && (
+                  {supportsGroupAudio(selectedGroupType) ? (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Audio file</label>
+                      <Input
+                        value={groupForm.existingAudioUrl || ""}
+                        onChange={(e) =>
+                          setGroupForm((prev) => ({
+                            ...prev,
+                            existingAudioUrl: e.target.value,
+                          }))
+                        }
+                        placeholder="Dán audio URL (https://...) nếu có"
+                      />
                       {groupForm.existingAudioUrl && (
-                        <p className="text-xs text-slate-500 break-all">
-                          Current: {groupForm.existingAudioUrl}
-                        </p>
+                        <>
+                          <p className="text-xs text-slate-500 break-all">
+                            Current: {groupForm.existingAudioUrl}
+                          </p>
+                          <audio
+                            controls
+                            preload="none"
+                            src={groupForm.existingAudioUrl}
+                            className="w-full"
+                          />
+                        </>
                       )}
                       <Input
                         type="file"
@@ -1937,6 +2025,11 @@ export default function QuestionPanel({
                         }
                       />
                     </div>
+                  ) : (
+                    <DisabledField
+                      label="Audio file"
+                      placeholder="Không áp dụng cho loại group này"
+                    />
                   )}
 
                   {supportsGroupImage(selectedGroupType) && (
@@ -2050,10 +2143,32 @@ export default function QuestionPanel({
                           {supportsGroupAudio(selectedGroupType) && (
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Audio file</label>
+                              <Input
+                                value={question.existingAudioUrl || ""}
+                                onChange={(e) =>
+                                  setGroupForm((prev) => {
+                                    const next = [...prev.questions];
+                                    next[qIndex] = {
+                                      ...next[qIndex],
+                                      existingAudioUrl: e.target.value,
+                                    };
+                                    return { ...prev, questions: next };
+                                  })
+                                }
+                                placeholder="Dán audio URL (https://...) nếu có"
+                              />
                               {question.existingAudioUrl && (
-                                <p className="text-xs text-slate-500 break-all">
-                                  Current: {question.existingAudioUrl}
-                                </p>
+                                <>
+                                  <p className="text-xs text-slate-500 break-all">
+                                    Current: {question.existingAudioUrl}
+                                  </p>
+                                  <audio
+                                    controls
+                                    preload="none"
+                                    src={question.existingAudioUrl}
+                                    className="w-full"
+                                  />
+                                </>
                               )}
                               <Input
                                 type="file"
@@ -2256,7 +2371,7 @@ export default function QuestionPanel({
                     onClick={() =>
                       void (
                         dialogMode === "create-single" ||
-                        dialogMode === "edit-single"
+                          dialogMode === "edit-single"
                           ? handleSubmitSingle()
                           : handleSubmitGroup()
                       )

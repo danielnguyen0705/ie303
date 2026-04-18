@@ -8,8 +8,37 @@ import {
   getQuestionStatsSummary 
 } from '@/data/mockDataAdmin';
 import { simulateApiCall, createErrorResponse } from '../client';
-import type { AdminApiResponse, PaginatedAdminResponse, QuestionFilter, CreateQuestionRequest, UpdateQuestionRequest } from './types';
+import type { AdminApiResponse } from './types';
 import type { AdminQuestion } from '@/data/mockDataAdmin';
+
+interface PaginatedAdminResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+interface QuestionFilter {
+  category?: AdminQuestion['category'];
+  difficulty?: AdminQuestion['difficulty'];
+  status?: AdminQuestion['status'];
+  unitId?: number;
+  tags?: string[];
+}
+
+type CreateQuestionRequest = Pick<
+  AdminQuestion,
+  'type' | 'category' | 'difficulty' | 'question' | 'correctAnswer'
+> &
+  Partial<Pick<AdminQuestion, 'options' | 'explanation' | 'points' | 'tags' | 'unitId'>>;
+
+type UpdateQuestionRequest = Partial<
+  Pick<
+    AdminQuestion,
+    'type' | 'category' | 'difficulty' | 'question' | 'options' | 'correctAnswer' | 'explanation' | 'points' | 'tags' | 'unitId'
+  >
+>;
 
 /**
  * Get all questions with pagination
@@ -142,9 +171,9 @@ export async function createQuestion(data: CreateQuestionRequest): Promise<Admin
     question: data.question,
     options: data.options,
     correctAnswer: data.correctAnswer,
-    explanation: data.explanation,
-    points: data.points,
-    tags: data.tags,
+    explanation: data.explanation ?? '',
+    points: data.points ?? 0,
+    tags: data.tags ?? [],
     unitId: data.unitId,
     usageCount: 0,
     successRate: 0,
@@ -232,7 +261,7 @@ export async function deactivateQuestion(questionId: string): Promise<AdminApiRe
  */
 export async function flagQuestionForReview(
   questionId: string,
-  reason: string
+  _reason: string
 ): Promise<AdminApiResponse<AdminQuestion>> {
   const question = getQuestionById(questionId);
   

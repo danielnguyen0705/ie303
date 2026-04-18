@@ -68,6 +68,20 @@ export interface LessonQuestionResponse {
   questionGroups: QuestionGroupDto[];
 }
 
+export interface SubmitQuestionHistoryRequest {
+  questionId: number;
+  answer_text: string;
+}
+
+export interface QuestionHistorySubmissionResult {
+  id: number;
+  answer_text: string;
+  correct: boolean;
+  answeredAt: string;
+  userId: number;
+  questionId: number;
+}
+
 export async function getQuestionsByLesson(
   lessonId: number,
 ): Promise<ApiResponse<LessonQuestionResponse>> {
@@ -77,5 +91,22 @@ export async function getQuestionsByLesson(
 
   return request<LessonQuestionResponse>(`/questions/lesson/${lessonId}`, {
     method: "GET",
+  });
+}
+
+export async function submitQuestionHistory(
+  payload: SubmitQuestionHistoryRequest,
+): Promise<ApiResponse<QuestionHistorySubmissionResult>> {
+  if (!payload.questionId || Number.isNaN(payload.questionId)) {
+    return createError("Invalid questionId", "INVALID_QUESTION_ID");
+  }
+
+  if (!payload.answer_text || !payload.answer_text.trim()) {
+    return createError("Answer text is required", "INVALID_ANSWER_TEXT");
+  }
+
+  return request<QuestionHistorySubmissionResult>("/user-question-histories/submit", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
