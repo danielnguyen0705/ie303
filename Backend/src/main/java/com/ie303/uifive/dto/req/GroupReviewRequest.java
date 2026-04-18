@@ -9,6 +9,9 @@ public record GroupReviewRequest(
         int startUnit,
         int endUnit,
         Long gradeId,
-        List<Long> questionIds
+        List<Long> questionIds,
+        Boolean includeWrongQuestions,
+        Integer aiQuestionCount,
+        String aiQuestionTopic
 ) {
 }

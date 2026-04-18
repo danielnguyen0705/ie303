@@ -12,6 +12,7 @@ public record UnitReviewRequest(
         @NotNull(message = "unitId không được để trống")
         Long unitId,
 
-        List<Long> questionIds
+        List<Long> questionIds,
+        Boolean includeWrongQuestions
 ) {
 }

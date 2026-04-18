@@ -149,17 +149,12 @@ public class ShopItemService {
 
         userItem.setQuantity(userItem.getQuantity() - 1);
 
-        LocalDate today = LocalDate.now();
-        LocalDate lastStudyDate = user.getLastStudyDate();
-
-        if (lastStudyDate != null && lastStudyDate.isEqual(today.minusDays(2))) {
-            user.setLastStudyDate(today.minusDays(1));
-        }
+        user.setStreakItemPendingCount(user.getStreakItemPendingCount() + 1);
 
         userItemRepo.save(userItem);
         userRepo.save(user);
 
-        return "Dùng SKIP thành công";
+        return "Dùng SKIP thành công. Hoàn thành 1 lesson để bù streak";
     }
 
     public String equipAvatar(Long shopItemId) {

@@ -18,6 +18,7 @@ public record UserProfileResponse(
         int streak,
         LocalDate lastStudyDate,
         LocalDateTime vipExpiredAt,
+        boolean isVip,
         LocalDateTime createdAt,
         List<StudyingGradeResponse> studyingGrades
 ) {

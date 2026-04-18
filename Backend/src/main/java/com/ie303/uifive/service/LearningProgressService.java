@@ -36,7 +36,8 @@ public class LearningProgressService {
     private final UserLessonProgressMapper userLessonProgressMapper;
 
     public UserLessonProgressResponse completeLesson(UserLessonProgressRequest request) {
-        User user = userService.getCurrentUser();
+        User currentUser = userService.getCurrentUser();
+        User user = currentUser;
         int expEarned = 0;
 
         Lesson lesson = lessonRepo.findById(request.lessonId())
@@ -44,7 +45,7 @@ public class LearningProgressService {
 
         Long gradeId = lesson.getSection().getUnit().getGrade().getId();
         List<Lesson> allLessonsInGrade = lessonRepo.findAllByGradeIdOrder(gradeId);
-        Set<Long> completedLessonIds = userLessonProgressRepo.findCompletedLessonIdsByUserAndGrade(user, gradeId);
+        Set<Long> completedLessonIds = userLessonProgressRepo.findCompletedLessonIdsByUserAndGrade(currentUser, gradeId);
 
         boolean alreadyCompleted = completedLessonIds.contains(lesson.getId());
         Long currentLessonId = resolveCurrentLessonId(allLessonsInGrade, completedLessonIds);
@@ -54,10 +55,10 @@ public class LearningProgressService {
         }
 
         UserLessonProgress progress = userLessonProgressRepo
-                .findByUserIdAndLessonId(user.getId(), lesson.getId())
+                .findByUserIdAndLessonId(currentUser.getId(), lesson.getId())
                 .orElseGet(() -> {
                     UserLessonProgress created = userLessonProgressMapper.toEntity(request);
-                    created.setUser(user);
+                    created.setUser(currentUser);
                     created.setLesson(lesson);
                     created.setCompleted(false);
                     created.setCoinsEarned(0);
@@ -65,7 +66,7 @@ public class LearningProgressService {
                 });
 
         userLessonProgressMapper.updateEntityFromRequest(request, progress);
-        progress.setUser(user);
+        progress.setUser(currentUser);
         progress.setLesson(lesson);
         progress.setCompleted(request.accuracy() >= LESSON_PASS_ACCURACY);
         progress.setProgressPercent(Math.max(0.0, Math.min(100.0, request.accuracy())));
@@ -76,6 +77,15 @@ public class LearningProgressService {
         }
 
         if (!alreadyCompleted) {
+            userService.touchStudyStreak(user.getId());
+            user = userRepo.findById(user.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+            if (user.getStreakItemPendingCount() > 0) {
+                user.setStreak(user.getStreak() + 1);
+                user.setStreakItemPendingCount(user.getStreakItemPendingCount() - 1);
+            }
+
             user.setCoin(user.getCoin() + LESSON_COMPLETION_COIN_REWARD);
             user.setExp(user.getExp() + LESSON_COMPLETION_EXP_REWARD);
             expEarned = LESSON_COMPLETION_EXP_REWARD;

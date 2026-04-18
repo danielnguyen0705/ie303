@@ -52,6 +52,9 @@ public class User {
     @Column(name = "exp_boost_expired_at")
     private LocalDateTime expBoostExpiredAt;
 
+    @Column(name = "streak_item_pending_count")
+    private int streakItemPendingCount;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

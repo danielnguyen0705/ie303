@@ -62,7 +62,9 @@ public enum ErrorCode {
     PAYMENT_TRANSACTION_NOT_FOUND(1044, "Payment transaction not found", HttpStatus.NOT_FOUND),
     PAYMENT_TRANSACTION_INVALID_STATUS(1045, "Payment transaction has invalid status", HttpStatus.BAD_REQUEST),
     PAYMENT_PROVIDER_NOT_SUPPORTED(1046, "Payment provider is not supported", HttpStatus.BAD_REQUEST),
-    PAYMENT_SIGNATURE_INVALID(1047, "Payment signature is invalid", HttpStatus.UNAUTHORIZED);
+    PAYMENT_SIGNATURE_INVALID(1047, "Payment signature is invalid", HttpStatus.UNAUTHORIZED),
+    VIP_REQUIRED(1048, "This feature requires an active VIP subscription", HttpStatus.FORBIDDEN),
+    NO_WRONG_QUESTIONS_FOUND(1049, "No wrong questions found for personalized practice", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;
