@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,6 +27,10 @@ public class EssayService {
     private final GeminiService geminiService;
 
     public WritingEvaluationResponse submitEssay(User user, SubmitEssayRequest request) {
+        if (user.getVipExpiredAt() == null || !user.getVipExpiredAt().isAfter(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.VIP_REQUIRED);
+        }
+
         Question question = questionRepo.findById(request.questionId())
                 .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
 

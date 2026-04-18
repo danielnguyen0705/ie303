@@ -21,6 +21,17 @@ public interface LessonRepo extends JpaRepository<Lesson, Long> {
     """)
     List<Lesson> findAllByGradeIdOrder(Long gradeId);
 
+        @Query("""
+                select l
+                from Lesson l
+                where l.section.unit.grade.id = :gradeId
+                    and l.section.unit.unitNumber between :startUnit and :endUnit
+                order by l.section.unit.unitNumber asc,
+                                 l.section.sectionNumber asc,
+                                 l.lessonNumber asc
+        """)
+        List<Lesson> findAllByGradeIdAndUnitNumberBetweenOrder(Long gradeId, int startUnit, int endUnit);
+
     @Query("""
         select count(l)
         from Lesson l

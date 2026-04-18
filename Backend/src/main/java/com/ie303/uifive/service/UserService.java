@@ -60,6 +60,7 @@ public class UserService implements UserDetailsService {
         user.setStreak(0);
         user.setExpBoostMultiplier(1.0);
         user.setExpBoostExpiredAt(null);
+        user.setStreakItemPendingCount(0);
 
         user.setVerified(false);
         user.setVerificationToken(UUID.randomUUID().toString());
@@ -250,6 +251,7 @@ public class UserService implements UserDetailsService {
         user.setStreak(0);
         user.setExpBoostMultiplier(1.0);
         user.setExpBoostExpiredAt(null);
+        user.setStreakItemPendingCount(0);
         user.setVerified(true);
         user.setVerificationToken(null);
         user.setVerificationExpiry(null);
@@ -336,7 +338,9 @@ public class UserService implements UserDetailsService {
                 })
                 .toList();
 
-        return new UserProfileResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail(), savedUser.getRole(), savedUser.getCoin(), savedUser.getExp(), savedUser.getScore(), savedUser.getStreak(), savedUser.getLastStudyDate(), savedUser.getVipExpiredAt(), savedUser.getCreatedAt(), studyingGrades);
+            boolean isVip = savedUser.getVipExpiredAt() != null && savedUser.getVipExpiredAt().isAfter(LocalDateTime.now());
+
+            return new UserProfileResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail(), savedUser.getRole(), savedUser.getCoin(), savedUser.getExp(), savedUser.getScore(), savedUser.getStreak(), savedUser.getLastStudyDate(), savedUser.getVipExpiredAt(), isVip, savedUser.getCreatedAt(), studyingGrades);
     }
 
     public UserProfileResponse getMyProfile(String username) {
@@ -357,6 +361,8 @@ public class UserService implements UserDetailsService {
                 })
                 .toList();
 
-        return new UserProfileResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getCoin(), user.getExp(), user.getScore(), user.getStreak(), user.getLastStudyDate(), user.getVipExpiredAt(), user.getCreatedAt(), studyingGrades);
+            boolean isVip = user.getVipExpiredAt() != null && user.getVipExpiredAt().isAfter(LocalDateTime.now());
+
+            return new UserProfileResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getCoin(), user.getExp(), user.getScore(), user.getStreak(), user.getLastStudyDate(), user.getVipExpiredAt(), isVip, user.getCreatedAt(), studyingGrades);
     }
 }
