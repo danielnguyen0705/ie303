@@ -51,7 +51,7 @@ public class GroupReviewService {
 
         if (request.gradeId() != null) {
             Grade grade = gradeRepo.findById(request.gradeId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Grade với id = " + request.gradeId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.GRADE_NOT_FOUND));
             entity.setGrade(grade);
         }
 
@@ -105,7 +105,7 @@ public class GroupReviewService {
         ensureVip(userService.getCurrentUser());
 
         GroupReview entity = groupReviewRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy GroupReview với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Group review not found"));
 
         GroupReviewResponse response = mapper.toResponse(entity);
         return response;
@@ -131,13 +131,13 @@ public class GroupReviewService {
         validateAiQuestionParams(request.aiQuestionCount(), request.gradeId());
 
         GroupReview entity = groupReviewRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy GroupReview với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Group review not found"));
 
         mapper.updateEntityFromRequest(request, entity);
 
         if (request.gradeId() != null) {
             Grade grade = gradeRepo.findById(request.gradeId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Grade với id = " + request.gradeId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.GRADE_NOT_FOUND));
             entity.setGrade(grade);
         } else {
             entity.setGrade(null);
@@ -195,7 +195,7 @@ public class GroupReviewService {
         ensureVip(userService.getCurrentUser());
 
         if (!groupReviewRepo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy GroupReview với id = " + id);
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Group review not found");
         }
 
         groupReviewRepo.deleteById(id);

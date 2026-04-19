@@ -4,6 +4,8 @@ import com.ie303.uifive.dto.req.UnitRequest;
 import com.ie303.uifive.dto.res.UnitResponse;
 import com.ie303.uifive.entity.Grade;
 import com.ie303.uifive.entity.Unit;
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.UnitMapper;
 import com.ie303.uifive.repo.GradeRepo;
 import com.ie303.uifive.repo.UnitRepo;
@@ -24,7 +26,7 @@ public class UnitService {
         Unit entity = mapper.toEntity(request);
 
         Grade grade = gradeRepo.findById(request.gradeId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Grade với id = " + request.gradeId()));
+                .orElseThrow(() -> new AppException(ErrorCode.GRADE_NOT_FOUND));
 
         entity.setGrade(grade);
 
@@ -36,7 +38,7 @@ public class UnitService {
 
     public UnitResponse getById(Long id) {
         Unit entity = unitRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Unit với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         UnitResponse response = mapper.toResponse(entity);
         return response;
@@ -54,12 +56,12 @@ public class UnitService {
 
     public UnitResponse update(Long id, UnitRequest request) {
         Unit entity = unitRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Unit với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         mapper.updateEntityFromRequest(request, entity);
 
         Grade grade = gradeRepo.findById(request.gradeId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Grade với id = " + request.gradeId()));
+                .orElseThrow(() -> new AppException(ErrorCode.GRADE_NOT_FOUND));
 
         entity.setGrade(grade);
 
@@ -71,7 +73,7 @@ public class UnitService {
 
     public void delete(Long id) {
         if (!unitRepo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy Unit với id = " + id);
+            throw new AppException(ErrorCode.UNIT_NOT_FOUND);
         }
 
         unitRepo.deleteById(id);

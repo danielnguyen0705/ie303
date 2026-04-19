@@ -17,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/questions")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class QuestionController {
 
     private final QuestionService questionService;

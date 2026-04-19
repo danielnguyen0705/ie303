@@ -14,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/lessons")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class LessonController {
 
     private final LessonService lessonService;

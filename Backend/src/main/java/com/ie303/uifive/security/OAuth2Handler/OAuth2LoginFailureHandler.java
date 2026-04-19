@@ -26,6 +26,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
         jwtCookie.setSecure(false);
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(0);
+        response.addCookie(jwtCookie);
 
         String redirectUrl = "http://localhost:5173/?oauth_error="
                 + URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8);

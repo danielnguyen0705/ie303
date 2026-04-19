@@ -4,6 +4,7 @@ import com.ie303.uifive.dto.req.UnitReviewRequest;
 import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UnitReviewResponse;
 import com.ie303.uifive.service.UnitReviewService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,11 +14,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/unit-reviews")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class UnitReviewController {
 
     private final UnitReviewService service;
 
     @PostMapping
+    @RolesAllowed("ADMIN")
     public ApiResponse<UnitReviewResponse> create(@RequestBody @Valid UnitReviewRequest request) {
         return ApiResponse.<UnitReviewResponse>builder()
                 .code(1000)
@@ -41,6 +44,7 @@ public class UnitReviewController {
                 .build();
     }
     @PutMapping("/{id}")
+    @RolesAllowed("ADMIN")
     public ApiResponse<UnitReviewResponse> update(@PathVariable Long id,
                                                   @RequestBody @Valid UnitReviewRequest request) {
         return ApiResponse.<UnitReviewResponse>builder()
@@ -50,6 +54,7 @@ public class UnitReviewController {
     }
 
     @DeleteMapping("/{id}")
+    @RolesAllowed("ADMIN")
     public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
         return ApiResponse.<String>builder()

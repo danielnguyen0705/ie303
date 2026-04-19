@@ -14,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/group-reviews")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class GroupReviewController {
 
     private final GroupReviewService service;

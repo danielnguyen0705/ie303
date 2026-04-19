@@ -68,15 +68,19 @@ public class LearningProgressService {
         userLessonProgressMapper.updateEntityFromRequest(request, progress);
         progress.setUser(currentUser);
         progress.setLesson(lesson);
-        progress.setCompleted(request.accuracy() >= LESSON_PASS_ACCURACY);
+        boolean passedThisAttempt = request.accuracy() >= LESSON_PASS_ACCURACY;
+        boolean completed = alreadyCompleted || passedThisAttempt;
+        progress.setCompleted(completed);
         progress.setProgressPercent(Math.max(0.0, Math.min(100.0, request.accuracy())));
         progress.setLastAccessedAt(LocalDateTime.now());
 
-        if (progress.getCompletedAt() == null) {
+        if (completed && progress.getCompletedAt() == null) {
             progress.setCompletedAt(LocalDateTime.now());
+        } else if (!completed) {
+            progress.setCompletedAt(null);
         }
 
-        if (!alreadyCompleted) {
+        if (!alreadyCompleted && passedThisAttempt) {
             userService.touchStudyStreak(user.getId());
             user = userRepo.findById(user.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -87,8 +91,8 @@ public class LearningProgressService {
             }
 
             user.setCoin(user.getCoin() + LESSON_COMPLETION_COIN_REWARD);
-            user.setExp(user.getExp() + LESSON_COMPLETION_EXP_REWARD);
-            expEarned = LESSON_COMPLETION_EXP_REWARD;
+            expEarned = calculateLessonExpReward(user);
+            user.setExp(user.getExp() + expEarned);
             progress.setCoinsEarned(LESSON_COMPLETION_COIN_REWARD);
             userRepo.save(user);
         }
@@ -188,5 +192,20 @@ public class LearningProgressService {
         return allLessonsInGrade.isEmpty()
                 ? null
                 : allLessonsInGrade.get(allLessonsInGrade.size() - 1).getId();
+    }
+
+    private int calculateLessonExpReward(User user) {
+        double multiplier = resolveActiveExpMultiplier(user);
+        return (int) Math.round(LESSON_COMPLETION_EXP_REWARD * multiplier);
+    }
+
+    private double resolveActiveExpMultiplier(User user) {
+        LocalDateTime now = LocalDateTime.now();
+
+        if (user.getExpBoostExpiredAt() == null || !user.getExpBoostExpiredAt().isAfter(now)) {
+            return 1.0;
+        }
+
+        return Math.max(1.0, user.getExpBoostMultiplier());
     }
 }

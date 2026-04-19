@@ -3,6 +3,8 @@ package com.ie303.uifive.service;
 import com.ie303.uifive.dto.req.GradeRequest;
 import com.ie303.uifive.dto.res.GradeResponse;
 import com.ie303.uifive.entity.Grade;
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.GradeMapper;
 import com.ie303.uifive.repo.GradeRepo;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +32,7 @@ public class GradeService {
     // ================= GET =================
     public GradeResponse getById(Long id) {
         Grade entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Grade với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.GRADE_NOT_FOUND));
 
         GradeResponse response = mapper.toResponse(entity);
         return response;
@@ -50,7 +52,7 @@ public class GradeService {
     public GradeResponse update(Long id, GradeRequest request) {
 
         Grade entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Grade với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.GRADE_NOT_FOUND));
 
         mapper.updateEntityFromRequest(request, entity);
 
@@ -63,7 +65,7 @@ public class GradeService {
     // ================= DELETE =================
     public void delete(Long id) {
         if (!repo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy Grade với id = " + id);
+            throw new AppException(ErrorCode.GRADE_NOT_FOUND);
         }
         repo.deleteById(id);
     }

@@ -3,6 +3,8 @@ package com.ie303.uifive.service.payment.gateway;
 import com.ie303.uifive.dto.req.PaymentWebhookRequest;
 import com.ie303.uifive.entity.PaymentProvider;
 import com.ie303.uifive.entity.PaymentTransaction;
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -29,6 +31,10 @@ public class BankPaymentGateway implements PaymentGateway {
 
     @Override
     public String createPaymentUrl(PaymentTransaction transaction, String returnUrl) {
+        if (bankBin == null || bankBin.isBlank() || accountNumber == null || accountNumber.isBlank()) {
+            throw new AppException(ErrorCode.PAYMENT_PROVIDER_NOT_SUPPORTED, "Bank QR is not configured");
+        }
+
         String accountPath = bankBin + "-" + accountNumber;
         String content = "PAY " + transaction.getTransactionCode();
 
@@ -47,7 +53,7 @@ public class BankPaymentGateway implements PaymentGateway {
     @Override
     public boolean verifySignature(PaymentWebhookRequest request) {
         if (bankSecret == null || bankSecret.isBlank()) {
-            return true;
+            return false;
         }
         if (request.signature() == null || request.signature().isBlank()) {
             return false;
@@ -56,7 +62,8 @@ public class BankPaymentGateway implements PaymentGateway {
         String payload = GatewaySignUtils.canonicalWebhookPayload(
                 request.transactionCode(),
                 request.status().name(),
-                request.providerTransactionId()
+                request.providerTransactionId(),
+                request.amountMoney()
         );
         String expected = GatewaySignUtils.hmacSha256Hex(payload, bankSecret);
         return expected.equalsIgnoreCase(request.signature());

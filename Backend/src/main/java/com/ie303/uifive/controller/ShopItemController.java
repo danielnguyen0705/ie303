@@ -18,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/shop-items")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class ShopItemController {
 
     private final ShopItemService service;

@@ -48,7 +48,7 @@ public class SemesterTestService {
         ensureVip(currentUser);
 
         if (request.startUnit() > request.endUnit()) {
-            throw new RuntimeException("startUnit phải nhỏ hơn hoặc bằng endUnit");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "startUnit must be <= endUnit");
         }
 
         validateAiQuestionParams(request.aiQuestionCount(), request.gradeId());
@@ -57,7 +57,7 @@ public class SemesterTestService {
 
         if (request.gradeId() != null) {
             Grade grade = gradeRepo.findById(request.gradeId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Grade với id = " + request.gradeId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.GRADE_NOT_FOUND));
             entity.setGrade(grade);
         }
 
@@ -116,7 +116,7 @@ public class SemesterTestService {
         ensureVip(userService.getCurrentUser());
 
         SemesterTest entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy SemesterTest với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Semester test not found"));
 
         SemesterTestResponse response = mapper.toResponse(entity);
         return response;
@@ -139,19 +139,19 @@ public class SemesterTestService {
         ensureVip(currentUser);
 
         if (request.startUnit() > request.endUnit()) {
-            throw new RuntimeException("startUnit phải nhỏ hơn hoặc bằng endUnit");
+            throw new AppException(ErrorCode.INVALID_REQUEST, "startUnit must be <= endUnit");
         }
 
         validateAiQuestionParams(request.aiQuestionCount(), request.gradeId());
 
         SemesterTest entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy SemesterTest với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Semester test not found"));
 
         mapper.updateEntityFromRequest(request, entity);
 
         if (request.gradeId() != null) {
             Grade grade = gradeRepo.findById(request.gradeId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Grade với id = " + request.gradeId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.GRADE_NOT_FOUND));
             entity.setGrade(grade);
         } else {
             entity.setGrade(null);
@@ -216,7 +216,7 @@ public class SemesterTestService {
         ensureVip(userService.getCurrentUser());
 
         if (!repo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy SemesterTest với id = " + id);
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Semester test not found");
         }
 
         repo.deleteById(id);
