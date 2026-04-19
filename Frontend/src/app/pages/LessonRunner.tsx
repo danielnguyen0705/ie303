@@ -6,7 +6,10 @@ import {
   Loader2,
   Mic,
   MicOff,
+  Play,
+  Pause,
   RotateCcw,
+  SkipBack,
   Volume2,
   XCircle,
 } from "lucide-react";
@@ -14,6 +17,7 @@ import {
   completeLesson,
   getLessonById,
   getQuestionsByLesson,
+  submitEssay,
   submitQuestionHistory,
 } from "@/api";
 import { ENV } from "@/config/env";
@@ -24,11 +28,11 @@ import type {
   QuestionType,
 } from "@/api/questions";
 
-type FlatQuestionItem = {
+type RunnerItem = {
   id: string;
   order: number;
   group: QuestionGroupDto | null;
-  question: QuestionDto;
+  questions: QuestionDto[];
 };
 
 type UserAnswer = string | string[] | Record<string, string>;
@@ -39,6 +43,8 @@ type AnswerState = Record<
     answer: UserAnswer;
     submitted: boolean;
     correct: boolean | null;
+    feedback?: string | null;
+    score?: number | null;
   }
 >;
 
@@ -49,8 +55,8 @@ type LessonRewardState = {
   currentExp: number;
 };
 
-function flattenQuestions(data: LessonQuestionResponse): FlatQuestionItem[] {
-  const flat: FlatQuestionItem[] = [];
+function buildRunnerItems(data: LessonQuestionResponse): RunnerItem[] {
+  const flat: RunnerItem[] = [];
   let order = 0;
 
   for (const q of data.singleQuestions ?? []) {
@@ -58,19 +64,17 @@ function flattenQuestions(data: LessonQuestionResponse): FlatQuestionItem[] {
       id: `single-${q.id}`,
       order: order++,
       group: null,
-      question: q,
+      questions: [q],
     });
   }
 
   for (const group of data.questionGroups ?? []) {
-    for (const q of group.questions ?? []) {
-      flat.push({
-        id: `group-${group.id}-${q.id}`,
-        order: order++,
-        group,
-        question: q,
-      });
-    }
+    flat.push({
+      id: `group-${group.id}`,
+      order: order++,
+      group,
+      questions: group.questions ?? [],
+    });
   }
 
   return flat;
@@ -135,7 +139,16 @@ function isAutoGradedType(type: QuestionType) {
 }
 
 function normalizeText(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
+  return value
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function getTrueFalseExpected(question: QuestionDto) {
+  const correctOption = question.options.find((option) => option.isCorrect);
+  return normalizeText(String(correctOption?.content || question.correctAnswer || ""));
 }
 
 function parseJsonSafe<T>(value?: string | null): T | null {
@@ -145,6 +158,61 @@ function parseJsonSafe<T>(value?: string | null): T | null {
   } catch {
     return null;
   }
+}
+
+function normalizeMatchingPayload(value?: string | null) {
+  if (!value?.trim()) return null;
+
+  const parsed = parseJsonSafe<Record<string, unknown>>(value);
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+    return null;
+  }
+
+  const hasStructuredFields =
+    Array.isArray(parsed.left) ||
+    Array.isArray(parsed.right) ||
+    (!!parsed.answers && typeof parsed.answers === "object");
+
+  if (hasStructuredFields) {
+    const answers =
+      parsed.answers && typeof parsed.answers === "object"
+        ? Object.entries(parsed.answers as Record<string, unknown>).reduce<Record<string, string>>(
+          (acc, [key, rawValue]) => {
+            if (key && rawValue != null) {
+              acc[String(key).trim()] = String(rawValue).trim();
+            }
+            return acc;
+          },
+          {},
+        )
+        : {};
+
+    const left = Array.isArray(parsed.left)
+      ? parsed.left.map(String).map((item) => item.trim()).filter(Boolean)
+      : Object.keys(answers);
+    const right = Array.isArray(parsed.right)
+      ? parsed.right.map(String).map((item) => item.trim()).filter(Boolean)
+      : Array.from(new Set(Object.values(answers)));
+
+    return { left, right, answers };
+  }
+
+  const answers = Object.entries(parsed).reduce<Record<string, string>>((acc, [key, rawValue]) => {
+    if (key && rawValue != null) {
+      acc[String(key).trim()] = String(rawValue).trim();
+    }
+    return acc;
+  }, {});
+
+  if (Object.keys(answers).length === 0) {
+    return null;
+  }
+
+  return {
+    left: Object.keys(answers),
+    right: Array.from(new Set(Object.values(answers))),
+    answers,
+  };
 }
 
 function resolveMediaUrl(value?: string | null): string | null {
@@ -195,17 +263,106 @@ function MediaBlock({
       )}
 
       {audioUrl && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#155ca5] mb-3">
-            <Volume2 className="w-4 h-4" />
-            Audio
-          </div>
-          <audio controls className="w-full">
-            <source src={audioUrl} />
-            Your browser does not support the audio element.
-          </audio>
-        </div>
+        <SmartAudioPlayer audioUrl={audioUrl} />
       )}
+    </div>
+  );
+}
+
+function SmartAudioPlayer({ audioUrl }: { audioUrl: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+
+  const applyPlaybackRate = (rate: number) => {
+    setPlaybackRate(rate);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = rate;
+    }
+  };
+
+  const togglePlayback = async () => {
+    if (!audioRef.current) return;
+    if (audioRef.current.paused) {
+      await audioRef.current.play();
+      setIsPlaying(true);
+      return;
+    }
+
+    audioRef.current.pause();
+    setIsPlaying(false);
+  };
+
+  const replayLastFiveSeconds = () => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 5, 0);
+    if (audioRef.current.paused) {
+      void audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
+      <div className="flex items-center gap-2 text-sm font-semibold text-[#155ca5]">
+        <Volume2 className="w-4 h-4" />
+        Audio
+      </div>
+
+      <audio
+        ref={audioRef}
+        controls
+        preload="metadata"
+        className="w-full"
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+      >
+        <source src={audioUrl} />
+        Your browser does not support the audio element.
+      </audio>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void togglePlayback()}
+            className="inline-flex items-center gap-2 rounded-full border border-[#bfd8ff] bg-[#f8fbff] px-4 py-2 text-sm font-bold text-[#155ca5] hover:bg-[#eef6ff]"
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {isPlaying ? "Pause" : "Play"}
+          </button>
+          <button
+            type="button"
+            onClick={replayLastFiveSeconds}
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            <SkipBack className="h-4 w-4" />
+            Replay 5s
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {[
+            { label: "Slow", value: 0.8 },
+            { label: "Normal", value: 1 },
+            { label: "Fast", value: 1.2 },
+          ].map((rate) => (
+            <button
+              key={rate.value}
+              type="button"
+              onClick={() => applyPlaybackRate(rate.value)}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                playbackRate === rate.value
+                  ? "bg-[#155ca5] text-white"
+                  : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {rate.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -267,7 +424,7 @@ function LessonRunner() {
   const lessonIdNumber = useMemo(() => Number(lessonId), [lessonId]);
 
   const [data, setData] = useState<LessonQuestionResponse | null>(null);
-  const [questions, setQuestions] = useState<FlatQuestionItem[]>([]);
+  const [items, setItems] = useState<RunnerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -313,7 +470,7 @@ function LessonRunner() {
 
         if (res.success && res.data) {
           setData(res.data);
-          setQuestions(flattenQuestions(res.data));
+          setItems(buildRunnerItems(res.data));
         } else {
           setError(res.error?.message || "Không tải được câu hỏi");
         }
@@ -341,28 +498,25 @@ function LessonRunner() {
     void loadLessonMeta();
   }, [lessonIdNumber]);
 
-  const currentItem = questions[currentIndex];
-  const currentQuestion = currentItem?.question;
-  const currentGroup = currentItem?.group;
-  const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
-
-  const groupData = useMemo(() => {
-    if (!currentGroup?.groupData) return null;
-    return parseJsonSafe<Record<string, any>>(currentGroup.groupData);
-  }, [currentGroup]);
-
-  const questionData = useMemo(() => {
-    if (!currentQuestion?.questionData) return null;
-    return parseJsonSafe<Record<string, any>>(currentQuestion.questionData);
-  }, [currentQuestion]);
+  const currentItem = items[currentIndex];
+  const currentGroup = currentItem?.group ?? null;
+  const currentQuestions = currentItem?.questions ?? [];
+  const totalQuestions = useMemo(
+    () => items.reduce((sum, item) => sum + item.questions.length, 0),
+    [items],
+  );
 
   const totalCorrect = useMemo(() => {
     return Object.values(answers).filter((a) => a.correct === true).length;
   }, [answers]);
 
   const questionTypeById = useMemo(() => {
-    return new Map(questions.map((item) => [item.question.id, item.question.questionType]));
-  }, [questions]);
+    return new Map(
+      items.flatMap((item) =>
+        item.questions.map((question) => [question.id, question.questionType] as const),
+      ),
+    );
+  }, [items]);
 
   const autoGradedSubmitted = useMemo(() => {
     return Object.entries(answers).filter(([questionId, state]) => {
@@ -383,50 +537,12 @@ function LessonRunner() {
   }, [answers]);
 
   const submittedPercent =
-    questions.length > 0 ? Math.round((totalSubmitted / questions.length) * 100) : 0;
+    totalQuestions > 0 ? Math.round((totalSubmitted / totalQuestions) * 100) : 0;
 
   const progressPercent =
-    questions.length > 0
-      ? Math.round(((currentIndex + 1) / questions.length) * 100)
+    items.length > 0
+      ? Math.round(((currentIndex + 1) / items.length) * 100)
       : 0;
-
-  const wordBank = useMemo(() => {
-    const words = groupData?.wordBank;
-    return Array.isArray(words) ? words : [];
-  }, [groupData]);
-
-  const reorderWords = useMemo(() => {
-    if (!currentQuestion || currentQuestion.questionType !== "SENTENCE_REORDER") {
-      return [];
-    }
-
-    if (currentQuestion.questionData?.includes("/")) {
-      return currentQuestion.questionData
-        .split("/")
-        .map((w) => w.trim())
-        .filter(Boolean);
-    }
-
-    if (Array.isArray(questionData?.words)) {
-      return questionData.words;
-    }
-
-    return [];
-  }, [currentQuestion, questionData]);
-
-  const matchingData = useMemo(() => {
-    if (!currentQuestion || currentQuestion.questionType !== "MATCHING") {
-      return null;
-    }
-
-    const parsed = parseJsonSafe<{
-      left?: string[];
-      right?: string[];
-      answers?: Record<string, string>;
-    }>(currentQuestion.questionData);
-
-    return parsed;
-  }, [currentQuestion]);
 
   const setAnswer = (questionId: number, answer: UserAnswer) => {
     setSubmitApiError(null);
@@ -438,6 +554,92 @@ function LessonRunner() {
         correct: null,
       },
     }));
+  };
+
+  const getQuestionAnswer = (questionId: number) => answers[questionId];
+
+  const getGroupData = (group: QuestionGroupDto | null) => {
+    if (!group?.groupData) return null;
+    return parseJsonSafe<Record<string, any>>(group.groupData);
+  };
+
+  const getQuestionData = (question: QuestionDto) => {
+    if (!question.questionData) return null;
+    return parseJsonSafe<Record<string, any>>(question.questionData);
+  };
+
+  const getWordBank = (group: QuestionGroupDto | null) => {
+    const words = getGroupData(group)?.wordBank;
+    return Array.isArray(words) ? words : [];
+  };
+
+  const getReorderWords = (question: QuestionDto) => {
+    if (question.questionType !== "SENTENCE_REORDER") {
+      return [];
+    }
+
+    if (question.questionData?.includes("/")) {
+      return question.questionData
+        .split("/")
+        .map((w) => w.trim())
+        .filter(Boolean);
+    }
+
+    const questionData = getQuestionData(question);
+    if (Array.isArray(questionData?.words)) {
+      return questionData.words;
+    }
+
+    return [];
+  };
+
+  const getMatchingData = (question: QuestionDto) => {
+    if (question.questionType !== "MATCHING") {
+      return null;
+    }
+
+    const parsedQuestionData = normalizeMatchingPayload(question.questionData);
+
+    if (parsedQuestionData) {
+      return parsedQuestionData;
+    }
+
+    const parsedCorrectAnswer = normalizeMatchingPayload(question.correctAnswer);
+    if (parsedCorrectAnswer) {
+      return parsedCorrectAnswer;
+    }
+
+    return normalizeMatchingPayload(currentGroup?.groupData);
+  };
+
+  const getQuestionHint = (question: QuestionDto, group: QuestionGroupDto | null) => {
+    if (question.instruction?.trim()) {
+      return question.instruction.trim();
+    }
+
+    if (group?.instruction?.trim()) {
+      return group.instruction.trim();
+    }
+
+    switch (question.questionType) {
+      case "MATCHING":
+        return "Nối từng mục bên trái với đúng đáp án bên phải. Mỗi đáp án chỉ nên dùng một lần.";
+      case "TRUE_FALSE_NG":
+        return "Dựa vào đoạn chung để chọn TRUE, FALSE hoặc NOT GIVEN. Không đoán ngoài dữ kiện có trong bài.";
+      case "WORD_BANK_FILL":
+        return "Đọc toàn câu trước, sau đó chọn từ phù hợp nhất từ word bank để điền vào chỗ trống.";
+      case "SENTENCE_REORDER":
+        return "Ghép các từ theo thứ tự tạo thành câu hoàn chỉnh và đúng ngữ pháp.";
+      case "SENTENCE_REWRITE":
+        return "Viết lại câu nhưng giữ nguyên nghĩa chính của câu gốc.";
+      case "ESSAY_WRITING":
+        return "Trả lời đủ ý, rõ ràng, ưu tiên câu đơn giản nhưng đúng.";
+      case "PRONUNCIATION":
+      case "TOPIC_SPEAKING":
+        return "Bạn có thể bấm ghi âm để lấy transcript rồi chỉnh sửa lại trước khi nộp.";
+      default:
+        return "Đọc kỹ yêu cầu và chọn đáp án đúng nhất trước khi nộp.";
+    }
   };
 
   const toAnswerText = (answer: UserAnswer, question: QuestionDto) => {
@@ -477,8 +679,8 @@ function LessonRunner() {
     setSpeechSessionQuestionId(null);
   };
 
-  const startSpeechCapture = () => {
-    if (!currentQuestion || currentAnswer?.submitted) return;
+  const startSpeechCapture = (question: QuestionDto) => {
+    if (getQuestionAnswer(question.id)?.submitted) return;
 
     const speechWindow = window as Window & {
       SpeechRecognition?: new () => {
@@ -541,12 +743,12 @@ function LessonRunner() {
 
       if (finalText.trim()) {
         const previous =
-          typeof answers[currentQuestion.id]?.answer === "string"
-            ? answers[currentQuestion.id].answer
+          typeof answers[question.id]?.answer === "string"
+            ? answers[question.id].answer
             : "";
 
         const nextText = `${previous} ${finalText}`.replace(/\s+/g, " ").trim();
-        setAnswer(currentQuestion.id, nextText);
+        setAnswer(question.id, nextText);
         setSpeechPreview("");
       }
     };
@@ -567,7 +769,7 @@ function LessonRunner() {
     recognition.start();
     speechRecognitionRef.current = recognition;
     setIsListening(true);
-    setSpeechSessionQuestionId(currentQuestion.id);
+    setSpeechSessionQuestionId(question.id);
   };
 
   useEffect(() => {
@@ -577,72 +779,64 @@ function LessonRunner() {
   }, []);
 
   useEffect(() => {
-    if (!currentQuestion) return;
-
-    if (isListening && speechSessionQuestionId !== currentQuestion.id) {
+    const visibleQuestionIds = new Set(currentQuestions.map((question) => question.id));
+    if (isListening && speechSessionQuestionId && !visibleQuestionIds.has(speechSessionQuestionId)) {
       stopSpeechCapture();
     }
-  }, [currentQuestion, isListening, speechSessionQuestionId]);
+  }, [currentQuestions, isListening, speechSessionQuestionId]);
 
-  const updateMatchingAnswer = (leftItem: string, selectedRight: string) => {
-    if (!currentQuestion) return;
-
-    const current = answers[currentQuestion.id]?.answer;
+  const updateMatchingAnswer = (
+    questionId: number,
+    leftItem: string,
+    selectedRight: string,
+  ) => {
+    const current = answers[questionId]?.answer;
     const next =
       current && typeof current === "object" && !Array.isArray(current)
         ? { ...current, [leftItem]: selectedRight }
         : { [leftItem]: selectedRight };
 
-    setAnswer(currentQuestion.id, next);
+    setAnswer(questionId, next);
   };
 
-  const removeMatchingAnswer = (leftItem: string) => {
-    if (!currentQuestion) return;
-
-    const current = answers[currentQuestion.id]?.answer;
+  const removeMatchingAnswer = (questionId: number, leftItem: string) => {
+    const current = answers[questionId]?.answer;
     if (!current || typeof current !== "object" || Array.isArray(current)) return;
 
     const next = { ...current };
     delete next[leftItem];
-    setAnswer(currentQuestion.id, next);
+    setAnswer(questionId, next);
   };
 
-  const appendWordBankWord = (word: string) => {
-    if (!currentQuestion) return;
-    const current = answers[currentQuestion.id]?.answer;
+  const appendWordBankWord = (questionId: number, word: string) => {
+    const current = answers[questionId]?.answer;
     const text = typeof current === "string" ? current : "";
     const next = text.trim() ? `${text} ${word}` : word;
-    setAnswer(currentQuestion.id, next);
+    setAnswer(questionId, next);
   };
 
-  const appendReorderWord = (word: string, index: number) => {
-    if (!currentQuestion) return;
-
-    const current = answers[currentQuestion.id]?.answer;
+  const appendReorderWord = (questionId: number, word: string, index: number) => {
+    const current = answers[questionId]?.answer;
     const selected = Array.isArray(current) ? current : [];
     const token = `${index}|||${word}`;
 
     if (selected.includes(token)) return;
 
-    setAnswer(currentQuestion.id, [...selected, token]);
+    setAnswer(questionId, [...selected, token]);
   };
 
-  const removeLastReorderWord = () => {
-    if (!currentQuestion) return;
-
-    const current = answers[currentQuestion.id]?.answer;
+  const removeLastReorderWord = (questionId: number) => {
+    const current = answers[questionId]?.answer;
     const selected = Array.isArray(current) ? current : [];
-    setAnswer(currentQuestion.id, selected.slice(0, -1));
+    setAnswer(questionId, selected.slice(0, -1));
   };
 
-  const resetReorderAnswer = () => {
-    if (!currentQuestion) return;
-    setAnswer(currentQuestion.id, []);
+  const resetReorderAnswer = (questionId: number) => {
+    setAnswer(questionId, []);
   };
 
-  const getDisplayedReorderSentence = () => {
-    if (!currentQuestion) return "";
-    const current = answers[currentQuestion.id]?.answer;
+  const getDisplayedReorderSentence = (questionId: number) => {
+    const current = answers[questionId]?.answer;
     const selected = Array.isArray(current) ? current : [];
     return selected
       .map((item) => item.split("|||")[1] ?? "")
@@ -650,8 +844,9 @@ function LessonRunner() {
       .trim();
   };
 
-  const canSubmitCurrent = useMemo(() => {
-    if (!currentQuestion || !currentAnswer) return false;
+  const canSubmitQuestion = (question: QuestionDto) => {
+    const currentAnswer = getQuestionAnswer(question.id);
+    if (!currentAnswer) return false;
 
     const answer = currentAnswer.answer;
 
@@ -664,9 +859,9 @@ function LessonRunner() {
     }
 
     if (typeof answer === "object" && answer !== null) {
-      if (currentQuestion.questionType === "MATCHING") {
+      if (question.questionType === "MATCHING") {
         const answerMap = !Array.isArray(answer) ? answer : {};
-        const leftItems = matchingData?.left ?? [];
+        const leftItems = getMatchingData(question)?.left ?? [];
 
         if (leftItems.length === 0) {
           return Object.keys(answerMap).length > 0;
@@ -683,12 +878,10 @@ function LessonRunner() {
     }
 
     return false;
-  }, [currentAnswer, currentQuestion, matchingData]);
+  };
 
-  const submitCurrent = async () => {
-    if (!currentQuestion) return;
-
-    const saved = answers[currentQuestion.id];
+  const submitQuestion = async (question: QuestionDto) => {
+    const saved = answers[question.id];
     if (!saved) return;
 
     setSubmittingCurrent(true);
@@ -696,27 +889,29 @@ function LessonRunner() {
 
     try {
       let correct: boolean | null = false;
+      let feedback: string | null = null;
+      let score: number | null = null;
 
-      if (isMCQ(currentQuestion.questionType)) {
+      if (isMCQ(question.questionType)) {
         const selected = normalizeText(String(saved.answer));
-        const correctOption = currentQuestion.options.find((o) => o.isCorrect);
+        const correctOption = question.options.find((o) => o.isCorrect);
         correct = correctOption
           ? normalizeText(correctOption.optionKey) === selected ||
             normalizeText(correctOption.content) === selected
           : false;
-      } else if (currentQuestion.questionType === "TRUE_FALSE_NG") {
+      } else if (question.questionType === "TRUE_FALSE_NG") {
         const selected = normalizeText(String(saved.answer));
-        const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
+        const expected = getTrueFalseExpected(question);
         correct = selected === expected;
-      } else if (isFillType(currentQuestion.questionType)) {
+      } else if (isFillType(question.questionType)) {
         const typed = normalizeText(String(saved.answer));
-        const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
+        const expected = normalizeText(String(question.correctAnswer ?? ""));
         correct = typed === expected;
-      } else if (currentQuestion.questionType === "SENTENCE_REORDER") {
-        const builtSentence = getDisplayedReorderSentence();
-        const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
+      } else if (question.questionType === "SENTENCE_REORDER") {
+        const builtSentence = getDisplayedReorderSentence(question.id);
+        const expected = normalizeText(String(question.correctAnswer ?? ""));
         correct = normalizeText(builtSentence) === expected;
-      } else if (currentQuestion.questionType === "MATCHING") {
+      } else if (question.questionType === "MATCHING") {
         const answerMap =
           saved.answer &&
           typeof saved.answer === "object" &&
@@ -725,8 +920,8 @@ function LessonRunner() {
             : {};
 
         const expectedMap =
-          parseJsonSafe<Record<string, string>>(currentQuestion.correctAnswer || "") ||
-          matchingData?.answers ||
+          parseJsonSafe<Record<string, string>>(question.correctAnswer || "") ||
+          getMatchingData(question)?.answers ||
           null;
 
         if (!expectedMap) {
@@ -739,31 +934,53 @@ function LessonRunner() {
               normalizeText(expectedMap[left] || ""),
           );
         }
-      } else if (isManualType(currentQuestion.questionType)) {
+      } else if (isManualType(question.questionType)) {
         correct = null;
       }
 
-      const answerText = toAnswerText(saved.answer, currentQuestion);
+      const answerText = toAnswerText(saved.answer, question);
+      const evaluatedCorrect = correct;
+
+      if (question.questionType === "ESSAY_WRITING") {
+        const res = await submitEssay({
+          questionId: question.id,
+          answerText,
+        });
+
+        if (res.success && res.data) {
+          correct = null;
+          feedback = res.data.feedback;
+          score = res.data.score;
+        } else if (!res.success) {
+          setSubmitApiError(
+            res.error?.message || "KhÃ´ng gá»­i Ä‘Æ°á»£c bÃ i essay lÃªn há»‡ thá»‘ng.",
+          );
+        }
+      } else {
 
       const res = await submitQuestionHistory({
-        questionId: currentQuestion.id,
+        questionId: question.id,
         answer_text: answerText,
       });
 
       if (res.success && res.data) {
-        correct = res.data.correct;
+        correct = evaluatedCorrect;
       } else if (!res.success) {
         setSubmitApiError(
           res.error?.message || "Không gửi được câu trả lời lên hệ thống.",
         );
       }
 
+      }
+
       setAnswers((prev) => ({
         ...prev,
-        [currentQuestion.id]: {
-          ...prev[currentQuestion.id],
+        [question.id]: {
+          ...prev[question.id],
           submitted: true,
           correct,
+          feedback,
+          score,
         },
       }));
     } finally {
@@ -772,7 +989,7 @@ function LessonRunner() {
   };
 
   const goNext = async () => {
-    if (currentIndex >= questions.length - 1) {
+    if (currentIndex >= items.length - 1) {
       if (!lessonIdNumber || Number.isNaN(lessonIdNumber)) {
         setCompleteApiError("Không thể lưu lesson vì lessonId không hợp lệ.");
         setFinished(true);
@@ -818,30 +1035,44 @@ function LessonRunner() {
     setCurrentIndex((prev) => prev + 1);
   };
 
-  const renderQuestionHint = () => {
-    if (!currentQuestion?.questionData) return null;
+  const renderQuestionHint = (question: QuestionDto, group: QuestionGroupDto | null) => {
+    const hint = getQuestionHint(question, group);
+    const showQuestionData =
+      !!question.questionData &&
+      question.questionType !== "MATCHING" &&
+      question.questionType !== "SENTENCE_REORDER";
 
-    if (
-      currentQuestion.questionType === "MATCHING" ||
-      currentQuestion.questionType === "SENTENCE_REORDER"
-    ) {
-      return null;
-    }
+    if (!hint && !showQuestionData) return null;
 
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <span className="font-bold">Question data:</span> {currentQuestion.questionData}
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-2">
+        {hint && (
+          <p>
+            <span className="font-bold">Gợi ý:</span> {hint}
+          </p>
+        )}
+        {showQuestionData && (
+          <p>
+            <span className="font-bold">Question data:</span> {question.questionData}
+          </p>
+        )}
       </div>
     );
   };
 
-  const renderAnswerArea = () => {
-    if (!currentQuestion) return null;
+  const renderAnswerArea = (
+    question: QuestionDto,
+    group: QuestionGroupDto | null,
+  ) => {
+    const currentAnswer = getQuestionAnswer(question.id);
+    const wordBank = getWordBank(group);
+    const reorderWords = getReorderWords(question);
+    const matchingData = getMatchingData(question);
 
-    if (isMCQ(currentQuestion.questionType)) {
+    if (isMCQ(question.questionType)) {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {currentQuestion.options.map((option) => {
+          {question.options.map((option) => {
             const selected = currentAnswer?.answer === option.optionKey;
             const submitted = currentAnswer?.submitted;
             const isCorrectOption = option.isCorrect;
@@ -863,7 +1094,7 @@ function LessonRunner() {
               <button
                 key={`${option.id}-${option.optionKey}-${option.content}`}
                 disabled={submitted}
-                onClick={() => setAnswer(currentQuestion.id, option.optionKey)}
+                onClick={() => setAnswer(question.id, option.optionKey)}
                 className={`text-left rounded-2xl border-2 p-5 transition-all ${extraClass}`}
               >
                 <div className="flex items-center gap-4">
@@ -881,7 +1112,7 @@ function LessonRunner() {
       );
     }
 
-    if (currentQuestion.questionType === "TRUE_FALSE_NG") {
+    if (question.questionType === "TRUE_FALSE_NG") {
       const values = ["true", "false", "not given"];
 
       return (
@@ -894,7 +1125,7 @@ function LessonRunner() {
               "border-gray-200 bg-white hover:border-[#155ca5]/40 hover:bg-[#f8fbff]";
 
             if (submitted) {
-              const expected = normalizeText(String(currentQuestion.correctAnswer ?? ""));
+              const expected = getTrueFalseExpected(question);
               if (normalizeText(value) === expected) {
                 extraClass = "border-green-400 bg-green-50";
               } else if (selected) {
@@ -908,7 +1139,7 @@ function LessonRunner() {
               <button
                 key={value}
                 disabled={submitted}
-                onClick={() => setAnswer(currentQuestion.id, value)}
+                onClick={() => setAnswer(question.id, value)}
                 className={`rounded-2xl border-2 p-5 font-bold uppercase transition-all ${extraClass}`}
               >
                 {value}
@@ -920,9 +1151,9 @@ function LessonRunner() {
     }
 
     if (
-      currentQuestion.questionType === "LIMITED_FILL" ||
-      currentQuestion.questionType === "WORD_FORM" ||
-      currentQuestion.questionType === "VERB_FORM"
+      question.questionType === "LIMITED_FILL" ||
+      question.questionType === "WORD_FORM" ||
+      question.questionType === "VERB_FORM"
     ) {
       return (
         <div className="space-y-3">
@@ -930,7 +1161,7 @@ function LessonRunner() {
             type="text"
             disabled={currentAnswer?.submitted}
             value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
-            onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
+            onChange={(e) => setAnswer(question.id, e.target.value)}
             placeholder="Nhập câu trả lời..."
             className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5]"
           />
@@ -938,7 +1169,7 @@ function LessonRunner() {
       );
     }
 
-    if (currentQuestion.questionType === "WORD_BANK_FILL") {
+    if (question.questionType === "WORD_BANK_FILL") {
       return (
         <div className="space-y-4">
           {wordBank.length > 0 && (
@@ -950,7 +1181,7 @@ function LessonRunner() {
                     key={word}
                     type="button"
                     disabled={currentAnswer?.submitted}
-                    onClick={() => appendWordBankWord(word)}
+                    onClick={() => appendWordBankWord(question.id, word)}
                     className="px-4 py-2 rounded-full border border-[#bfd8ff] bg-white text-[#155ca5] font-semibold hover:bg-[#eef6ff] disabled:opacity-60"
                   >
                     {word}
@@ -964,7 +1195,7 @@ function LessonRunner() {
             type="text"
             disabled={currentAnswer?.submitted}
             value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
-            onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
+            onChange={(e) => setAnswer(question.id, e.target.value)}
             placeholder="Điền từ hoặc bấm từ trong Word Bank..."
             className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5]"
           />
@@ -972,7 +1203,7 @@ function LessonRunner() {
       );
     }
 
-    if (currentQuestion.questionType === "SENTENCE_REORDER") {
+    if (question.questionType === "SENTENCE_REORDER") {
       const selectedTokens = Array.isArray(currentAnswer?.answer)
         ? currentAnswer.answer
         : [];
@@ -982,14 +1213,14 @@ function LessonRunner() {
           <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-5">
             <p className="text-sm font-bold text-[#155ca5] mb-3">Your sentence</p>
             <div className="min-h-[60px] rounded-2xl border border-dashed border-[#9bc2ff] bg-white p-4 text-lg font-semibold text-[#1e2e51]">
-              {getDisplayedReorderSentence() || "Chưa chọn từ nào"}
+              {getDisplayedReorderSentence(question.id) || "Chưa chọn từ nào"}
             </div>
 
             <div className="flex items-center gap-3 mt-4">
               <button
                 type="button"
                 disabled={currentAnswer?.submitted || selectedTokens.length === 0}
-                onClick={removeLastReorderWord}
+                onClick={() => removeLastReorderWord(question.id)}
                 className="px-4 py-2 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50 disabled:opacity-50"
               >
                 Undo
@@ -997,7 +1228,7 @@ function LessonRunner() {
               <button
                 type="button"
                 disabled={currentAnswer?.submitted || selectedTokens.length === 0}
-                onClick={resetReorderAnswer}
+                onClick={() => resetReorderAnswer(question.id)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50 disabled:opacity-50"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -1018,7 +1249,7 @@ function LessonRunner() {
                     key={token}
                     type="button"
                     disabled={currentAnswer?.submitted || selected}
-                    onClick={() => appendReorderWord(word, index)}
+                    onClick={() => appendReorderWord(question.id, word, index)}
                     className={`px-4 py-2 rounded-xl border font-semibold transition-all ${
                       selected
                         ? "border-gray-300 bg-gray-100 text-gray-400"
@@ -1035,7 +1266,7 @@ function LessonRunner() {
       );
     }
 
-    if (currentQuestion.questionType === "MATCHING") {
+    if (question.questionType === "MATCHING") {
       const leftItems = matchingData?.left ?? [];
       const rightItems = matchingData?.right ?? [];
       const answerMap =
@@ -1057,6 +1288,29 @@ function LessonRunner() {
 
       return (
         <div className="space-y-4">
+          {rightItems.length > 0 && (
+            <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
+              <p className="text-sm font-bold text-[#155ca5] mb-3">Đáp án để ghép</p>
+              <div className="flex flex-wrap gap-2">
+                {rightItems.map((rightItem) => {
+                  const isUsed = usedRightValues.has(String(rightItem).trim());
+                  return (
+                    <span
+                      key={`matching-bank-${rightItem}`}
+                      className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                        isUsed
+                          ? "bg-gray-100 text-gray-400 line-through"
+                          : "border border-[#bfd8ff] bg-white text-[#155ca5]"
+                      }`}
+                    >
+                      {rightItem}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {leftItems.length > 0 && rightItems.length > 0 ? (
             <div className="space-y-5">
               <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
@@ -1110,7 +1364,7 @@ function LessonRunner() {
                           const dropped = event.dataTransfer.getData("text/plain");
                           if (!dropped) return;
                           if (!rightItems.includes(dropped)) return;
-                          updateMatchingAnswer(leftItem, dropped);
+                          updateMatchingAnswer(question.id, leftItem, dropped);
                         }}
                         className={`min-h-[56px] rounded-xl border-2 border-dashed px-3 py-2 flex items-center justify-between gap-2 ${
                           selectedValue
@@ -1121,13 +1375,13 @@ function LessonRunner() {
                         {selectedValue ? (
                           <span className="text-[#155ca5] font-semibold">{selectedValue}</span>
                         ) : (
-                          <span className="text-gray-400 text-sm">Thả thẻ vào đây</span>
+                          <span className="text-gray-400 text-sm">Chọn hoặc kéo đáp án vào đây</span>
                         )}
 
                         {selectedValue && !currentAnswer?.submitted && (
                           <button
                             type="button"
-                            onClick={() => removeMatchingAnswer(leftItem)}
+                            onClick={() => removeMatchingAnswer(question.id, leftItem)}
                             className="text-xs px-2 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50"
                           >
                             Bỏ
@@ -1155,26 +1409,26 @@ function LessonRunner() {
       );
     }
 
-    if (currentQuestion.questionType === "SENTENCE_REWRITE") {
+    if (question.questionType === "SENTENCE_REWRITE") {
       return (
         <textarea
           rows={4}
           disabled={currentAnswer?.submitted}
           value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
-          onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
+          onChange={(e) => setAnswer(question.id, e.target.value)}
           placeholder="Viết lại câu ở đây..."
           className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-none"
         />
       );
     }
 
-    if (currentQuestion.questionType === "ESSAY_WRITING") {
+    if (question.questionType === "ESSAY_WRITING") {
       return (
         <textarea
           rows={8}
           disabled={currentAnswer?.submitted}
           value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
-          onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
+          onChange={(e) => setAnswer(question.id, e.target.value)}
           placeholder="Write your essay here..."
           className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-y"
         />
@@ -1182,16 +1436,16 @@ function LessonRunner() {
     }
 
     if (
-      currentQuestion.questionType === "PRONUNCIATION" ||
-      currentQuestion.questionType === "TOPIC_SPEAKING"
+      question.questionType === "PRONUNCIATION" ||
+      question.questionType === "TOPIC_SPEAKING"
     ) {
       const speakingActive =
-        isListening && speechSessionQuestionId === currentQuestion.id;
+        isListening && speechSessionQuestionId === question.id;
 
       return (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 space-y-4">
           <p className="font-bold text-[#1e2e51]">
-            Dạng {getQuestionTypeLabel(currentQuestion.questionType)}
+            Dạng {getQuestionTypeLabel(question.questionType)}
           </p>
           <p className="text-sm text-gray-600">
             Nhấn "Bắt đầu nói" để hệ thống nghe và tự hiện chữ vào ô transcript.
@@ -1202,7 +1456,7 @@ function LessonRunner() {
               <button
                 type="button"
                 disabled={currentAnswer?.submitted || !speechSupported}
-                onClick={startSpeechCapture}
+                onClick={() => startSpeechCapture(question)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#bfd8ff] bg-white text-[#155ca5] font-semibold hover:bg-[#eef6ff] disabled:opacity-50"
               >
                 <Mic className="w-4 h-4" />
@@ -1241,7 +1495,7 @@ function LessonRunner() {
             rows={4}
             disabled={currentAnswer?.submitted}
             value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
-            onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
+            onChange={(e) => setAnswer(question.id, e.target.value)}
             placeholder="Transcript se hien tai day khi ban noi..."
             className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-none bg-white"
           />
@@ -1252,14 +1506,15 @@ function LessonRunner() {
     return (
       <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6">
         <p className="font-bold text-[#1e2e51]">
-          Chưa hỗ trợ UI cho dạng {getQuestionTypeLabel(currentQuestion.questionType)}
+          Chưa hỗ trợ UI cho dạng {getQuestionTypeLabel(question.questionType)}
         </p>
       </div>
     );
   };
 
-  const renderFeedback = () => {
-    if (!currentQuestion || !currentAnswer?.submitted) return null;
+  const renderFeedback = (question: QuestionDto) => {
+    const currentAnswer = getQuestionAnswer(question.id);
+    if (!currentAnswer?.submitted) return null;
 
     const isUngraded = currentAnswer.correct === null;
 
@@ -1293,34 +1548,50 @@ function LessonRunner() {
               }`}
             >
               {isUngraded
-                ? "Đã lưu câu trả lời"
+                ? isManualType(question.questionType)
+                  ? "Đã nộp, chờ đánh giá"
+                  : question.questionType === "MATCHING"
+                    ? "Đã nộp, chưa có đáp án chuẩn để tự chấm"
+                    : "Đã nộp"
                 : currentAnswer.correct
                   ? "Chính xác!"
                   : "Chưa đúng"}
             </p>
 
-            {currentQuestion.explanation && (
-              <p className="text-gray-700">{currentQuestion.explanation}</p>
+            {question.explanation && (
+              <p className="text-gray-700">{question.explanation}</p>
+            )}
+
+            {typeof currentAnswer.score === "number" && (
+              <p className="text-sm font-semibold text-[#155ca5]">
+                Essay score: {currentAnswer.score}
+              </p>
+            )}
+
+            {currentAnswer.feedback && (
+              <p className="text-sm text-gray-700">
+                Nháº­n xÃ©t AI: {currentAnswer.feedback}
+              </p>
             )}
 
             {!isUngraded &&
               !currentAnswer.correct &&
-              currentQuestion.correctAnswer && (
+              question.correctAnswer && (
                 <p className="text-sm font-semibold text-gray-600">
-                  Đáp án đúng: {currentQuestion.correctAnswer}
+                  Đáp án đúng: {question.correctAnswer}
                 </p>
               )}
 
-            {currentQuestion.questionType === "MATCHING" &&
+            {question.questionType === "MATCHING" &&
               currentAnswer.correct === null && (
                 <p className="text-sm text-gray-600">
                   Matching chỉ tự chấm khi backend trả về `correctAnswer` hoặc mapping đáp án đầy đủ.
                 </p>
               )}
 
-            {isManualType(currentQuestion.questionType) && (
+            {isManualType(question.questionType) && (
               <p className="text-sm text-gray-600">
-                Dạng này hiện đang lưu câu trả lời, chưa chấm tự động.
+                Dạng này đã được gửi đi, hệ thống sẽ dùng nội dung bạn nộp để đánh giá thay vì chấm đúng/sai ngay.
               </p>
             )}
           </div>
@@ -1328,6 +1599,10 @@ function LessonRunner() {
       </div>
     );
   };
+
+  const isCurrentItemComplete = currentQuestions.every(
+    (question) => answers[question.id]?.submitted,
+  );
 
   if (loading) {
     return (
@@ -1357,7 +1632,7 @@ function LessonRunner() {
     );
   }
 
-  if (!data || questions.length === 0) {
+  if (!data || totalQuestions === 0 || items.length === 0) {
     return (
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
@@ -1385,7 +1660,7 @@ function LessonRunner() {
               Auto-grade: đúng {autoGradedCorrectCount}/{autoGradedSubmittedCount || 0} câu.
             </p>
             <p className="text-sm text-gray-500 mt-2">
-              Đã nộp: {totalSubmitted}/{questions.length} câu
+              Đã nộp: {totalSubmitted}/{totalQuestions} câu
             </p>
             <p className="text-sm text-gray-500 mt-1">
               Điều kiện qua bài: accuracy từ 80% trở lên.
@@ -1454,10 +1729,7 @@ function LessonRunner() {
     );
   }
 
-  if (!currentQuestion) return null;
-
-  const mediaImageUrl = getQuestionImageUrl(currentGroup, currentQuestion);
-  const mediaAudioUrl = getQuestionAudioUrl(currentGroup, currentQuestion);
+  if (!currentItem || currentQuestions.length === 0) return null;
 
   return (
     <main className="max-w-5xl mx-auto px-6 py-10 pb-28">
@@ -1476,7 +1748,7 @@ function LessonRunner() {
               Lesson {lessonId}
             </span>
             <span className="text-sm font-bold text-gray-500">
-              Câu {currentIndex + 1}/{questions.length}
+              Màn {currentIndex + 1}/{items.length}
             </span>
           </div>
 
@@ -1492,68 +1764,94 @@ function LessonRunner() {
       <section className="space-y-6">
         <GroupSharedContent group={currentGroup} />
 
-        <div className="bg-white rounded-3xl shadow-sm p-6 md:p-8 space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="inline-block px-3 py-1 rounded-full bg-[#f3f7ff] text-[#155ca5] text-xs font-bold uppercase tracking-wider">
-                {getQuestionTypeLabel(currentQuestion.questionType)}
-              </div>
+        <div className="space-y-5">
+          {currentQuestions.map((question, questionIndex) => {
+            const questionAnswer = getQuestionAnswer(question.id);
+            const mediaImageUrl = getQuestionImageUrl(currentGroup, question);
+            const mediaAudioUrl = getQuestionAudioUrl(currentGroup, question);
 
-              {currentGroup?.title && (
-                <div className="text-xs font-semibold text-gray-500">
-                  Group: {currentGroup.title}
+            return (
+              <div
+                key={question.id}
+                className="bg-white rounded-3xl shadow-sm p-6 md:p-8 space-y-6"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-[#155ca5] px-3 text-sm font-black text-white">
+                        {questionIndex + 1}
+                      </div>
+                      <div className="inline-block px-3 py-1 rounded-full bg-[#f3f7ff] text-[#155ca5] text-xs font-bold uppercase tracking-wider">
+                        {getQuestionTypeLabel(question.questionType)}
+                      </div>
+                    </div>
+
+                    <div className="text-xs font-semibold text-gray-500">
+                      {questionAnswer?.submitted
+                        ? questionAnswer.correct === null
+                          ? "Đã nộp"
+                          : questionAnswer.correct
+                            ? "Đúng"
+                            : "Sai"
+                        : "Chưa nộp"}
+                    </div>
+                  </div>
+
+                  {question.instruction && (
+                    <p className="text-sm font-medium text-gray-500">
+                      {question.instruction}
+                    </p>
+                  )}
+
+                  <h2 className="text-2xl md:text-3xl font-black text-[#1e2e51] leading-tight">
+                    {question.content}
+                  </h2>
                 </div>
-              )}
-            </div>
 
-            {currentQuestion.instruction && (
-              <p className="text-sm font-medium text-gray-500">
-                {currentQuestion.instruction}
-              </p>
-            )}
+                <MediaBlock imageUrl={mediaImageUrl} audioUrl={mediaAudioUrl} />
 
-            <h2 className="text-2xl md:text-3xl font-black text-[#1e2e51] leading-tight">
-              {currentQuestion.content}
-            </h2>
-          </div>
+                {renderQuestionHint(question, currentGroup)}
 
-          <MediaBlock imageUrl={mediaImageUrl} audioUrl={mediaAudioUrl} />
+                {renderAnswerArea(question, currentGroup)}
 
-          {renderQuestionHint()}
+                {renderFeedback(question)}
 
-          {renderAnswerArea()}
-
-          {renderFeedback()}
+                <div className="flex items-center justify-end gap-3">
+                  {!questionAnswer?.submitted && (
+                    <button
+                      onClick={() => void submitQuestion(question)}
+                      disabled={!canSubmitQuestion(question) || submittingCurrent}
+                      className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0f4c88]"
+                    >
+                      {submittingCurrent ? "Đang nộp..." : "Nộp câu trả lời"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
       <footer className="mt-8 flex items-center justify-between gap-4 flex-wrap">
         <div className="text-sm text-gray-500 font-medium">
-          Đúng {totalCorrect}/{questions.length} câu | Hoàn thành {submittedPercent}%
+          Đúng {totalCorrect}/{totalQuestions} câu | Hoàn thành {submittedPercent}%
         </div>
 
         <div className="flex items-center gap-3">
-          {!currentAnswer?.submitted ? (
-            <button
-              onClick={submitCurrent}
-              disabled={!canSubmitCurrent || submittingCurrent}
-              className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0f4c88]"
-            >
-              {submittingCurrent ? "Đang nộp..." : "Nộp câu trả lời"}
-            </button>
-          ) : (
-            <button
-              onClick={goNext}
-              disabled={currentIndex === questions.length - 1 && completingLesson}
-              className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d] disabled:opacity-60"
-            >
-              {currentIndex === questions.length - 1
-                ? completingLesson
-                  ? "Đang lưu kết quả..."
-                  : "Kết thúc"
+          <button
+            onClick={goNext}
+            disabled={!isCurrentItemComplete || (currentIndex === items.length - 1 && completingLesson)}
+            className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d] disabled:opacity-60"
+          >
+            {currentIndex === items.length - 1
+              ? completingLesson
+                ? "Đang lưu kết quả..."
+                : "Kết thúc"
+              : currentGroup
+                ? "Nhóm tiếp theo"
                 : "Câu tiếp"}
-            </button>
-          )}
+          </button>
         </div>
 
         {submitApiError && (

@@ -63,6 +63,82 @@ export interface SubmitTestRequest {
   totalTime: number;
 }
 
+export interface EssaySubmissionRequest {
+  questionId: number;
+  answerText: string;
+}
+
+export interface EssaySubmissionResult {
+  score: number;
+  feedback: string;
+}
+
+export interface PersonalizedQuestionsRequest {
+  questionCount: number;
+  gradeId: number;
+  startUnit: number;
+  endUnit: number;
+  topic: string;
+}
+
+export interface UnitReviewRequest {
+  title: string;
+  unitId: number;
+  questionIds: number[];
+  includeWrongQuestions?: boolean;
+}
+
+export interface UnitReviewResponse {
+  id: number;
+  title: string;
+  unitId: number;
+  questionIds: number[];
+}
+
+export interface GroupReviewRequest {
+  title: string;
+  startUnit: number;
+  endUnit: number;
+  gradeId: number;
+  questionIds: number[];
+  includeWrongQuestions?: boolean;
+  aiQuestionCount?: number;
+  aiQuestionTopic?: string;
+}
+
+export interface GroupReviewResponse {
+  id: number;
+  title: string;
+  startUnit: number;
+  endUnit: number;
+  gradeId: number;
+  questionIds: number[];
+}
+
+export interface SemesterTestRequest {
+  title: string;
+  startUnit: number;
+  endUnit: number;
+  timeLimit: number;
+  gradeId: number;
+  questionGroupIds: number[];
+  questionIds: number[];
+  includeWrongQuestions?: boolean;
+  aiQuestionCount?: number;
+  aiQuestionTopic?: string;
+}
+
+export interface SemesterTestResponse {
+  id: number;
+  title: string;
+  startUnit: number;
+  endUnit: number;
+  timeLimit: number;
+  gradeId: number;
+  questionGroupIds: number[];
+  questionIds: number[];
+}
+
 export interface PurchaseItemRequest {
   itemId: string;
   quantity?: number;

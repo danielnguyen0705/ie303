@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import {
   Plus,
@@ -199,7 +199,6 @@ const OPTION_BASED_TYPES = [
   "READING_MC",
   "CLOZE_MC",
   "TRUE_FALSE_NG",
-  "MATCHING",
 ];
 
 const TEXT_ANSWER_TYPES = [
@@ -231,6 +230,15 @@ const IMAGE_SUPPORTED_GROUP_TYPES = [
 ];
 
 const OPTION_KEYS = ["A", "B", "C", "D"] as const;
+const TRUE_FALSE_VALUES = ["TRUE", "FALSE", "NOT GIVEN"] as const;
+
+function normalizeAnswerToken(value?: string | null) {
+  return String(value || "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
 
 function createDefaultOptions(): QuestionOptionItem[] {
   return OPTION_KEYS.map((key) => ({
@@ -238,6 +246,32 @@ function createDefaultOptions(): QuestionOptionItem[] {
     content: "",
     isCorrect: false,
   }));
+}
+
+function createTrueFalseOptions(
+  correctAnswer?: string | null,
+  existingOptions?: QuestionOptionItem[] | null,
+): QuestionOptionItem[] {
+  const normalizedCorrect = normalizeAnswerToken(correctAnswer);
+
+  return TRUE_FALSE_VALUES.map((value, index) => {
+    const optionKey = OPTION_KEYS[index];
+    const existing = existingOptions?.find(
+      (option) =>
+        option.optionKey === optionKey ||
+        normalizeAnswerToken(option.content) === value,
+    );
+
+    return {
+      id: existing?.id,
+      optionKey,
+      content: value,
+      isCorrect:
+        normalizeAnswerToken(existing?.content) === normalizedCorrect ||
+        Boolean(existing?.isCorrect) ||
+        value === normalizedCorrect,
+    };
+  });
 }
 
 function createEmptySingleForm(): SingleFormState {
@@ -284,27 +318,16 @@ function createEmptyGroupForm(): GroupFormState {
   };
 }
 
-function DisabledField({
-  label,
-  placeholder,
-}: {
-  label: string;
-  placeholder: string;
-}) {
-  return (
-    <div className="space-y-2 opacity-70">
-      <label className="text-sm font-medium">{label}</label>
-      <Input disabled value="" placeholder={placeholder} className="bg-slate-100" />
-    </div>
-  );
-}
-
 function isOptionBasedType(type?: string) {
   return !!type && OPTION_BASED_TYPES.includes(type);
 }
 
 function isTextAnswerType(type?: string) {
   return !!type && TEXT_ANSWER_TYPES.includes(type);
+}
+
+function isTrueFalseType(type?: string) {
+  return type === "TRUE_FALSE_NG";
 }
 
 function supportsSingleAudio(type?: string) {
@@ -331,6 +354,302 @@ function shouldShowQuestionData(type?: string) {
 
 function shouldShowExplanation(type?: string) {
   return !["TOPIC_SPEAKING"].includes(type || "");
+}
+
+function isMatchingType(type?: string) {
+  return type === "MATCHING";
+}
+
+function shouldImportCorrectAnswer(type?: string) {
+  return isTextAnswerType(type) || isMatchingType(type);
+}
+
+function shouldShowGroupData(type?: string) {
+  return ["WORD_BANK", "MATCHING"].includes(type || "");
+}
+
+function getQuestionDataFieldMeta(type?: string) {
+  switch (type) {
+    case "WORD_BANK_FILL":
+      return {
+        label: "Word Bank Data",
+        placeholder: 'Vi du: {"bank":["analyze","design","ship"]}',
+      };
+    case "SENTENCE_REORDER":
+      return {
+        label: "Sentence Parts",
+        placeholder: 'Vi du: ["First, gather data", "then compare results"]',
+      };
+    case "ESSAY_WRITING":
+      return {
+        label: "Writing Rubric / Prompt Data",
+        placeholder: 'Vi du: {"minWords":150,"bandFocus":["task response","grammar"]}',
+      };
+    default:
+      return {
+        label: "Question Data",
+        placeholder: "JSON/string phu neu loai cau hoi nay can du lieu rieng",
+      };
+  }
+}
+
+function getSelectedCorrectOptionContent(options: QuestionOptionItem[]) {
+  return options.find((option) => option.isCorrect)?.content || "";
+}
+
+function parseMatchingMap(raw?: string | null) {
+  if (!raw?.trim()) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+      return null;
+    }
+
+    if (
+      "left" in parsed ||
+      "right" in parsed ||
+      "answers" in parsed
+    ) {
+      const left = Array.isArray((parsed as any).left)
+        ? (parsed as any).left.map(String).map((item: string) => item.trim()).filter(Boolean)
+        : [];
+      const right = Array.isArray((parsed as any).right)
+        ? (parsed as any).right.map(String).map((item: string) => item.trim()).filter(Boolean)
+        : [];
+      const answers =
+        (parsed as any).answers && typeof (parsed as any).answers === "object"
+          ? Object.entries((parsed as any).answers).reduce<Record<string, string>>(
+            (acc, [key, value]) => {
+              if (key && value != null) {
+                acc[String(key).trim()] = String(value).trim();
+              }
+              return acc;
+            },
+            {},
+          )
+          : {};
+
+      return { left, right, answers };
+    }
+
+    const answers = Object.entries(parsed as Record<string, unknown>).reduce<Record<string, string>>(
+      (acc, [key, value]) => {
+        if (key && value != null) {
+          acc[String(key).trim()] = String(value).trim();
+        }
+        return acc;
+      },
+      {},
+    );
+
+    return {
+      left: Object.keys(answers),
+      right: Array.from(new Set(Object.values(answers))),
+      answers,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function validateMatchingQuestionData(
+  questionData?: string | null,
+  correctAnswer?: string | null,
+) {
+  const parsedQuestionData = parseMatchingMap(questionData);
+  const parsedCorrectAnswer = parseMatchingMap(correctAnswer);
+  const left =
+    parsedQuestionData?.left.length
+      ? parsedQuestionData.left
+      : parsedCorrectAnswer?.left || [];
+  const right =
+    parsedQuestionData?.right.length
+      ? parsedQuestionData.right
+      : parsedCorrectAnswer?.right || [];
+  const answers =
+    Object.keys(parsedQuestionData?.answers || {}).length > 0
+      ? parsedQuestionData?.answers || {}
+      : parsedCorrectAnswer?.answers || {};
+
+  if (left.length === 0 || right.length === 0 || Object.keys(answers).length === 0) {
+    return "MATCHING cần questionData/correctAnswer dạng JSON hợp lệ";
+  }
+
+  const missingLeftAnswers = left.filter((item) => !answers[item]);
+  if (missingLeftAnswers.length > 0) {
+    return `MATCHING thiếu đáp án cho: ${missingLeftAnswers.join(", ")}`;
+  }
+
+  return null;
+}
+
+type MatchingPair = {
+  left: string;
+  right: string;
+};
+
+function toMatchingPairs(questionData?: string | null, correctAnswer?: string | null): MatchingPair[] {
+  const parsedQuestionData = parseMatchingMap(questionData);
+  const parsedCorrectAnswer = parseMatchingMap(correctAnswer);
+  const answers =
+    Object.keys(parsedQuestionData?.answers || {}).length > 0
+      ? parsedQuestionData?.answers || {}
+      : parsedCorrectAnswer?.answers || {};
+
+  const orderedLeft =
+    parsedQuestionData?.left.length
+      ? parsedQuestionData.left
+      : Object.keys(answers);
+
+  if (orderedLeft.length === 0) {
+    return [{ left: "", right: "" }];
+  }
+
+  return orderedLeft.map((left) => ({
+    left,
+    right: answers[left] || "",
+  }));
+}
+
+function buildMatchingPayloadFromPairs(pairs: MatchingPair[]) {
+  const normalizedPairs = pairs
+    .map((pair) => ({
+      left: pair.left.trim(),
+      right: pair.right.trim(),
+    }))
+    .filter((pair) => pair.left || pair.right);
+
+  const answers = normalizedPairs.reduce<Record<string, string>>((acc, pair) => {
+    if (pair.left && pair.right) {
+      acc[pair.left] = pair.right;
+    }
+    return acc;
+  }, {});
+
+  const left = normalizedPairs.map((pair) => pair.left).filter(Boolean);
+  const right = Array.from(
+    new Set(normalizedPairs.map((pair) => pair.right).filter(Boolean)),
+  );
+
+  return {
+    questionData: JSON.stringify(
+      {
+        left,
+        right,
+        answers,
+      },
+      null,
+      2,
+    ),
+    correctAnswer: JSON.stringify(answers, null, 2),
+  };
+}
+
+function MatchingEditor({
+  questionData,
+  correctAnswer,
+  onChange,
+}: {
+  questionData: string;
+  correctAnswer: string;
+  onChange: (next: { questionData: string; correctAnswer: string }) => void;
+}) {
+  const pairs = useMemo(
+    () => toMatchingPairs(questionData, correctAnswer),
+    [questionData, correctAnswer],
+  );
+
+  const updatePair = (
+    index: number,
+    field: "left" | "right",
+    value: string,
+  ) => {
+    const nextPairs = pairs.map((pair, pairIndex) =>
+      pairIndex === index ? { ...pair, [field]: value } : pair,
+    );
+    onChange(buildMatchingPayloadFromPairs(nextPairs));
+  };
+
+  const addPair = () => {
+    onChange(buildMatchingPayloadFromPairs([...pairs, { left: "", right: "" }]));
+  };
+
+  const removePair = (index: number) => {
+    const nextPairs = pairs.filter((_, pairIndex) => pairIndex !== index);
+    onChange(
+      buildMatchingPayloadFromPairs(
+        nextPairs.length > 0 ? nextPairs : [{ left: "", right: "" }],
+      ),
+    );
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Matching Pairs</p>
+          <p className="text-xs text-slate-500">
+            Nhap tung cap ben trai va ben phai. He thong tu dong tao JSON dung format.
+          </p>
+        </div>
+        <Button type="button" variant="outline" onClick={addPair}>
+          <Plus className="mr-2 h-4 w-4" />
+          Them cap
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        {pairs.map((pair, index) => (
+          <div
+            key={`matching-pair-${index}`}
+            className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-[1fr_1fr_auto]"
+          >
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-500">
+                Left item {index + 1}
+              </label>
+              <Input
+                value={pair.left}
+                onChange={(e) => updatePair(index, "left", e.target.value)}
+                placeholder="Vi du: cat"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-500">Right match</label>
+              <Input
+                value={pair.right}
+                onChange={(e) => updatePair(index, "right", e.target.value)}
+                placeholder="Vi du: con meo"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => removePair(index)}
+                disabled={pairs.length === 1}
+              >
+                Xoa
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 text-xs text-slate-500 md:grid-cols-2">
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <p className="mb-2 font-semibold text-slate-700">questionData preview</p>
+          <pre className="whitespace-pre-wrap break-words">{questionData || "{}"}</pre>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <p className="mb-2 font-semibold text-slate-700">correctAnswer preview</p>
+          <pre className="whitespace-pre-wrap break-words">{correctAnswer || "{}"}</pre>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function normalizePayload(payload?: LessonQuestionPayload | null) {
@@ -376,30 +695,61 @@ function getDefaultChildType(groupType?: string): string {
 }
 
 function buildOptionsFromExcelRow(row: {
+  questionType?: string;
   optionA?: string;
   optionB?: string;
   optionC?: string;
   optionD?: string;
+  correctAnswer?: string;
   correctOption?: string;
 }) {
+  const questionType = String(row.questionType || "")
+    .trim()
+    .toUpperCase();
   const correctOption = String(row.correctOption || "")
     .trim()
     .toUpperCase();
+  const correctAnswer = String(row.correctAnswer || "")
+    .trim()
+    .toUpperCase();
 
-  return OPTION_KEYS.map((key) => ({
-    optionKey: key,
-    content: String(
-      row[
-      `option${key}` as "optionA" | "optionB" | "optionC" | "optionD"
-      ] || "",
-    ).trim(),
-    isCorrect: correctOption === key,
-  }));
+  const excelOptions = OPTION_KEYS.map((key) => {
+    const content = String(
+      row[`option${key}` as "optionA" | "optionB" | "optionC" | "optionD"] || "",
+    ).trim();
+
+    return {
+      optionKey: key,
+      content,
+      isCorrect:
+        correctOption === key || (content && content.toUpperCase() === correctAnswer),
+    };
+  }).filter((option) => option.content);
+
+  if (excelOptions.length > 0) {
+    return excelOptions;
+  }
+
+  if (questionType === "TRUE_FALSE_NG") {
+    const fallbackOptions = ["TRUE", "FALSE", "NOT GIVEN"];
+    const normalizedTarget = normalizeAnswerToken(correctAnswer);
+
+    return fallbackOptions.map((content, index) => ({
+      optionKey: OPTION_KEYS[index],
+      content,
+      isCorrect:
+        normalizeAnswerToken(content) === normalizedTarget ||
+        correctOption === OPTION_KEYS[index],
+    }));
+  }
+
+  return [];
 }
 
 function mapQuestionToSingleForm(question: QuestionItem): SingleFormState {
-  const options =
-    Array.isArray(question.options) && question.options.length > 0
+  const options = isTrueFalseType(question.questionType)
+    ? createTrueFalseOptions(question.correctAnswer, question.options)
+    : Array.isArray(question.options) && question.options.length > 0
       ? OPTION_KEYS.map((key) => {
         const found = question.options?.find((opt) => opt.optionKey === key);
         return {
@@ -427,8 +777,9 @@ function mapQuestionToSingleForm(question: QuestionItem): SingleFormState {
 }
 
 function mapQuestionToGroupChildForm(question: QuestionItem): GroupChildFormState {
-  const options =
-    Array.isArray(question.options) && question.options.length > 0
+  const options = isTrueFalseType(question.questionType)
+    ? createTrueFalseOptions(question.correctAnswer, question.options)
+    : Array.isArray(question.options) && question.options.length > 0
       ? OPTION_KEYS.map((key) => {
         const found = question.options?.find((opt) => opt.optionKey === key);
         return {
@@ -507,6 +858,19 @@ export default function QuestionPanel({
     () => normalizePayload(questionsPayload),
     [questionsPayload],
   );
+
+  useEffect(() => {
+    if (!isTrueFalseType(selectedSingleType)) return;
+
+    setSingleForm((prev) => ({
+      ...prev,
+      options: createTrueFalseOptions(
+        getSelectedCorrectOptionContent(prev.options) || prev.correctAnswer,
+        prev.options,
+      ),
+      correctAnswer: getSelectedCorrectOptionContent(prev.options) || prev.correctAnswer,
+    }));
+  }, [selectedSingleType]);
 
   const resetAll = () => {
     setStep(1);
@@ -606,18 +970,6 @@ export default function QuestionPanel({
     });
   };
 
-  const updateGroupQuestionFile = (
-    qIndex: number,
-    field: "audioFile" | "imageFile",
-    file: File | null,
-  ) => {
-    setGroupForm((prev) => {
-      const next = [...prev.questions];
-      next[qIndex] = { ...next[qIndex], [field]: file };
-      return { ...prev, questions: next };
-    });
-  };
-
   const updateGroupOption = (
     qIndex: number,
     oIndex: number,
@@ -676,6 +1028,13 @@ export default function QuestionPanel({
     if (!selectedSingleType) return "Bạn chưa chọn loại câu hỏi";
     if (!singleForm.content.trim()) return "Content không được để trống";
 
+    if (isMatchingType(selectedSingleType)) {
+      return validateMatchingQuestionData(
+        singleForm.questionData,
+        singleForm.correctAnswer,
+      );
+    }
+
     if (isOptionBasedType(selectedSingleType)) {
       const emptyOption = singleForm.options.find((opt) => !opt.content.trim());
       if (emptyOption) return "Các option không được để trống";
@@ -706,6 +1065,16 @@ export default function QuestionPanel({
 
       if (!q.content.trim()) {
         return `Question ${i + 1}: content không được để trống`;
+      }
+
+      if (isMatchingType(childType)) {
+        const matchingError = validateMatchingQuestionData(
+          q.questionData,
+          q.correctAnswer,
+        );
+        if (matchingError) {
+          return `Question ${i + 1}: ${matchingError}`;
+        }
       }
 
       if (isOptionBasedType(childType)) {
@@ -804,7 +1173,7 @@ export default function QuestionPanel({
           instruction: String(row.instruction || "").trim() || undefined,
           questionData: String(row.questionData || "").trim() || undefined,
           explanation: String(row.explanation || "").trim() || undefined,
-          correctAnswer: isTextAnswerType(questionType)
+          correctAnswer: shouldImportCorrectAnswer(questionType)
             ? String(row.correctAnswer || "").trim() || undefined
             : undefined,
           questionGroupId: null,
@@ -815,7 +1184,15 @@ export default function QuestionPanel({
         }
 
         if (isOptionBasedType(questionType)) {
-          const options = buildOptionsFromExcelRow(row);
+          const options = buildOptionsFromExcelRow({
+            ...row,
+            questionType,
+          });
+          if (options.length === 0) {
+            throw new Error(
+              `Single question "${content}" không có option hợp lệ trong file Excel`,
+            );
+          }
           await upsertQuestionOptions(createRes.data.id, options);
         }
       }
@@ -854,7 +1231,7 @@ export default function QuestionPanel({
             instruction: String(child.instruction || "").trim() || undefined,
             questionData: String(child.questionData || "").trim() || undefined,
             explanation: String(child.explanation || "").trim() || undefined,
-            correctAnswer: isTextAnswerType(childType)
+            correctAnswer: shouldImportCorrectAnswer(childType)
               ? String(child.correctAnswer || "").trim() || undefined
               : undefined,
             questionGroupId: groupRes.data.id,
@@ -867,7 +1244,15 @@ export default function QuestionPanel({
           }
 
           if (isOptionBasedType(childType)) {
-            const options = buildOptionsFromExcelRow(child);
+            const options = buildOptionsFromExcelRow({
+              ...child,
+              questionType: childType,
+            });
+            if (options.length === 0) {
+              throw new Error(
+                `Group question "${content}" không có option hợp lệ trong file Excel`,
+              );
+            }
             await upsertQuestionOptions(questionRes.data.id, options);
           }
         }
@@ -934,7 +1319,9 @@ export default function QuestionPanel({
           : undefined,
         correctAnswer: isTextAnswerType(selectedSingleType)
           ? singleForm.correctAnswer.trim()
-          : undefined,
+          : isTrueFalseType(selectedSingleType)
+            ? getSelectedCorrectOptionContent(singleForm.options).trim() || undefined
+            : undefined,
         questionGroupId: null,
       };
 
@@ -1018,7 +1405,9 @@ export default function QuestionPanel({
             sharedContent: groupForm.sharedContent.trim() || undefined,
             audioUrl: groupAudioUrl,
             imageUrl: groupImageUrl,
-            groupData: groupForm.groupData.trim() || undefined,
+            groupData: shouldShowGroupData(selectedGroupType)
+              ? groupForm.groupData.trim() || undefined
+              : undefined,
           },
         })
         : await adminApi.createQuestionGroup({
@@ -1029,7 +1418,9 @@ export default function QuestionPanel({
           sharedContent: groupForm.sharedContent.trim() || undefined,
           audioUrl: groupAudioUrl,
           imageUrl: groupImageUrl,
-          groupData: groupForm.groupData.trim() || undefined,
+          groupData: shouldShowGroupData(selectedGroupType)
+            ? groupForm.groupData.trim() || undefined
+            : undefined,
         });
 
       if (!groupRes.success || !groupRes.data?.id) {
@@ -1081,12 +1472,8 @@ export default function QuestionPanel({
           content: q.content.trim(),
           instruction:
             q.instruction.trim() || groupForm.instruction.trim() || undefined,
-          audioUrl: supportsGroupAudio(selectedGroupType)
-            ? q.audioFile || q.existingAudioUrl?.trim() || undefined
-            : undefined,
-          imageUrl: supportsGroupImage(selectedGroupType)
-            ? q.imageFile || undefined
-            : undefined,
+          audioUrl: undefined,
+          imageUrl: undefined,
           questionData: shouldShowQuestionData(childType)
             ? q.questionData.trim() || undefined
             : undefined,
@@ -1095,7 +1482,9 @@ export default function QuestionPanel({
             : undefined,
           correctAnswer: isTextAnswerType(childType)
             ? q.correctAnswer.trim()
-            : undefined,
+            : isTrueFalseType(childType)
+              ? getSelectedCorrectOptionContent(q.options).trim() || undefined
+              : undefined,
           questionGroupId: groupId,
         };
 
@@ -1771,7 +2160,7 @@ export default function QuestionPanel({
                     />
                   </div>
 
-                  {supportsSingleAudio(selectedSingleType) ? (
+                  {supportsSingleAudio(selectedSingleType) && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Audio file</label>
                       <Input
@@ -1808,14 +2197,9 @@ export default function QuestionPanel({
                         }
                       />
                     </div>
-                  ) : (
-                    <DisabledField
-                      label="Audio file"
-                      placeholder="Không áp dụng cho loại câu hỏi này"
-                    />
                   )}
 
-                  {supportsSingleImage(selectedSingleType) ? (
+                  {supportsSingleImage(selectedSingleType) && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Image file</label>
                       {singleForm.existingImageUrl && (
@@ -1834,16 +2218,25 @@ export default function QuestionPanel({
                         }
                       />
                     </div>
-                  ) : (
-                    <DisabledField
-                      label="Image file"
-                      placeholder="Không áp dụng cho loại câu hỏi này"
-                    />
                   )}
 
-                  {shouldShowQuestionData(selectedSingleType) && (
+                  {isMatchingType(selectedSingleType) ? (
+                    <MatchingEditor
+                      questionData={singleForm.questionData}
+                      correctAnswer={singleForm.correctAnswer}
+                      onChange={(next) =>
+                        setSingleForm((prev) => ({
+                          ...prev,
+                          questionData: next.questionData,
+                          correctAnswer: next.correctAnswer,
+                        }))
+                      }
+                    />
+                  ) : shouldShowQuestionData(selectedSingleType) && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Question Data</label>
+                      <label className="text-sm font-medium">
+                        {getQuestionDataFieldMeta(selectedSingleType).label}
+                      </label>
                       <Textarea
                         rows={3}
                         value={singleForm.questionData}
@@ -1853,29 +2246,13 @@ export default function QuestionPanel({
                             questionData: e.target.value,
                           }))
                         }
-                        placeholder="JSON/string phụ nếu type này cần dữ liệu riêng"
+                        placeholder={getQuestionDataFieldMeta(selectedSingleType).placeholder}
                       />
                     </div>
                   )}
 
-                  {shouldShowExplanation(selectedSingleType) && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Explanation</label>
-                      <Textarea
-                        rows={3}
-                        value={singleForm.explanation}
-                        onChange={(e) =>
-                          setSingleForm((prev) => ({
-                            ...prev,
-                            explanation: e.target.value,
-                          }))
-                        }
-                        placeholder="Giải thích đáp án"
-                      />
-                    </div>
-                  )}
-
-                  {isTextAnswerType(selectedSingleType) && (
+                  {(isTextAnswerType(selectedSingleType) || isMatchingType(selectedSingleType)) &&
+                    !isMatchingType(selectedSingleType) && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Correct Answer</label>
                       <Input
@@ -1891,7 +2268,48 @@ export default function QuestionPanel({
                     </div>
                   )}
 
-                  {isOptionBasedType(selectedSingleType) && (
+                  {isTrueFalseType(selectedSingleType) && (
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          True / False / Not Given
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Dạng này dùng 3 lựa chọn cố định. Bạn chỉ cần chọn đáp án đúng.
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        {singleForm.options.map((option, index) => (
+                          <label
+                            key={`single-true-false-${option.optionKey}-${index}`}
+                            className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+                          >
+                            <div>
+                              <p className="text-xs font-bold text-slate-500">
+                                {option.optionKey}
+                              </p>
+                              <p className="font-semibold text-slate-900">{option.content}</p>
+                            </div>
+                            <span className="flex items-center gap-2 text-sm">
+                              <input
+                                type="radio"
+                                name="single-true-false-correct-option"
+                                checked={option.isCorrect}
+                                onChange={() =>
+                                  updateSingleOption(index, "isCorrect", true)
+                                }
+                              />
+                              Correct
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {isOptionBasedType(selectedSingleType) &&
+                    !isMatchingType(selectedSingleType) &&
+                    !isTrueFalseType(selectedSingleType) && (
                     <div className="space-y-3">
                       <p className="text-sm font-semibold text-slate-900">Options</p>
                       <div className="max-h-[260px] overflow-y-auto pr-1 space-y-3">
@@ -1988,7 +2406,7 @@ export default function QuestionPanel({
                     />
                   </div>
 
-                  {supportsGroupAudio(selectedGroupType) ? (
+                  {supportsGroupAudio(selectedGroupType) && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Audio file</label>
                       <Input
@@ -2025,11 +2443,6 @@ export default function QuestionPanel({
                         }
                       />
                     </div>
-                  ) : (
-                    <DisabledField
-                      label="Audio file"
-                      placeholder="Không áp dụng cho loại group này"
-                    />
                   )}
 
                   {supportsGroupImage(selectedGroupType) && (
@@ -2053,20 +2466,26 @@ export default function QuestionPanel({
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Group Data</label>
-                    <Textarea
-                      rows={3}
-                      value={groupForm.groupData}
-                      onChange={(e) =>
-                        setGroupForm((prev) => ({
-                          ...prev,
-                          groupData: e.target.value,
-                        }))
-                      }
-                      placeholder="JSON/string phụ nếu cần"
-                    />
-                  </div>
+                  {shouldShowGroupData(selectedGroupType) && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Group Data</label>
+                      <Textarea
+                        rows={3}
+                        value={groupForm.groupData}
+                        onChange={(e) =>
+                          setGroupForm((prev) => ({
+                            ...prev,
+                            groupData: e.target.value,
+                          }))
+                        }
+                        placeholder={
+                          selectedGroupType === "WORD_BANK"
+                            ? 'Ví dụ: {"wordBank":["because","although","however"]}'
+                            : "JSON/string phụ nếu group này cần dữ liệu riêng"
+                        }
+                      />
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <div>
@@ -2140,75 +2559,20 @@ export default function QuestionPanel({
                             />
                           </div>
 
-                          {supportsGroupAudio(selectedGroupType) && (
+                          {isMatchingType(childType) ? (
+                            <MatchingEditor
+                              questionData={question.questionData}
+                              correctAnswer={question.correctAnswer}
+                              onChange={(next) => {
+                                updateGroupQuestion(qIndex, "questionData", next.questionData);
+                                updateGroupQuestion(qIndex, "correctAnswer", next.correctAnswer);
+                              }}
+                            />
+                          ) : shouldShowQuestionData(childType) && (
                             <div className="space-y-2">
-                              <label className="text-sm font-medium">Audio file</label>
-                              <Input
-                                value={question.existingAudioUrl || ""}
-                                onChange={(e) =>
-                                  setGroupForm((prev) => {
-                                    const next = [...prev.questions];
-                                    next[qIndex] = {
-                                      ...next[qIndex],
-                                      existingAudioUrl: e.target.value,
-                                    };
-                                    return { ...prev, questions: next };
-                                  })
-                                }
-                                placeholder="Dán audio URL (https://...) nếu có"
-                              />
-                              {question.existingAudioUrl && (
-                                <>
-                                  <p className="text-xs text-slate-500 break-all">
-                                    Current: {question.existingAudioUrl}
-                                  </p>
-                                  <audio
-                                    controls
-                                    preload="none"
-                                    src={question.existingAudioUrl}
-                                    className="w-full"
-                                  />
-                                </>
-                              )}
-                              <Input
-                                type="file"
-                                accept="audio/*"
-                                onChange={(e) =>
-                                  updateGroupQuestionFile(
-                                    qIndex,
-                                    "audioFile",
-                                    e.target.files?.[0] || null,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {supportsGroupImage(selectedGroupType) && (
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">Image file</label>
-                              {question.existingImageUrl && (
-                                <p className="text-xs text-slate-500 break-all">
-                                  Current: {question.existingImageUrl}
-                                </p>
-                              )}
-                              <Input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) =>
-                                  updateGroupQuestionFile(
-                                    qIndex,
-                                    "imageFile",
-                                    e.target.files?.[0] || null,
-                                  )
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {shouldShowQuestionData(childType) && (
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">Question Data</label>
+                              <label className="text-sm font-medium">
+                                {getQuestionDataFieldMeta(childType).label}
+                              </label>
                               <Textarea
                                 rows={2}
                                 value={question.questionData}
@@ -2219,7 +2583,7 @@ export default function QuestionPanel({
                                     e.target.value,
                                   )
                                 }
-                                placeholder="JSON/string phụ"
+                                placeholder={getQuestionDataFieldMeta(childType).placeholder}
                               />
                             </div>
                           )}
@@ -2242,7 +2606,8 @@ export default function QuestionPanel({
                             </div>
                           )}
 
-                          {isTextAnswerType(childType) && (
+                          {(isTextAnswerType(childType) || isMatchingType(childType)) &&
+                            !isMatchingType(childType) && (
                             <div className="space-y-2">
                               <label className="text-sm font-medium">
                                 Correct Answer
@@ -2261,7 +2626,7 @@ export default function QuestionPanel({
                             </div>
                           )}
 
-                          {isOptionBasedType(childType) && (
+                          {isOptionBasedType(childType) && !isMatchingType(childType) && (
                             <div className="space-y-3">
                               <p className="text-sm font-semibold text-slate-900">
                                 Options
@@ -2397,3 +2762,7 @@ export default function QuestionPanel({
     </div>
   );
 }
+
+
+
+

@@ -82,6 +82,30 @@ export interface QuestionHistorySubmissionResult {
   questionId: number;
 }
 
+export async function getQuestionById(
+  questionId: number,
+): Promise<ApiResponse<QuestionDto>> {
+  if (!questionId || Number.isNaN(questionId)) {
+    return createError("Invalid questionId", "INVALID_QUESTION_ID");
+  }
+
+  return request<QuestionDto>(`/questions/${questionId}`, {
+    method: "GET",
+  });
+}
+
+export async function getQuestionGroupById(
+  questionGroupId: number,
+): Promise<ApiResponse<QuestionGroupDto>> {
+  if (!questionGroupId || Number.isNaN(questionGroupId)) {
+    return createError("Invalid questionGroupId", "INVALID_QUESTION_GROUP_ID");
+  }
+
+  return request<QuestionGroupDto>(`/question-groups/${questionGroupId}`, {
+    method: "GET",
+  });
+}
+
 export async function getQuestionsByLesson(
   lessonId: number,
 ): Promise<ApiResponse<LessonQuestionResponse>> {

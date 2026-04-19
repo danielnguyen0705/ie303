@@ -68,15 +68,21 @@ public class LearningProgressService {
         userLessonProgressMapper.updateEntityFromRequest(request, progress);
         progress.setUser(currentUser);
         progress.setLesson(lesson);
-        progress.setCompleted(request.accuracy() >= LESSON_PASS_ACCURACY);
+        boolean passedThisAttempt = request.accuracy() >= LESSON_PASS_ACCURACY;
+        boolean wasCompletedBeforeAttempt = alreadyCompleted || progress.isCompleted();
+        boolean completedAfterAttempt = wasCompletedBeforeAttempt || passedThisAttempt;
+        boolean firstTimeCompletion = !wasCompletedBeforeAttempt && passedThisAttempt;
+
+        // Keep lessons permanently completed once a user has passed them.
+        progress.setCompleted(completedAfterAttempt);
         progress.setProgressPercent(Math.max(0.0, Math.min(100.0, request.accuracy())));
         progress.setLastAccessedAt(LocalDateTime.now());
 
-        if (progress.getCompletedAt() == null) {
+        if (completedAfterAttempt && progress.getCompletedAt() == null) {
             progress.setCompletedAt(LocalDateTime.now());
         }
 
-        if (!alreadyCompleted) {
+        if (firstTimeCompletion) {
             userService.touchStudyStreak(user.getId());
             user = userRepo.findById(user.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
