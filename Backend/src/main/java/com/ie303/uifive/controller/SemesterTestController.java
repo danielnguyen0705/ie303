@@ -14,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/semester-tests")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class SemesterTestController {
 
     private final SemesterTestService service;

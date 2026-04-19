@@ -11,6 +11,7 @@ import com.ie303.uifive.entity.PaymentOfferType;
 import com.ie303.uifive.entity.PaymentProvider;
 import com.ie303.uifive.entity.PaymentStatus;
 import com.ie303.uifive.entity.PaymentTransaction;
+import com.ie303.uifive.entity.Role;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
@@ -18,6 +19,7 @@ import com.ie303.uifive.repo.PaymentOfferRepo;
 import com.ie303.uifive.repo.PaymentTransactionRepo;
 import com.ie303.uifive.repo.UserRepo;
 import com.ie303.uifive.service.payment.gateway.PaymentGateway;
+import com.ie303.uifive.service.payment.gateway.VnpayPaymentGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -37,9 +41,10 @@ public class PaymentService {
     private final UserService userService;
     private final UserRepo userRepo;
     private final List<PaymentGateway> paymentGateways;
+    private final VnpayPaymentGateway vnpayPaymentGateway;
 
-    @Value("${payment.webhook-secret:}")
-    private String webhookSecret;
+    @Value("${payment.mock-confirm-enabled:false}")
+    private boolean mockConfirmEnabled;
 
     public PaymentOfferResponse createOffer(PaymentOfferRequest request) {
         PaymentOffer offer = new PaymentOffer();
@@ -83,10 +88,9 @@ public class PaymentService {
         PaymentOffer offer = offerRepo.findById(offerId)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_OFFER_NOT_FOUND));
 
-        PaymentProvider provider = request == null || request.provider() == null
-                ? PaymentProvider.MOCK
-                : request.provider();
+        PaymentProvider provider = request.provider();
         PaymentGateway gateway = resolveGateway(provider);
+        ensureMockProviderEnabled(provider);
 
         if (!offer.isActive()) {
             throw new AppException(ErrorCode.PAYMENT_OFFER_NOT_AVAILABLE);
@@ -132,8 +136,20 @@ public class PaymentService {
     }
 
     public PaymentTransactionResponse confirmPayment(String transactionCode, String providerTransactionId) {
+        ensureMockConfirmEndpointEnabled();
+
+        User currentUser = userService.getCurrentUser();
         PaymentTransaction transaction = transactionRepo.findByTransactionCode(transactionCode)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
+
+        if (transaction.getProvider() != PaymentProvider.MOCK) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "mock-confirm is only available for MOCK transactions");
+        }
+
+        boolean owner = transaction.getUser() != null && transaction.getUser().getId().equals(currentUser.getId());
+        if (currentUser.getRole() != Role.ADMIN && !owner) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
 
         if (transaction.getStatus() == PaymentStatus.SUCCESS) {
             return toTransactionResponse(transaction);
@@ -192,22 +208,25 @@ public class PaymentService {
         PaymentTransaction transaction = transactionRepo.findByTransactionCode(request.transactionCode())
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
 
+        if (!Objects.equals(transaction.getAmountMoney(), request.amountMoney())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Webhook amount does not match transaction amount");
+        }
+
         if (transaction.getProvider() != request.provider()) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Webhook provider does not match transaction provider");
         }
 
+        ensureMockProviderEnabled(request.provider());
+
         PaymentGateway gateway = resolveGateway(request.provider());
         if (!gateway.verifySignature(request)) {
-            if (webhookSecret != null && !webhookSecret.isBlank()) {
-                if (request.signature() == null || !webhookSecret.equals(request.signature())) {
-                    throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID);
-                }
-            } else {
-                throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID);
-            }
+            throw new AppException(ErrorCode.PAYMENT_SIGNATURE_INVALID);
         }
 
         if (request.status() == PaymentStatus.SUCCESS) {
+            if (request.providerTransactionId() == null || request.providerTransactionId().isBlank()) {
+                throw new AppException(ErrorCode.INVALID_REQUEST, "providerTransactionId is required when status is SUCCESS");
+            }
             transaction = markTransactionSuccess(transaction, request.providerTransactionId(), request.provider());
         } else if (request.status() == PaymentStatus.FAILED || request.status() == PaymentStatus.CANCELLED) {
             if (transaction.getStatus() == PaymentStatus.PENDING) {
@@ -221,6 +240,59 @@ public class PaymentService {
         }
 
         return toTransactionResponse(transaction);
+    }
+
+    public String processVnpayIpn(Map<String, String> params) {
+        try {
+            if (!vnpayPaymentGateway.verifyIpnSignature(params)) {
+                return buildVnpayIpnResponse("97", "Invalid Signature");
+            }
+
+            String transactionCode = params.get("vnp_TxnRef");
+            if (transactionCode == null || transactionCode.isBlank()) {
+                return buildVnpayIpnResponse("99", "Invalid Request");
+            }
+
+            PaymentTransaction transaction = transactionRepo.findByTransactionCode(transactionCode).orElse(null);
+            if (transaction == null || transaction.getProvider() != PaymentProvider.VNPAY) {
+                return buildVnpayIpnResponse("01", "Order not found");
+            }
+
+            Integer amountMoney = parseVnpAmount(params.get("vnp_Amount"));
+            if (amountMoney == null) {
+                return buildVnpayIpnResponse("99", "Invalid amount");
+            }
+
+            if (!Objects.equals(transaction.getAmountMoney(), amountMoney)) {
+                return buildVnpayIpnResponse("04", "Invalid Amount");
+            }
+
+            if (transaction.getStatus() == PaymentStatus.SUCCESS) {
+                return buildVnpayIpnResponse("02", "Order already confirmed");
+            }
+
+            String providerTransactionId = params.get("vnp_TransactionNo");
+            String responseCode = params.get("vnp_ResponseCode");
+            String transactionStatus = params.get("vnp_TransactionStatus");
+            boolean success = "00".equals(responseCode)
+                    && (transactionStatus == null || transactionStatus.isBlank() || "00".equals(transactionStatus));
+
+            if (success) {
+                markTransactionSuccess(transaction, providerTransactionId, PaymentProvider.VNPAY);
+                return buildVnpayIpnResponse("00", "Confirm Success");
+            }
+
+            if (transaction.getStatus() == PaymentStatus.PENDING) {
+                transaction.setStatus(PaymentStatus.FAILED);
+                transaction.setProvider(PaymentProvider.VNPAY);
+                transaction.setProviderTransactionId(providerTransactionId);
+                transactionRepo.save(transaction);
+            }
+
+            return buildVnpayIpnResponse("00", "Confirm Success");
+        } catch (Exception exception) {
+            return buildVnpayIpnResponse("99", "Unknown error");
+        }
     }
 
     private void applyOfferRequest(PaymentOffer offer, PaymentOfferRequest request) {
@@ -327,6 +399,48 @@ public class PaymentService {
 
     private String generateTransactionCode() {
         return "PAY-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+    }
+
+    private Integer parseVnpAmount(String amountInMinorUnit) {
+        if (amountInMinorUnit == null || amountInMinorUnit.isBlank()) {
+            return null;
+        }
+
+        try {
+            long minor = Long.parseLong(amountInMinorUnit);
+            if (minor < 0 || minor % 100 != 0) {
+                return null;
+            }
+
+            long major = minor / 100;
+            if (major > Integer.MAX_VALUE) {
+                return null;
+            }
+
+            return (int) major;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private String buildVnpayIpnResponse(String responseCode, String message) {
+        String safeCode = responseCode == null ? "99" : responseCode;
+        String safeMessage = (message == null || message.isBlank())
+                ? "Unknown error"
+                : message.replace(" ", "+");
+        return "RspCode=" + safeCode + "&Message=" + safeMessage;
+    }
+
+    private void ensureMockConfirmEndpointEnabled() {
+        if (!mockConfirmEnabled) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "mock-confirm endpoint is disabled");
+        }
+    }
+
+    private void ensureMockProviderEnabled(PaymentProvider provider) {
+        if (provider == PaymentProvider.MOCK && !mockConfirmEnabled) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "MOCK payment provider is disabled");
+        }
     }
 
     private PaymentGateway resolveGateway(PaymentProvider provider) {

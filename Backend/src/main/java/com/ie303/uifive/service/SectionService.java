@@ -4,6 +4,8 @@ import com.ie303.uifive.dto.req.SectionRequest;
 import com.ie303.uifive.dto.res.SectionResponse;
 import com.ie303.uifive.entity.Section;
 import com.ie303.uifive.entity.Unit;
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.SectionMapper;
 import com.ie303.uifive.repo.SectionRepo;
 import com.ie303.uifive.repo.UnitRepo;
@@ -24,7 +26,7 @@ public class SectionService {
         Section entity = mapper.toEntity(request);
 
         Unit unit = unitRepo.findById(request.unitId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Unit với id = " + request.unitId()));
+                .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         entity.setUnit(unit);
 
@@ -36,7 +38,7 @@ public class SectionService {
 
     public SectionResponse getById(Long id) {
         Section entity = sectionRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Section với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
 
         SectionResponse response = mapper.toResponse(entity);
         return response;
@@ -54,12 +56,12 @@ public class SectionService {
 
     public SectionResponse update(Long id, SectionRequest request) {
         Section entity = sectionRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Section với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
 
         mapper.updateEntityFromRequest(request, entity);
 
         Unit unit = unitRepo.findById(request.unitId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Unit với id = " + request.unitId()));
+                .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         entity.setUnit(unit);
 
@@ -71,7 +73,7 @@ public class SectionService {
 
     public void delete(Long id) {
         if (!sectionRepo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy Section với id = " + id);
+            throw new AppException(ErrorCode.SECTION_NOT_FOUND);
         }
 
         sectionRepo.deleteById(id);

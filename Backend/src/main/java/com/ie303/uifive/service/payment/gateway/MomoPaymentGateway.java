@@ -3,6 +3,8 @@ package com.ie303.uifive.service.payment.gateway;
 import com.ie303.uifive.dto.req.PaymentWebhookRequest;
 import com.ie303.uifive.entity.PaymentProvider;
 import com.ie303.uifive.entity.PaymentTransaction;
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -16,6 +18,9 @@ public class MomoPaymentGateway implements PaymentGateway {
     @Value("${payment.momo.secret:}")
     private String momoSecret;
 
+    @Value("${payment.momo.enabled:true}")
+    private boolean momoEnabled;
+
     @Override
     public PaymentProvider provider() {
         return PaymentProvider.MOMO;
@@ -23,6 +28,10 @@ public class MomoPaymentGateway implements PaymentGateway {
 
     @Override
     public String createPaymentUrl(PaymentTransaction transaction, String returnUrl) {
+        if (!momoEnabled) {
+            throw new AppException(ErrorCode.PAYMENT_PROVIDER_NOT_SUPPORTED, "MOMO is temporarily disabled");
+        }
+
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(momoPayUrl)
                 .queryParam("transactionCode", transaction.getTransactionCode())
                 .queryParam("amount", transaction.getAmountMoney())
@@ -38,7 +47,7 @@ public class MomoPaymentGateway implements PaymentGateway {
     @Override
     public boolean verifySignature(PaymentWebhookRequest request) {
         if (momoSecret == null || momoSecret.isBlank()) {
-            return true;
+            return false;
         }
         if (request.signature() == null || request.signature().isBlank()) {
             return false;
@@ -47,7 +56,8 @@ public class MomoPaymentGateway implements PaymentGateway {
         String payload = GatewaySignUtils.canonicalWebhookPayload(
                 request.transactionCode(),
                 request.status().name(),
-                request.providerTransactionId()
+                request.providerTransactionId(),
+                request.amountMoney()
         );
         String expected = GatewaySignUtils.hmacSha256Hex(payload, momoSecret);
         return expected.equalsIgnoreCase(request.signature());

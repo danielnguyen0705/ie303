@@ -8,16 +8,20 @@ import com.ie303.uifive.dto.res.PaymentCheckoutResponse;
 import com.ie303.uifive.dto.res.PaymentOfferResponse;
 import com.ie303.uifive.dto.res.PaymentTransactionResponse;
 import com.ie303.uifive.service.PaymentService;
+import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -80,7 +84,7 @@ public class PaymentController {
 
     @PostMapping("/checkout/{offerId}")
     public ApiResponse<PaymentCheckoutResponse> checkout(@PathVariable Long offerId,
-                                                         @RequestBody(required = false) PaymentCheckoutRequest request) {
+                                                         @RequestBody @Valid PaymentCheckoutRequest request) {
         return ApiResponse.<PaymentCheckoutResponse>builder()
                 .code(1000)
                 .result(paymentService.checkout(offerId, request))
@@ -88,6 +92,7 @@ public class PaymentController {
     }
 
     @PostMapping("/mock-confirm/{transactionCode}")
+    @RolesAllowed("ADMIN")
     public ApiResponse<PaymentTransactionResponse> mockConfirm(@PathVariable String transactionCode,
                                                                @RequestParam(required = false) String providerTransactionId) {
         return ApiResponse.<PaymentTransactionResponse>builder()
@@ -97,11 +102,18 @@ public class PaymentController {
     }
 
     @PostMapping("/webhook")
+    @PermitAll
     public ApiResponse<PaymentTransactionResponse> webhook(@RequestBody @Valid PaymentWebhookRequest request) {
         return ApiResponse.<PaymentTransactionResponse>builder()
                 .code(1000)
                 .result(paymentService.processWebhook(request))
                 .build();
+    }
+
+    @RequestMapping(value = "/webhook/vnpay", method = {RequestMethod.GET, RequestMethod.POST})
+    @PermitAll
+    public ResponseEntity<String> vnpayWebhook(@RequestParam Map<String, String> params) {
+        return ResponseEntity.ok(paymentService.processVnpayIpn(params));
     }
 
     @GetMapping("/my-transactions")

@@ -25,3 +25,32 @@ While most of the inheritance is fine, it also inherits unwanted elements like `
 To prevent this, the project POM contains empty overrides for these elements.
 If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
 
+### VNPay IPN with ngrok (local dev)
+
+1. Start backend on port `8080`.
+2. Run:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\scripts\start-ngrok.ps1 -Port 8080
+   ```
+3. Copy `VNPAY_IPN_URL=...` from console and set it in VNPay sandbox merchant as IPN/Notify URL.
+4. Keep ngrok process running while testing payment.
+
+### Fix BANK provider constraint (PostgreSQL)
+
+If checkout with provider `BANK` fails with:
+`payment_transactions_provider_check`, run:
+
+```sql
+\i scripts/sql/fix-payment-provider-constraint.sql
+```
+
+Or execute file content directly in your SQL editor.
+
+### Swagger / OpenAPI
+
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
+For secured endpoints, click `Authorize` in Swagger UI and use:
+`Bearer <your_jwt_token>`
+

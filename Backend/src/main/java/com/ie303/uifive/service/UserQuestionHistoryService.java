@@ -7,6 +7,7 @@ import com.ie303.uifive.dto.req.UserQuestionHistoryRequest;
 import com.ie303.uifive.dto.res.UserQuestionHistoryResponse;
 import com.ie303.uifive.entity.Question;
 import com.ie303.uifive.entity.QuestionType;
+import com.ie303.uifive.entity.Role;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.entity.UserQuestionHistory;
 import com.ie303.uifive.exception.AppException;
@@ -279,7 +280,12 @@ public class UserQuestionHistoryService {
 
     public UserQuestionHistoryResponse getById(Long id) {
         UserQuestionHistory entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy UserQuestionHistory với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "User question history not found"));
+
+        User currentUser = userService.getCurrentUser();
+        if (currentUser.getRole() != Role.ADMIN && !entity.getUser().getId().equals(currentUser.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
 
         UserQuestionHistoryResponse response = mapper.toResponse(entity);
         return response;

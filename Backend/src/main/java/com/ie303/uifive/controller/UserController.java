@@ -18,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class UserController {
 
     private final UserService userService;
@@ -72,6 +73,27 @@ public class UserController {
     public ApiResponse<List<UserResponse>> getAll() {
         return ApiResponse.<List<UserResponse>>builder()
                 .result(userService.getAll())
+                .build();
+    }
+
+    @PutMapping("/{id}")
+    @RolesAllowed("ADMIN")
+    public ApiResponse<UserResponse> updateByAdmin(@PathVariable Long id,
+                                                   @RequestBody @Valid UserRequest request) {
+        return ApiResponse.<UserResponse>builder()
+                .code(1000)
+                .result(userService.update(id, request))
+                .build();
+    }
+
+    @DeleteMapping("/{id}")
+    @RolesAllowed("ADMIN")
+    public ApiResponse<String> deleteByAdmin(@PathVariable Long id) {
+        userService.delete(id);
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Deleted user")
+                .result("Deleted user")
                 .build();
     }
 

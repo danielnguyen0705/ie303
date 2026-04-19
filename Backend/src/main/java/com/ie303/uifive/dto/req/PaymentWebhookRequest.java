@@ -2,6 +2,7 @@ package com.ie303.uifive.dto.req;
 
 import com.ie303.uifive.entity.PaymentProvider;
 import com.ie303.uifive.entity.PaymentStatus;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -14,6 +15,10 @@ public record PaymentWebhookRequest(
 
         @NotNull(message = "status không được để trống")
         PaymentStatus status,
+
+        @NotNull(message = "amountMoney không được để trống")
+        @Min(value = 0, message = "amountMoney phải >= 0")
+        Integer amountMoney,
 
         String providerTransactionId,
         String signature

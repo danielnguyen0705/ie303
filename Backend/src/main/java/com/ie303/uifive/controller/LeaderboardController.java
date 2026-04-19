@@ -5,6 +5,7 @@ import com.ie303.uifive.dto.res.CoinLeaderboardResponse;
 import com.ie303.uifive.dto.res.CollectorLeaderboardResponse;
 import com.ie303.uifive.dto.res.ExpLeaderboardResponse;
 import com.ie303.uifive.service.LeaderboardService;
+import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/leaderboards")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class LeaderboardController {
 
     private final LeaderboardService leaderboardService;

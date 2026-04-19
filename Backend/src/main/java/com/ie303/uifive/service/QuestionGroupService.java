@@ -5,6 +5,8 @@ import com.ie303.uifive.dto.res.QuestionGroupResponse;
 import com.ie303.uifive.entity.Lesson;
 import com.ie303.uifive.entity.Question;
 import com.ie303.uifive.entity.QuestionGroup;
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.QuestionGroupMapper;
 import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.QuestionGroupRepo;
@@ -34,7 +36,7 @@ public class QuestionGroupService {
 
         if (request.lessonId() != null) {
             Lesson lesson = lessonRepo.findById(request.lessonId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
             questionGroup.setLesson(lesson);
         }
 
@@ -44,7 +46,7 @@ public class QuestionGroupService {
 
     public QuestionGroupResponse getById(Long id) {
         QuestionGroup questionGroup = questionGroupRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionGroup với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND));
         return questionGroupMapper.toResponse(questionGroup);
     }
 
@@ -56,14 +58,14 @@ public class QuestionGroupService {
 
     public QuestionGroupResponse update(Long id, QuestionGroupRequest request) {
         QuestionGroup questionGroup = questionGroupRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionGroup với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND));
 
         questionGroupMapper.updateEntityFromRequest(request, questionGroup);
         applyMedia(questionGroup, request);
 
         if (request.lessonId() != null) {
             Lesson lesson = lessonRepo.findById(request.lessonId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với id = " + request.lessonId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
             questionGroup.setLesson(lesson);
         } else {
             questionGroup.setLesson(null);
@@ -76,7 +78,7 @@ public class QuestionGroupService {
     @Transactional
     public void delete(Long id) {
         if (!questionGroupRepo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy QuestionGroup với id = " + id);
+            throw new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND);
         }
 
         List<Question> questions = questionRepo.findByQuestionGroupId(id);

@@ -14,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/units")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class UnitController {
 
     private final UnitService service;

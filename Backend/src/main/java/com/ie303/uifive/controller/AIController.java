@@ -9,6 +9,7 @@ import com.ie303.uifive.entity.User;
 import com.ie303.uifive.service.EssayService;
 import com.ie303.uifive.service.PersonalizedPracticeService;
 import com.ie303.uifive.service.UserService;
+import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class AIController {
 
     private final EssayService essayService;

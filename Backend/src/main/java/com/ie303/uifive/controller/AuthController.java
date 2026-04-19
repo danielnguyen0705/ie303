@@ -7,6 +7,8 @@ import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UserResponse;
 import com.ie303.uifive.service.AuthService;
 import com.ie303.uifive.service.UserService;
+import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class AuthController {
     private final UserService service;
 
     @PostMapping("/login")
+        @PermitAll
     public ApiResponse<String> login(@RequestBody @Valid LoginRequest request,
                                      HttpServletResponse response) {
 
@@ -40,6 +43,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+        @PermitAll
     public ApiResponse<UserResponse> create(@RequestBody @Valid UserRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .result(service.create(request))
@@ -47,6 +51,7 @@ public class AuthController {
     }
 
     @GetMapping("/verify-email")
+        @PermitAll
     public ApiResponse<String> verifyEmail(@RequestParam("token") String token) {
         authService.verifyEmail(token);
         return ApiResponse.<String>builder()
@@ -56,6 +61,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+        @RolesAllowed({"USER", "ADMIN"})
     public ApiResponse<String> logout(HttpServletResponse response) {
 
         response.setHeader(
