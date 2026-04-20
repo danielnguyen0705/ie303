@@ -67,6 +67,9 @@ export {
 export {
   // User
   getCurrentUser,
+  getUserHistory,
+  getUserProfile,
+  getUserStats,
   changePassword,
 } from "./users";
 

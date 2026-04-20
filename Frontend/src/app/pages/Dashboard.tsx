@@ -87,9 +87,10 @@ export function Dashboard() {
       setLoading(true);
       setError(null);
 
-      const [gradesResponse, userResponse] = await Promise.all([
+      const [gradesResponse, userResponse, statsResponse] = await Promise.all([
         getAllGrades(),
         getCurrentUser(),
+        getUserStats(),
       ]);
 
       if (gradesResponse.success && userResponse.success) {

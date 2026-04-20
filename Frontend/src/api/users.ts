@@ -1,7 +1,61 @@
-import type { ApiResponse, LoginRequest, RegisterRequest } from "./types";
-import { ENV } from "@/config/env";
+import type { ApiResponse } from "./types";
 import { createError, request } from "./utils/http";
+
 const PASSWORD_MIN_LENGTH = 6;
+
+type StudyingGrade = {
+  gradeId: number;
+  gradeName: string;
+  progressPercent: number;
+};
+
+type UserProfilePayload = {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  coin: number;
+  exp: number;
+  score: number;
+  streak: number;
+  lastStudyDate: string | null;
+  vipExpiredAt: string | null;
+  isVip: boolean;
+  createdAt: string;
+  studyingGrades?: StudyingGrade[];
+};
+
+type LearningStats = {
+  totalLessonsCompleted: number;
+  totalTestsTaken: number;
+  averageScore: number;
+  totalXP: number;
+  totalCoins: number;
+  currentStreak: number;
+  longestStreak: number;
+  accuracy: number;
+};
+
+type HistoryItem = {
+  id: string;
+  type: "lesson" | "test" | "exercise";
+  title: string;
+  completedAt: string;
+  score: number;
+  xpGained: number;
+};
+
+function calculateLevel(exp: number): number {
+  return Math.max(1, Math.floor(exp / 300) + 1);
+}
+
+function toVipStatus(isVip: boolean): "free" | "premium" {
+  return isVip ? "premium" : "free";
+}
+
+function buildDefaultAvatar(seed: string): string {
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+}
 
 // =========================
 // GET CURRENT USER
@@ -46,5 +100,88 @@ export async function changePassword(
   return {
     success: true,
     data: true,
+  };
+}
+
+// =========================
+// GET USER PROFILE
+// =========================
+export async function getUserProfile(): Promise<
+  ApiResponse<{
+    id: string;
+    name: string;
+    email: string;
+    avatar: string;
+    level: number;
+    xp: number;
+    coins: number;
+    streak: number;
+    accuracy: number;
+    joinedDate: string;
+    vipStatus: "free" | "premium";
+    studyingGrades: StudyingGrade[];
+  }>
+> {
+  const response = await getCurrentUser();
+  if (!response.success || !response.data) {
+    return response;
+  }
+
+  const user = response.data as UserProfilePayload;
+
+  return {
+    success: true,
+    data: {
+      id: String(user.id),
+      name: user.username,
+      email: user.email,
+      avatar: buildDefaultAvatar(user.username || user.email || "user"),
+      level: calculateLevel(user.exp),
+      xp: user.exp,
+      coins: user.coin,
+      streak: user.streak,
+      accuracy: 0,
+      joinedDate: user.createdAt,
+      vipStatus: toVipStatus(user.isVip),
+      studyingGrades: user.studyingGrades ?? [],
+    },
+  };
+}
+
+// =========================
+// GET USER STATS
+// =========================
+export async function getUserStats(): Promise<ApiResponse<LearningStats>> {
+  const response = await getCurrentUser();
+  if (!response.success || !response.data) {
+    return response as ApiResponse<LearningStats>;
+  }
+
+  const user = response.data as UserProfilePayload;
+
+  return {
+    success: true,
+    data: {
+      totalLessonsCompleted: 0,
+      totalTestsTaken: 0,
+      averageScore: 0,
+      totalXP: user.exp,
+      totalCoins: user.coin,
+      currentStreak: user.streak,
+      longestStreak: user.streak,
+      accuracy: 0,
+    },
+  };
+}
+
+// =========================
+// GET USER HISTORY
+// =========================
+export async function getUserHistory(
+  _limit: number = 10,
+): Promise<ApiResponse<HistoryItem[]>> {
+  return {
+    success: true,
+    data: [],
   };
 }
