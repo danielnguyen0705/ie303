@@ -64,9 +64,20 @@ export async function paymentWebhook(
     return createError("status is required", "VALIDATION_ERROR");
   }
 
+  if (payload.amountMoney == null || payload.amountMoney < 0) {
+    return createError("amountMoney must be >= 0", "VALIDATION_ERROR");
+  }
+
   return request<PaymentTransaction>("/payments/webhook", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      transactionCode: payload.transactionCode,
+      provider: payload.provider,
+      status: payload.status,
+      amountMoney: payload.amountMoney,
+      providerTransactionId: payload.providerTransactionId,
+      signature: payload.signature,
+    }),
   });
 }
 
