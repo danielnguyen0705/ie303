@@ -87,13 +87,12 @@ export function Dashboard() {
       setLoading(true);
       setError(null);
 
-      const [gradesResponse, userResponse, statsResponse] = await Promise.all([
+      const [gradesResponse, userResponse] = await Promise.all([
         getAllGrades(),
         getCurrentUser(),
-        getUserStats(),
       ]);
 
-      if (gradesResponse.success && userResponse.success && statsResponse.success) {
+      if (gradesResponse.success && userResponse.success) {
         setGrades(gradesResponse.data ?? []);
         setUser((userResponse.data ?? null) as UserProfile | null);
         setStats(statsResponse.data ?? emptyStats);

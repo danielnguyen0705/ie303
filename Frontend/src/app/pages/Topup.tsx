@@ -15,11 +15,14 @@ import {
   createCheckoutTransaction,
   getActivePaymentOffers,
   getCoinBalance,
+  getMyTransactions,
   mockConfirmPayment,
+  paymentWebhook,
 } from "@/api";
 import type {
   PaymentOffer,
-  TopupBillingCycle,
+  PaymentProvider,
+  PaymentTransaction,
   TopupCoinPack,
   TopupCoinPackIcon,
   TopupVipPlan,
@@ -65,44 +68,34 @@ const VIP_PLANS: TopupVipPlan[] = [
   },
 ];
 
-const COIN_PACKS: TopupCoinPack[] = [
-  {
-    id: "starter",
-    label: "Starter Pack",
-    coins: 500,
-    priceUsd: 4.99,
-    icon: "wallet",
-  },
-  {
-    id: "popular",
-    label: "Popular",
-    coins: 1200,
-    priceUsd: 9.99,
-    icon: "coins",
-  },
-  {
-    id: "big-stacks",
-    label: "Big Stacks",
-    coins: 2500,
-    priceUsd: 19.99,
-    icon: "gem",
-    highlighted: true,
-  },
-  {
-    id: "ultimate",
-    label: "Ultimate",
-    coins: 6000,
-    priceUsd: 44.99,
-    icon: "sparkles",
-  },
+type CheckoutCoinPack = TopupCoinPack & {
+  offer: PaymentOffer;
+};
+
+type PendingCheckout = {
+  transactionCode: string;
+  provider: PaymentProvider;
+  offerId: number;
+};
+
+type CheckoutIntent = {
+  triggerId: string;
+  offer: PaymentOffer;
+  successTitle: string;
+  successMessage: string;
+};
+
+const PENDING_CHECKOUT_KEY = "uifive.pendingCheckout";
+
+const PAYMENT_PROVIDER_OPTIONS: Array<{
+  value: PaymentProvider;
+  label: string;
+}> = [
+  { value: "MOMO", label: "Momo" },
+  { value: "VNPAY", label: "VNPay" },
+  { value: "BANK", label: "Bank QR" },
+  { value: "MOCK", label: "Mock (Local Test)" },
 ];
-
-const toUsd = (value: number): string => `$${value.toFixed(2)}`;
-
-const planPrice = (plan: TopupVipPlan, cycle: TopupBillingCycle): number =>
-  cycle === "annual"
-    ? (plan.annualPrice ?? plan.monthlyPrice)
-    : plan.monthlyPrice;
 
 function PackIcon({ icon }: { icon: TopupCoinPackIcon }) {
   if (icon === "wallet") {
@@ -125,12 +118,184 @@ export function Topup() {
   const [activeOffers, setActiveOffers] = useState<PaymentOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [provider, setProvider] = useState<PaymentProvider>("MOMO");
+  const [checkoutIntent, setCheckoutIntent] = useState<CheckoutIntent | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const popup = useNotificationPopup({
     autoClose: true,
     autoCloseDuration: 2500,
   });
+
+  const readPendingCheckout = (): PendingCheckout | null => {
+    try {
+      const raw = window.sessionStorage.getItem(PENDING_CHECKOUT_KEY);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw) as PendingCheckout;
+      if (!parsed.transactionCode || !parsed.provider || !parsed.offerId) {
+        return null;
+      }
+
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const savePendingCheckout = (checkout: PendingCheckout) => {
+    window.sessionStorage.setItem(
+      PENDING_CHECKOUT_KEY,
+      JSON.stringify(checkout),
+    );
+  };
+
+  const clearPendingCheckout = () => {
+    window.sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+  };
+
+  const clearReturnQuery = () => {
+    const url = new URL(window.location.href);
+
+    const keys = Array.from(url.searchParams.keys());
+    keys.forEach((key) => {
+      if (key === "paymentReturn" || key.startsWith("vnp_")) {
+        url.searchParams.delete(key);
+      }
+    });
+
+    window.history.replaceState({}, document.title, url.pathname + url.search);
+  };
+
+  const isPaymentReturnRequest = () => {
+    const query = new URLSearchParams(window.location.search);
+    return (
+      query.get("paymentReturn") === "1" ||
+      query.has("vnp_TxnRef") ||
+      query.has("vnp_ResponseCode")
+    );
+  };
+
+  const readReturnedTransactionCode = () => {
+    const query = new URLSearchParams(window.location.search);
+    const returnedCode = query.get("vnp_TxnRef")?.trim();
+    if (returnedCode) {
+      return returnedCode;
+    }
+
+    return readPendingCheckout()?.transactionCode || null;
+  };
+
+  const buildReturnUrl = () => {
+    const returnUrl = new URL(window.location.href);
+    returnUrl.pathname = "/topup";
+    returnUrl.search = "";
+    returnUrl.searchParams.set("paymentReturn", "1");
+    return returnUrl.toString();
+  };
+
+  const refreshBalance = async () => {
+    const response = await getCoinBalance();
+    if (response.success) {
+      setBalance(response.data?.balance || 0);
+    }
+  };
+
+  const waitForTransactionResult = async (transactionCode: string) => {
+    let latestTransaction: PaymentTransaction | undefined;
+
+    for (let i = 0; i < 5; i += 1) {
+      const transactionsResponse = await getMyTransactions();
+      if (!transactionsResponse.success || !transactionsResponse.data) {
+        return {
+          transaction: latestTransaction,
+          errorMessage:
+            transactionsResponse.error?.message ||
+            "Please check payment history.",
+        };
+      }
+
+      latestTransaction = transactionsResponse.data.find(
+        (item) => item.transactionCode === transactionCode,
+      );
+
+      if (!latestTransaction || latestTransaction.status !== "PENDING") {
+        return { transaction: latestTransaction, errorMessage: null };
+      }
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1200);
+      });
+    }
+
+    return { transaction: latestTransaction, errorMessage: null };
+  };
+
+  const syncReturnedCheckout = async () => {
+    const query = new URLSearchParams(window.location.search);
+    const transactionCode = readReturnedTransactionCode();
+
+    if (!transactionCode) {
+      clearReturnQuery();
+      return;
+    }
+
+    const { transaction, errorMessage } =
+      await waitForTransactionResult(transactionCode);
+
+    if (errorMessage) {
+      popup.warning({
+        title: "Unable to verify payment result",
+        message: errorMessage,
+      });
+      clearReturnQuery();
+      return;
+    }
+
+    if (!transaction) {
+      popup.warning({
+        title: "Payment not found",
+        message: "Transaction was created but has not been synced yet.",
+        description: `Transaction: ${transactionCode}`,
+      });
+      clearReturnQuery();
+      return;
+    }
+
+    if (transaction.status === "SUCCESS") {
+      await refreshBalance();
+      popup.success({
+        title: "Payment successful",
+        message: "Your transaction was confirmed.",
+        description: `Transaction: ${transaction.transactionCode}`,
+      });
+      clearPendingCheckout();
+    } else if (transaction.status === "PENDING") {
+      const vnpResponseCode = query.get("vnp_ResponseCode");
+
+      popup.warning({
+        title: "Payment is pending",
+        message:
+          vnpResponseCode && vnpResponseCode !== "00"
+            ? `VNPAY return code ${vnpResponseCode}. Waiting for server callback.`
+            : "Please wait a moment and check payment history.",
+        description: `Transaction: ${transaction.transactionCode}`,
+      });
+    } else {
+      popup.error({
+        title: "Payment failed",
+        message: `Status: ${transaction.status}`,
+        description: `Transaction: ${transaction.transactionCode}`,
+      });
+      clearPendingCheckout();
+    }
+
+    clearReturnQuery();
+  };
 
   useEffect(() => {
     const loadTopupData = async () => {
@@ -158,6 +323,10 @@ export function Topup() {
         }
 
         setActiveOffers(offersResponse.data || []);
+
+        if (isPaymentReturnRequest()) {
+          await syncReturnedCheckout();
+        }
       } catch (err) {
         console.error("Error loading topup data:", err);
         setError("Failed to load top-up data");
@@ -200,34 +369,78 @@ export function Topup() {
   };
 
   const visibleVipPlans = VIP_PLANS.filter((plan) => findVipOffer(plan));
-  const visibleCoinPacks = useMemo(() => {
+
+  const visibleCoinPacks = useMemo<CheckoutCoinPack[]>(() => {
+    const icons: TopupCoinPackIcon[] = ["wallet", "coins", "gem", "sparkles"];
+
     return activeOffers
       .filter((offer) => offer.active && offer.type === "COIN")
-      .map((offer) => ({
+      .map((offer, index) => ({
         id: `coin-${offer.id}`,
         label: offer.name,
         coins: offer.coinAmount || 0,
         priceUsd: offer.price / 25000, // convert VND to approximate USD for icon display
-        icon: "wallet" as const,
+        icon: icons[index % icons.length],
         offer,
       }));
   }, [activeOffers]);
 
-  const refreshBalance = async () => {
-    const response = await getCoinBalance();
-    if (response.success) {
-      setBalance(response.data?.balance || 0);
-    }
-  };
-
-  const runMockCheckout = async (
+  const finalizeMockCheckout = async (
+    transactionCode: string,
     offer: PaymentOffer,
     successTitle: string,
     successMessage: string,
   ) => {
+    const confirmResponse = await mockConfirmPayment(transactionCode);
+
+    let confirmedTransaction: PaymentTransaction | undefined =
+      confirmResponse.data;
+
+    if (!confirmResponse.success) {
+      const webhookResponse = await paymentWebhook({
+        transactionCode,
+        provider: "MOCK",
+        status: "SUCCESS",
+        amountMoney: offer.price,
+        providerTransactionId: `MOCK_${Date.now()}`,
+      });
+
+      if (!webhookResponse.success || !webhookResponse.data) {
+        popup.warning({
+          title: "Transaction pending",
+          message:
+            confirmResponse.error?.message ||
+            webhookResponse.error?.message ||
+            "Checkout created, waiting for payment confirmation.",
+          description: `Transaction: ${transactionCode}`,
+        });
+        return;
+      }
+
+      confirmedTransaction = webhookResponse.data;
+    }
+
+    await refreshBalance();
+    clearPendingCheckout();
+
+    popup.success({
+      title: successTitle,
+      message: successMessage,
+      description: `Transaction: ${
+        confirmedTransaction?.transactionCode || transactionCode
+      }`,
+    });
+  };
+
+  const runCheckout = async (
+    offer: PaymentOffer,
+    successTitle: string,
+    successMessage: string,
+    selectedProvider: PaymentProvider,
+  ) => {
     const checkoutResponse = await createCheckoutTransaction(offer.id, {
-      provider: "MOCK",
-      returnUrl: `${window.location.origin}/topup`,
+      provider: selectedProvider,
+      returnUrl: buildReturnUrl(),
     });
 
     if (!checkoutResponse.success || !checkoutResponse.data) {
@@ -239,77 +452,108 @@ export function Topup() {
       return;
     }
 
-    const confirmResponse = await mockConfirmPayment(
-      checkoutResponse.data.transactionCode,
-    );
+    const checkoutData = checkoutResponse.data;
+    savePendingCheckout({
+      transactionCode: checkoutData.transactionCode,
+      provider: selectedProvider,
+      offerId: offer.id,
+    });
 
-    if (!confirmResponse.success) {
+    if (selectedProvider === "MOCK") {
+      await finalizeMockCheckout(
+        checkoutData.transactionCode,
+        offer,
+        successTitle,
+        successMessage,
+      );
+      return;
+    }
+
+    if (!checkoutData.paymentUrl?.trim()) {
       popup.warning({
         title: "Transaction pending",
-        message: "Checkout created, waiting for payment confirmation.",
+        message: "Checkout was created but payment URL is empty.",
+        description: `Transaction: ${checkoutData.transactionCode}`,
       });
       return;
     }
 
-    await refreshBalance();
+    window.location.assign(checkoutData.paymentUrl);
+  };
 
-    popup.success({
-      title: successTitle,
-      message: successMessage,
-      description: `Transaction: ${checkoutResponse.data.transactionCode}`,
+  const openCheckoutIntent = (
+    triggerId: string,
+    offer: PaymentOffer,
+    successTitle: string,
+    successMessage: string,
+  ) => {
+    setCheckoutIntent({
+      triggerId,
+      offer,
+      successTitle,
+      successMessage,
     });
   };
 
-  const handleBuyVip = async (plan: TopupVipPlan) => {
+  const confirmCheckout = async () => {
+    if (!checkoutIntent) {
+      return;
+    }
+
     try {
-      setProcessingId(plan.id);
+      setProcessingId(checkoutIntent.triggerId);
+      const intent = checkoutIntent;
+      setCheckoutIntent(null);
 
-      const offer = findVipOffer(plan);
-      if (!offer) {
-        popup.error({
-          title: "Offer not available",
-          message: `No active VIP offer found for ${plan.title}.`,
-        });
-        return;
-      }
-
-      const priceDisplay = `${offer.price.toLocaleString()} VND`;
-
-      await runMockCheckout(
-        offer,
-        "VIP activated",
-        `${plan.title} • ${priceDisplay}`,
+      await runCheckout(
+        intent.offer,
+        intent.successTitle,
+        intent.successMessage,
+        provider,
       );
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleBuyCoins = async (pack: any) => {
-    try {
-      setProcessingId(pack.id);
-
-      // If pack has offer property (from visibleCoinPacks), use it directly
-      const offer = pack.offer || findCoinOffer(pack);
-      if (!offer) {
-        popup.error({
-          title: "Offer not available",
-          message: `No active coin offer found for ${pack.coins.toLocaleString()} coins.`,
-        });
-        return;
-      }
-
-      const priceDisplay =
-        offer.price > 0 ? `${offer.price.toLocaleString()} VND` : "Free";
-
-      await runMockCheckout(
-        offer,
-        "Top-up successful",
-        `${pack.coins.toLocaleString()} coins • ${priceDisplay}`,
-      );
-    } finally {
-      setProcessingId(null);
+  const handleBuyVip = async (plan: TopupVipPlan) => {
+    const offer = findVipOffer(plan);
+    if (!offer) {
+      popup.error({
+        title: "Offer not available",
+        message: `No active VIP offer found for ${plan.title}.`,
+      });
+      return;
     }
+
+    const priceDisplay = `${offer.price.toLocaleString()} VND`;
+    openCheckoutIntent(
+      plan.id,
+      offer,
+      "VIP activated",
+      `${plan.title} • ${priceDisplay}`,
+    );
+  };
+
+  const handleBuyCoins = async (pack: CheckoutCoinPack) => {
+    const offer = pack.offer || findCoinOffer(pack);
+    if (!offer) {
+      popup.error({
+        title: "Offer not available",
+        message: `No active coin offer found for ${pack.coins.toLocaleString()} coins.`,
+      });
+      return;
+    }
+
+    const priceDisplay =
+      offer.price > 0 ? `${offer.price.toLocaleString()} VND` : "Free";
+
+    openCheckoutIntent(
+      pack.id,
+      offer,
+      "Top-up successful",
+      `${pack.coins.toLocaleString()} coins • ${priceDisplay}`,
+    );
   };
 
   if (loading) {
@@ -566,6 +810,64 @@ export function Topup() {
       {error && (
         <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-red-700 font-semibold">
           {error}
+        </div>
+      )}
+
+      {checkoutIntent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 p-6">
+            <h3 className="text-2xl font-black text-slate-900">
+              Chọn phương thức thanh toán
+            </h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Đơn hàng sẽ tạo giao dịch PENDING trước, sau đó chuyển tới cổng
+              thanh toán bạn chọn.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 mt-5">
+              {PAYMENT_PROVIDER_OPTIONS.map((option) => {
+                const isActive = provider === option.value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setProvider(option.value)}
+                    className={`rounded-xl px-4 py-2.5 text-sm font-bold border transition-colors ${
+                      isActive
+                        ? "border-[#155ca5] bg-[#edf5ff] text-[#155ca5]"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {provider === "MOCK" && (
+              <p className="mt-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">
+                MOCK chỉ dùng cho local test.
+              </p>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCheckoutIntent(null)}
+                className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-slate-700 font-semibold hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={confirmCheckout}
+                className="flex-1 rounded-xl bg-gradient-to-r from-[#1a5fa8] to-[#005095] px-4 py-2.5 text-white font-bold hover:brightness-105"
+              >
+                Tiếp tục
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

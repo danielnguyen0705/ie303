@@ -19,7 +19,7 @@ const emptyForm: ShopItemUpsertRequest = {
   name: "",
   description: "",
   price: 0,
-  type: "SKIP",
+  type: "AVATAR",
   durationDays: null,
   expMultiplier: null,
   active: true,

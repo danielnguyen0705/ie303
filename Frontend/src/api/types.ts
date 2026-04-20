@@ -288,14 +288,20 @@ export interface PaymentCheckoutRequest {
 export interface PaymentCheckoutResponse {
   transactionId?: number;
   transactionCode: string;
+  provider?: PaymentProvider;
+  amountMoney?: number;
+  amountCoin?: number;
+  durationDays?: number | null;
   paymentUrl: string;
   status?: PaymentTransactionStatus;
+  message?: string;
 }
 
 export interface PaymentWebhookRequest {
   transactionCode: string;
   provider: PaymentProvider;
-  status: Extract<PaymentTransactionStatus, "SUCCESS" | "FAILED">;
+  status: Extract<PaymentTransactionStatus, "SUCCESS" | "FAILED" | "CANCELLED">;
+  amountMoney: number;
   providerTransactionId?: string;
   signature?: string;
 }
@@ -308,6 +314,9 @@ export interface PaymentTransaction {
   provider: PaymentProvider;
   status: PaymentTransactionStatus;
   amount?: number;
+  amountMoney?: number;
+  amountCoin?: number;
+  durationDays?: number | null;
   providerTransactionId?: string;
   paymentUrl?: string;
   createdAt?: string;

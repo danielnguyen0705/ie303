@@ -8,12 +8,13 @@ import {
   type ReactNode,
 } from "react";
 import {
-  getCurrentUser,
   getGoogleOAuth2AuthorizeUrl,
   login as loginApi,
   logout as logoutApi,
   register as registerApi,
 } from "@/api/auth";
+
+import { getCurrentUser } from "@/api/users";
 
 type AuthUser = {
   id?: string;
