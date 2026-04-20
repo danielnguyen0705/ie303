@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface GroupReviewRepo extends JpaRepository<GroupReview, Long> {
+    java.util.List<GroupReview> findByGradeId(Long gradeId);
 }

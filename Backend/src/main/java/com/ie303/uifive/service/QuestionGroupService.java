@@ -11,7 +11,6 @@ import com.ie303.uifive.mapper.QuestionGroupMapper;
 import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.QuestionGroupRepo;
 import com.ie303.uifive.repo.QuestionRepo;
-import com.ie303.uifive.repo.UserQuestionHistoryRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +26,8 @@ public class QuestionGroupService {
     private final LessonRepo lessonRepo;
     private final QuestionGroupMapper questionGroupMapper;
     private final QuestionRepo questionRepo;
-    private final UserQuestionHistoryRepo userQuestionHistoryRepo;
     private final CloudinaryService cloudinaryService;
+    private final ContentDeletionService contentDeletionService;
 
     public QuestionGroupResponse create(QuestionGroupRequest request) {
         QuestionGroup questionGroup = questionGroupMapper.toEntity(request);
@@ -81,13 +80,7 @@ public class QuestionGroupService {
             throw new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND);
         }
 
-        List<Question> questions = questionRepo.findByQuestionGroupId(id);
-        if (!questions.isEmpty()) {
-            List<Long> questionIds = questions.stream().map(Question::getId).toList();
-            userQuestionHistoryRepo.deleteByQuestionIdIn(questionIds);
-            questionRepo.deleteAll(questions);
-        }
-        questionGroupRepo.deleteById(id);
+        contentDeletionService.deleteQuestionGroup(id);
     }
 
     private void applyMedia(QuestionGroup questionGroup, QuestionGroupRequest request) {

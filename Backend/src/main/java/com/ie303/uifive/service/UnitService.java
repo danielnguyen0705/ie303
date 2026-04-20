@@ -11,6 +11,7 @@ import com.ie303.uifive.repo.GradeRepo;
 import com.ie303.uifive.repo.UnitRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class UnitService {
     private final UnitRepo unitRepo;
     private final GradeRepo gradeRepo;
     private final UnitMapper mapper;
+    private final ContentDeletionService contentDeletionService;
 
     public UnitResponse create(UnitRequest request) {
         Unit entity = mapper.toEntity(request);
@@ -71,11 +73,12 @@ public class UnitService {
         return response;
     }
 
+    @Transactional
     public void delete(Long id) {
         if (!unitRepo.existsById(id)) {
             throw new AppException(ErrorCode.UNIT_NOT_FOUND);
         }
 
-        unitRepo.deleteById(id);
+        contentDeletionService.deleteUnit(id);
     }
 }

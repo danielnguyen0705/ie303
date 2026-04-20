@@ -16,6 +16,7 @@ import {
 import {
   completeLesson,
   getLessonById,
+  getLessonsBySectionProgress,
   getQuestionsByLesson,
   submitEssay,
   submitQuestionHistory,
@@ -53,6 +54,15 @@ type LessonRewardState = {
   expEarned: number;
   progressPercent: number;
   currentExp: number;
+};
+
+type SectionLessonProgressItem = {
+  lessonId: number;
+  lessonTitle: string;
+  lessonNumber: number;
+  completed: boolean;
+  unlocked: boolean;
+  current: boolean;
 };
 
 function buildRunnerItems(data: LessonQuestionResponse): RunnerItem[] {
@@ -126,12 +136,7 @@ function isFillType(type: QuestionType) {
 }
 
 function isManualType(type: QuestionType) {
-  return [
-    "SENTENCE_REWRITE",
-    "ESSAY_WRITING",
-    "PRONUNCIATION",
-    "TOPIC_SPEAKING",
-  ].includes(type);
+  return ["SENTENCE_REWRITE", "ESSAY_WRITING"].includes(type);
 }
 
 function isAutoGradedType(type: QuestionType) {
@@ -436,6 +441,7 @@ function LessonRunner() {
   const [completeApiError, setCompleteApiError] = useState<string | null>(null);
   const [lessonReward, setLessonReward] = useState<LessonRewardState | null>(null);
   const [sectionId, setSectionId] = useState<number | null>(null);
+  const [sectionLessons, setSectionLessons] = useState<SectionLessonProgressItem[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [speechError, setSpeechError] = useState<string | null>(null);
@@ -453,6 +459,23 @@ function LessonRunner() {
     onerror: ((event: { error?: string }) => void) | null;
     onend: (() => void) | null;
   } | null>(null);
+
+  useEffect(() => {
+    stopSpeechCapture();
+    setCurrentIndex(0);
+    setAnswers({});
+    setFinished(false);
+    setSubmittingCurrent(false);
+    setSubmitApiError(null);
+    setCompletingLesson(false);
+    setCompleteApiError(null);
+    setLessonReward(null);
+    setSectionId(null);
+    setSectionLessons([]);
+    setSpeechPreview("");
+    setSpeechSessionQuestionId(null);
+    setSpeechError(null);
+  }, [lessonIdNumber]);
 
   useEffect(() => {
     const loadQuestions = async () => {
@@ -497,6 +520,26 @@ function LessonRunner() {
 
     void loadLessonMeta();
   }, [lessonIdNumber]);
+
+  useEffect(() => {
+    const loadSectionLessons = async () => {
+      if (!sectionId || Number.isNaN(sectionId)) {
+        setSectionLessons([]);
+        return;
+      }
+
+      const res = await getLessonsBySectionProgress(sectionId);
+      if (res.success && res.data) {
+        setSectionLessons(
+          [...res.data].sort(
+            (a, b) => a.lessonNumber - b.lessonNumber || a.lessonId - b.lessonId,
+          ),
+        );
+      }
+    };
+
+    void loadSectionLessons();
+  }, [sectionId]);
 
   const currentItem = items[currentIndex];
   const currentGroup = currentItem?.group ?? null;
@@ -543,6 +586,22 @@ function LessonRunner() {
     items.length > 0
       ? Math.round(((currentIndex + 1) / items.length) * 100)
       : 0;
+
+  const nextLesson = useMemo(() => {
+    if (!sectionLessons.length || !lessonIdNumber || Number.isNaN(lessonIdNumber)) {
+      return null;
+    }
+
+    const currentLessonIndex = sectionLessons.findIndex(
+      (lesson) => lesson.lessonId === lessonIdNumber,
+    );
+
+    if (currentLessonIndex < 0 || currentLessonIndex >= sectionLessons.length - 1) {
+      return null;
+    }
+
+    return sectionLessons[currentLessonIndex + 1] ?? null;
+  }, [lessonIdNumber, sectionLessons]);
 
   const setAnswer = (questionId: number, answer: UserAnswer) => {
     setSubmitApiError(null);
@@ -888,9 +947,10 @@ function LessonRunner() {
     setSubmitApiError(null);
 
     try {
-      let correct: boolean | null = false;
+      let correct: boolean | null = null;
       let feedback: string | null = null;
       let score: number | null = null;
+      let submitted = false;
 
       if (isMCQ(question.questionType)) {
         const selected = normalizeText(String(saved.answer));
@@ -939,7 +999,6 @@ function LessonRunner() {
       }
 
       const answerText = toAnswerText(saved.answer, question);
-      const evaluatedCorrect = correct;
 
       if (question.questionType === "ESSAY_WRITING") {
         const res = await submitEssay({
@@ -951,6 +1010,7 @@ function LessonRunner() {
           correct = null;
           feedback = res.data.feedback;
           score = res.data.score;
+          submitted = true;
         } else if (!res.success) {
           setSubmitApiError(
             res.error?.message || "KhÃ´ng gá»­i Ä‘Æ°á»£c bÃ i essay lÃªn há»‡ thá»‘ng.",
@@ -964,7 +1024,8 @@ function LessonRunner() {
       });
 
       if (res.success && res.data) {
-        correct = evaluatedCorrect;
+        correct = isManualType(question.questionType) ? null : res.data.correct;
+        submitted = true;
       } else if (!res.success) {
         setSubmitApiError(
           res.error?.message || "Không gửi được câu trả lời lên hệ thống.",
@@ -977,7 +1038,7 @@ function LessonRunner() {
         ...prev,
         [question.id]: {
           ...prev[question.id],
-          submitted: true,
+          submitted,
           correct,
           feedback,
           score,
@@ -1517,6 +1578,10 @@ function LessonRunner() {
     if (!currentAnswer?.submitted) return null;
 
     const isUngraded = currentAnswer.correct === null;
+    const isManualQuestion = isManualType(question.questionType);
+    const hasAiWritingResult =
+      question.questionType === "ESSAY_WRITING" &&
+      (typeof currentAnswer.score === "number" || !!currentAnswer.feedback);
 
     return (
       <div
@@ -1558,7 +1623,7 @@ function LessonRunner() {
                   : "Chưa đúng"}
             </p>
 
-            {question.explanation && (
+            {!isManualQuestion && question.explanation && (
               <p className="text-gray-700">{question.explanation}</p>
             )}
 
@@ -1574,7 +1639,7 @@ function LessonRunner() {
               </p>
             )}
 
-            {!isUngraded &&
+            {false &&
               !currentAnswer.correct &&
               question.correctAnswer && (
                 <p className="text-sm font-semibold text-gray-600">
@@ -1589,7 +1654,7 @@ function LessonRunner() {
                 </p>
               )}
 
-            {isManualType(question.questionType) && (
+            {isManualQuestion && (
               <p className="text-sm text-gray-600">
                 Dạng này đã được gửi đi, hệ thống sẽ dùng nội dung bạn nộp để đánh giá thay vì chấm đúng/sai ngay.
               </p>
@@ -1717,10 +1782,16 @@ function LessonRunner() {
 
             {sectionId && (
               <button
-                onClick={() => navigate(`/sections/${sectionId}/lessons`)}
+                onClick={() => {
+                  if (nextLesson) {
+                    navigate(`/lessons/${nextLesson.lessonId}`);
+                    return;
+                  }
+                  navigate(`/sections/${sectionId}/lessons`);
+                }}
                 className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d]"
               >
-                End lesson
+                {nextLesson ? "Next Lesson" : "Ve lesson list"}
               </button>
             )}
           </div>

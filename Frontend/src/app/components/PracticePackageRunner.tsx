@@ -9,7 +9,6 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react";
-import { submitEssay, submitQuestionHistory } from "@/api";
 import { ENV } from "@/config/env";
 import type { QuestionDto, QuestionGroupDto, QuestionType } from "@/api/questions";
 
@@ -97,9 +96,7 @@ function isFillType(type: QuestionType) {
 }
 
 function isManualType(type: QuestionType) {
-  return ["SENTENCE_REWRITE", "ESSAY_WRITING", "PRONUNCIATION", "TOPIC_SPEAKING"].includes(
-    type,
-  );
+  return ["SENTENCE_REWRITE", "ESSAY_WRITING"].includes(type);
 }
 
 function normalizeText(value: string) {
@@ -184,7 +181,7 @@ function getDisplayAnswer(answer: UserAnswer | undefined): string {
 
 function getExpectedAnswerLabel(question: QuestionDto): string {
   if (isMCQ(question.questionType)) {
-    const option = question.options.find((item) => item.isCorrect);
+    const option = question.options.find((item) => isCorrectMcqOption(question, item));
     if (option) {
       return `${option.optionKey}. ${option.content}`;
     }
@@ -200,6 +197,25 @@ function getExpectedAnswerLabel(question: QuestionDto): string {
   }
 
   return question.correctAnswer?.trim() || "No answer provided";
+}
+
+function isCorrectMcqOption(
+  question: QuestionDto,
+  option: QuestionDto["options"][number],
+): boolean {
+  if (option.isCorrect) {
+    return true;
+  }
+
+  const expected = normalizeText(String(question.correctAnswer ?? ""));
+  if (!expected) {
+    return false;
+  }
+
+  return (
+    normalizeText(option.optionKey) === expected ||
+    normalizeText(option.content) === expected
+  );
 }
 
 function getQuestionStatusClasses(questionId: number, answers: AnswerState, hasResult: boolean) {
@@ -555,7 +571,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
   const evaluateAnswer = (question: QuestionDto, answer: UserAnswer): boolean | null => {
     if (isMCQ(question.questionType)) {
       const selected = normalizeText(String(answer));
-      const correctOption = question.options.find((option) => option.isCorrect);
+      const correctOption = question.options.find((option) => isCorrectMcqOption(question, option));
       return correctOption
         ? normalizeText(correctOption.optionKey) === selected ||
             normalizeText(correctOption.content) === selected
@@ -631,39 +647,13 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         if (!saved) return;
 
         let correct = evaluateAnswer(question, saved.answer);
-        let feedback: string | null = null;
-        let score: number | null = null;
-        const answerText = toAnswerText(saved.answer, question);
-        const evaluatedCorrect = correct;
-
-        if (question.questionType === "ESSAY_WRITING") {
-          const response = await submitEssay({
-            questionId: question.id,
-            answerText,
-          });
-
-          if (response.success && response.data) {
-            correct = null;
-            feedback = response.data.feedback;
-            score = response.data.score;
-          }
-        } else {
-          const response = await submitQuestionHistory({
-            questionId: question.id,
-            answer_text: answerText,
-          });
-
-          if (response.success && response.data) {
-            correct = evaluatedCorrect;
-          }
-        }
 
         nextAnswers[question.id] = {
           ...saved,
           submitted: true,
           correct,
-          feedback,
-          score,
+          feedback: null,
+          score: null,
         };
       }),
     );
@@ -732,7 +722,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         <div className="grid gap-4 md:grid-cols-2">
           {currentQuestion.options.map((option) => {
             const selected = selectedAnswer === option.optionKey;
-            const isCorrectOption = option.isCorrect;
+            const isCorrectOption = isCorrectMcqOption(currentQuestion, option);
 
             let extraClass =
               "border-slate-200 bg-white hover:border-[#155ca5]/40 hover:bg-[#f7fbff]";

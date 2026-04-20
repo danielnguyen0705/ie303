@@ -15,7 +15,6 @@ import com.ie303.uifive.mapper.QuestionMapper;
 import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.QuestionGroupRepo;
 import com.ie303.uifive.repo.QuestionRepo;
-import com.ie303.uifive.repo.UserQuestionHistoryRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +31,7 @@ public class QuestionService {
     private final QuestionGroupRepo questionGroupRepo;
     private final QuestionMapper questionMapper;
     private final CloudinaryService cloudinaryService;
-    private final UserQuestionHistoryRepo userQuestionHistoryRepo;
+    private final ContentDeletionService contentDeletionService;
 
     public QuestionResponse create(QuestionRequest request) {
         Question question = questionMapper.toEntity(request);
@@ -99,8 +98,7 @@ public class QuestionService {
             throw new AppException(ErrorCode.QUESTION_NOT_FOUND);
         }
 
-        userQuestionHistoryRepo.deleteByQuestionIdIn(List.of(id));
-        questionRepo.deleteById(id);
+        contentDeletionService.deleteQuestion(id);
     }
     public LessonQuestionResponse getQuestionsByLesson(Long lessonId) {
         Lesson lesson = lessonRepo.findById(lessonId)

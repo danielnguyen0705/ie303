@@ -155,6 +155,7 @@ type ExcelGroupRow = {
 
 type ExcelGroupQuestionRow = {
   groupKey?: string;
+  questionType?: string;
   content?: string;
   instruction?: string;
   questionData?: string;
@@ -1221,17 +1222,21 @@ export default function QuestionPanel({
         );
 
         for (const child of children) {
+          const explicitChildType = String(child.questionType || "")
+            .trim()
+            .toUpperCase();
+          const resolvedChildType = explicitChildType || childType;
           const content = String(child.content || "").trim();
           if (!content) continue;
 
           const questionRes = await adminApi.createContentQuestion({
             lessonId: selectedLesson.id,
-            questionType: childType as never,
+            questionType: resolvedChildType as never,
             content,
             instruction: String(child.instruction || "").trim() || undefined,
             questionData: String(child.questionData || "").trim() || undefined,
             explanation: String(child.explanation || "").trim() || undefined,
-            correctAnswer: shouldImportCorrectAnswer(childType)
+            correctAnswer: shouldImportCorrectAnswer(resolvedChildType)
               ? String(child.correctAnswer || "").trim() || undefined
               : undefined,
             questionGroupId: groupRes.data.id,
@@ -1243,10 +1248,10 @@ export default function QuestionPanel({
             );
           }
 
-          if (isOptionBasedType(childType)) {
+          if (isOptionBasedType(resolvedChildType)) {
             const options = buildOptionsFromExcelRow({
               ...child,
-              questionType: childType,
+              questionType: resolvedChildType,
             });
             if (options.length === 0) {
               throw new Error(

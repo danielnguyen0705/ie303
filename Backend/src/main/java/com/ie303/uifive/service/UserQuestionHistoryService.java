@@ -33,6 +33,7 @@ public class UserQuestionHistoryService {
     private static final int QUESTION_CORRECT_COIN_REWARD = 1;
     private static final int QUESTION_CORRECT_SCORE_REWARD = 1;
     private static final int QUESTION_CORRECT_BASE_EXP_REWARD = 10;
+    private static final double SPEAKING_PASS_SIMILARITY = 0.8;
 
     private final UserQuestionHistoryRepo repo;
     private final UserRepo userRepo;
@@ -103,6 +104,11 @@ public class UserQuestionHistoryService {
             return isCorrectMatchingAnswer(question, answerText);
         }
 
+        if (question.getQuestionType() == QuestionType.PRONUNCIATION
+                || question.getQuestionType() == QuestionType.TOPIC_SPEAKING) {
+            return isCorrectSpeakingAnswer(question, answerText);
+        }
+
         String normalizedAnswer = answerText.trim();
 
         boolean matchedCorrectOption = questionOptionRepo.findByQuestionId(question.getId()).stream()
@@ -121,6 +127,64 @@ public class UserQuestionHistoryService {
 
         return normalizeComparableAnswer(correctAnswer)
                 .equals(normalizeComparableAnswer(normalizedAnswer));
+    }
+
+    private boolean isCorrectSpeakingAnswer(Question question, String answerText) {
+        String correctAnswer = question.getCorrectAnswer();
+        if (correctAnswer == null || correctAnswer.isBlank()) {
+            return false;
+        }
+
+        String normalizedExpected = normalizeComparableAnswer(correctAnswer);
+        String normalizedActual = normalizeComparableAnswer(answerText);
+
+        if (normalizedExpected.isEmpty() || normalizedActual.isEmpty()) {
+            return false;
+        }
+
+        if (normalizedExpected.equals(normalizedActual)) {
+            return true;
+        }
+
+        return calculateSimilarity(normalizedExpected, normalizedActual) >= SPEAKING_PASS_SIMILARITY;
+    }
+
+    private double calculateSimilarity(String left, String right) {
+        int maxLength = Math.max(left.length(), right.length());
+        if (maxLength == 0) {
+            return 1.0;
+        }
+
+        int distance = levenshteinDistance(left, right);
+        return 1.0 - ((double) distance / maxLength);
+    }
+
+    private int levenshteinDistance(String left, String right) {
+        int leftLength = left.length();
+        int rightLength = right.length();
+
+        int[][] dp = new int[leftLength + 1][rightLength + 1];
+
+        for (int i = 0; i <= leftLength; i++) {
+            dp[i][0] = i;
+        }
+
+        for (int j = 0; j <= rightLength; j++) {
+            dp[0][j] = j;
+        }
+
+        for (int i = 1; i <= leftLength; i++) {
+            for (int j = 1; j <= rightLength; j++) {
+                int substitutionCost = left.charAt(i - 1) == right.charAt(j - 1) ? 0 : 1;
+
+                dp[i][j] = Math.min(
+                        Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
+                        dp[i - 1][j - 1] + substitutionCost
+                );
+            }
+        }
+
+        return dp[leftLength][rightLength];
     }
 
     private boolean isCorrectMatchingAnswer(Question question, String answerText) {

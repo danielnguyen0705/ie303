@@ -11,6 +11,7 @@ import com.ie303.uifive.repo.SectionRepo;
 import com.ie303.uifive.repo.UnitRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class SectionService {
     private final SectionRepo sectionRepo;
     private final UnitRepo unitRepo;
     private final SectionMapper mapper;
+    private final ContentDeletionService contentDeletionService;
 
     public SectionResponse create(SectionRequest request) {
         Section entity = mapper.toEntity(request);
@@ -71,11 +73,12 @@ public class SectionService {
         return response;
     }
 
+    @Transactional
     public void delete(Long id) {
         if (!sectionRepo.existsById(id)) {
             throw new AppException(ErrorCode.SECTION_NOT_FOUND);
         }
 
-        sectionRepo.deleteById(id);
+        contentDeletionService.deleteSection(id);
     }
 }
