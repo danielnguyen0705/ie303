@@ -80,7 +80,7 @@ public class LearningProgressService {
 
         if (completedAfterAttempt && progress.getCompletedAt() == null) {
             progress.setCompletedAt(LocalDateTime.now());
-        } else if (!completed) {
+        } else if (!completedAfterAttempt) {
             progress.setCompletedAt(null);
         }
 

@@ -14,8 +14,13 @@ import {
   KeyRound,
   GraduationCap,
 } from "lucide-react";
-import { getCurrentUser, getUserProfile, getUserStats, getUserHistory } from "@/api";
-import { changePassword as changePasswordApi } from "@/api/auth";
+import {
+  changePassword as changePasswordApi,
+  getCurrentUser,
+  getUserHistory,
+  getUserProfile,
+  getUserStats,
+} from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "@/data/mockData";
 
