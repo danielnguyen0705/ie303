@@ -13,6 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/user-question-histories")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class UserQuestionHistoryController {
 
     private final UserQuestionHistoryService service;

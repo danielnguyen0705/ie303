@@ -80,6 +80,8 @@ public class LearningProgressService {
 
         if (completedAfterAttempt && progress.getCompletedAt() == null) {
             progress.setCompletedAt(LocalDateTime.now());
+        } else if (!completed) {
+            progress.setCompletedAt(null);
         }
 
         if (firstTimeCompletion) {
@@ -93,8 +95,8 @@ public class LearningProgressService {
             }
 
             user.setCoin(user.getCoin() + LESSON_COMPLETION_COIN_REWARD);
-            user.setExp(user.getExp() + LESSON_COMPLETION_EXP_REWARD);
-            expEarned = LESSON_COMPLETION_EXP_REWARD;
+            expEarned = calculateLessonExpReward(user);
+            user.setExp(user.getExp() + expEarned);
             progress.setCoinsEarned(LESSON_COMPLETION_COIN_REWARD);
             userRepo.save(user);
         }
@@ -194,5 +196,20 @@ public class LearningProgressService {
         return allLessonsInGrade.isEmpty()
                 ? null
                 : allLessonsInGrade.get(allLessonsInGrade.size() - 1).getId();
+    }
+
+    private int calculateLessonExpReward(User user) {
+        double multiplier = resolveActiveExpMultiplier(user);
+        return (int) Math.round(LESSON_COMPLETION_EXP_REWARD * multiplier);
+    }
+
+    private double resolveActiveExpMultiplier(User user) {
+        LocalDateTime now = LocalDateTime.now();
+
+        if (user.getExpBoostExpiredAt() == null || !user.getExpBoostExpiredAt().isAfter(now)) {
+            return 1.0;
+        }
+
+        return Math.max(1.0, user.getExpBoostMultiplier());
     }
 }

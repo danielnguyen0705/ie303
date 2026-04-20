@@ -14,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/sections")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class SectionController {
 
     private final SectionService service;

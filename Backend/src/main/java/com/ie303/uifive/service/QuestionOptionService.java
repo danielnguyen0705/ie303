@@ -4,6 +4,8 @@ import com.ie303.uifive.dto.req.QuestionOptionRequest;
 import com.ie303.uifive.dto.res.QuestionOptionResponse;
 import com.ie303.uifive.entity.Question;
 import com.ie303.uifive.entity.QuestionOption;
+import com.ie303.uifive.exception.AppException;
+import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.QuestionOptionMapper;
 import com.ie303.uifive.repo.QuestionOptionRepo;
 import com.ie303.uifive.repo.QuestionRepo;
@@ -25,7 +27,7 @@ public class QuestionOptionService {
         entity.setCorrect(request.isCorrect());
 
         Question question = questionRepo.findById(request.questionId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Question với id = " + request.questionId()));
+                .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
 
         entity.setQuestion(question);
 
@@ -38,7 +40,7 @@ public class QuestionOptionService {
 
     public QuestionOptionResponse getById(Long id) {
         QuestionOption entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionOption với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Question option not found"));
 
         QuestionOptionResponse response = mapper.toResponse(entity);
         return response;
@@ -56,13 +58,13 @@ public class QuestionOptionService {
 
     public QuestionOptionResponse update(Long id, QuestionOptionRequest request) {
         QuestionOption entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy QuestionOption với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Question option not found"));
 
         mapper.updateEntityFromRequest(request, entity);
         entity.setCorrect(request.isCorrect());
 
         Question question = questionRepo.findById(request.questionId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Question với id = " + request.questionId()));
+                .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
 
         entity.setQuestion(question);
 
@@ -74,7 +76,7 @@ public class QuestionOptionService {
 
     public void delete(Long id) {
         if (!repo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy QuestionOption với id = " + id);
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Question option not found");
         }
 
         repo.deleteById(id);

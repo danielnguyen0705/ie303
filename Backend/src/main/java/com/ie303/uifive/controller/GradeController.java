@@ -14,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/grades")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class GradeController {
 
     private final GradeService gradeService;

@@ -15,6 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/question-groups")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class QuestionGroupController {
 
     private final QuestionGroupService questionGroupService;

@@ -3,6 +3,7 @@ package com.ie303.uifive.controller;
 import com.ie303.uifive.dto.req.UserLessonProgressRequest;
 import com.ie303.uifive.dto.res.*;
 import com.ie303.uifive.service.LearningProgressService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/progress")
 @RequiredArgsConstructor
+@RolesAllowed({"USER", "ADMIN"})
 public class UserLessonProgressController {
 
     private final LearningProgressService learningProgressService;

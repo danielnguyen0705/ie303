@@ -20,8 +20,28 @@ public final class GatewaySignUtils {
         }
     }
 
-    public static String canonicalWebhookPayload(String transactionCode, String status, String providerTransactionId) {
-        return transactionCode + "|" + status + "|" + (providerTransactionId == null ? "" : providerTransactionId);
+    public static String hmacSha512Hex(String data, String secret) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA512");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA512"));
+            byte[] digest = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            return bytesToHex(digest);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not calculate HMAC signature", exception);
+        }
+    }
+
+    public static String canonicalWebhookPayload(String transactionCode,
+                                                 String status,
+                                                 String providerTransactionId,
+                                                 Integer amountMoney) {
+        return transactionCode
+                + "|"
+                + status
+                + "|"
+                + (providerTransactionId == null ? "" : providerTransactionId)
+                + "|"
+                + (amountMoney == null ? "" : amountMoney);
     }
 
     private static String bytesToHex(byte[] bytes) {

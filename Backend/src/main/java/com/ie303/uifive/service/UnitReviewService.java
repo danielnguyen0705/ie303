@@ -38,7 +38,7 @@ public class UnitReviewService {
         UnitReview entity = mapper.toEntity(request);
 
         Unit unit = unitRepo.findById(request.unitId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Unit với id = " + request.unitId()));
+                .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         entity.setUnit(unit);
 
@@ -68,7 +68,7 @@ public class UnitReviewService {
 
     public UnitReviewResponse getById(Long id) {
         UnitReview entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy UnitReview với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Unit review not found"));
 
         UnitReviewResponse response = mapper.toResponse(entity);
         return response;
@@ -87,12 +87,12 @@ public class UnitReviewService {
     public UnitReviewResponse update(Long id, UnitReviewRequest request) {
         User currentUser = userService.getCurrentUser();
         UnitReview entity = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy UnitReview với id = " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Unit review not found"));
 
         mapper.updateEntityFromRequest(request, entity);
 
         Unit unit = unitRepo.findById(request.unitId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Unit với id = " + request.unitId()));
+                .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         entity.setUnit(unit);
 
@@ -124,7 +124,7 @@ public class UnitReviewService {
 
     public void delete(Long id) {
         if (!repo.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy UnitReview với id = " + id);
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Unit review not found");
         }
 
         repo.deleteById(id);
