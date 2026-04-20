@@ -60,15 +60,12 @@ export {
   login,
   register,
   logout,
-  getCurrentUser,
 } from "./auth";
 
 export {
   // User
-  getUserProfile,
-  updateUserProfile,
-  getUserStats,
-  getUserHistory,
+  getCurrentUser,
+  changePassword,
 } from "./users";
 
 export { getUnitsByGradeProgress, getUnit } from "./units";
@@ -79,7 +76,11 @@ export { getSectionsByUnitProgress, getSection } from "./sections";
 
 export { getQuestionsByLesson, submitQuestionHistory } from "./questions";
 
-export { getLessonsBySectionProgress, completeLesson, getLessonById } from "./lessons";
+export {
+  getLessonsBySectionProgress,
+  completeLesson,
+  getLessonById,
+} from "./lessons";
 
 export {
   // Exercises

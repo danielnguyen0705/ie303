@@ -62,15 +62,6 @@ export async function logout(): Promise<ApiResponse<boolean>> {
 }
 
 // =========================
-// GET CURRENT USER
-// =========================
-export async function getCurrentUser(): Promise<ApiResponse<any>> {
-  return request<any>("/users/me", {
-    method: "GET",
-  });
-}
-
-// =========================
 // REFRESH TOKEN
 // =========================
 export async function refreshToken(): Promise<ApiResponse<any>> {
@@ -93,43 +84,6 @@ export async function resetPassword(
     method: "POST",
     body: JSON.stringify({ email }),
   });
-}
-
-// =========================
-// CHANGE PASSWORD
-// =========================
-export async function changePassword(
-  oldPassword: string,
-  newPassword: string,
-): Promise<ApiResponse<boolean>> {
-  if (!oldPassword || !newPassword) {
-    return createError("Both passwords are required", "VALIDATION_ERROR");
-  }
-
-  if (newPassword.length < PASSWORD_MIN_LENGTH) {
-    return createError(
-      "New password must be at least 6 characters",
-      "VALIDATION_ERROR",
-    );
-  }
-
-  const response = await request<string>("/users/me/change-password", {
-    method: "PUT",
-    body: JSON.stringify({ oldPassword, newPassword }),
-  });
-
-  if (!response.success) {
-    return {
-      success: false,
-      error: response.error,
-      message: response.message,
-    };
-  }
-
-  return {
-    success: true,
-    data: true,
-  };
 }
 
 // =========================

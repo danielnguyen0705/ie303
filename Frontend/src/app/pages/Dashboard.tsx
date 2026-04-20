@@ -11,7 +11,7 @@ import {
   Trophy,
   Star,
 } from "lucide-react";
-import { getUserStats, getCurrentUser, getAllGrades } from "@/api";
+import { getCurrentUser, getAllGrades } from "@/api";
 import type { User } from "@/data/mockData";
 import type { Grade } from "@/api/content";
 
@@ -60,24 +60,22 @@ export function Dashboard() {
       setLoading(true);
       setError(null);
 
-      const [gradesResponse, userResponse, statsResponse] = await Promise.all([
+      const [gradesResponse, userResponse] = await Promise.all([
         getAllGrades(),
         getCurrentUser(),
-        getUserStats(),
       ]);
 
-      if (gradesResponse.success && userResponse.success && statsResponse.success) {
+      if (gradesResponse.success && userResponse.success) {
         setGrades(gradesResponse.data ?? []);
-        setUser(userResponse.data ?? null);
-        setStats(
-          statsResponse.data ?? {
-            totalLessonsCompleted: 0,
-            totalXP: 0,
-            totalCoins: 0,
-            currentStreak: 0,
-            accuracy: 0,
-          },
-        );
+        const currentUser = userResponse.data ?? null;
+        setUser(currentUser);
+        setStats((prev) => ({
+          ...prev,
+          totalXP: Number(currentUser?.xp ?? 0),
+          totalCoins: Number(currentUser?.coins ?? 0),
+          currentStreak: Number(currentUser?.streak ?? 0),
+          accuracy: Number(currentUser?.accuracy ?? 0),
+        }));
       } else {
         setError("Failed to load dashboard data");
       }
@@ -188,7 +186,9 @@ export function Dashboard() {
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-lg shadow-sm hover:scale-[1.02] transition-transform">
           <Coins className="w-8 h-8 text-[#f1c40f] mb-3" fill="#f1c40f" />
-          <div className="text-2xl font-black">{stats.totalCoins.toLocaleString()}</div>
+          <div className="text-2xl font-black">
+            {stats.totalCoins.toLocaleString()}
+          </div>
           <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
             Coins Earned
           </div>
@@ -196,7 +196,9 @@ export function Dashboard() {
 
         <div className="bg-white p-6 rounded-lg shadow-sm hover:scale-[1.02] transition-transform">
           <Zap className="w-8 h-8 text-[#155ca5] mb-3" fill="#155ca5" />
-          <div className="text-2xl font-black">{stats.totalXP.toLocaleString()}</div>
+          <div className="text-2xl font-black">
+            {stats.totalXP.toLocaleString()}
+          </div>
           <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
             Total XP
           </div>
@@ -243,7 +245,8 @@ export function Dashboard() {
           <div>
             <h4 className="text-xl font-black mb-2">Bảng xếp hạng</h4>
             <p className="text-sm text-gray-600 mb-6">
-              Bạn đang đứng thứ <b>#{user?.level || 12}</b> trong giải đấu Sapphire.
+              Bạn đang đứng thứ <b>#{user?.level || 12}</b> trong giải đấu
+              Sapphire.
             </p>
 
             <div className="space-y-4">

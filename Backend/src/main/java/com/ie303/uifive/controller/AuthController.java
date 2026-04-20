@@ -61,7 +61,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-        @RolesAllowed({"USER", "ADMIN"})
+        // @RolesAllowed({"USER", "ADMIN"})
     public ApiResponse<String> logout(HttpServletResponse response) {
 
         response.setHeader(

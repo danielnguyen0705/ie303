@@ -13,8 +13,7 @@ import {
   Award,
   KeyRound,
 } from "lucide-react";
-import { getUserProfile, getUserStats, getUserHistory } from "@/api";
-import { changePassword as changePasswordApi } from "@/api/auth";
+import { changePassword as changePasswordApi, getCurrentUser } from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "@/data/mockData";
 
@@ -86,22 +85,23 @@ export function Profile() {
       setLoading(true);
       setError(null);
 
-      const [userResponse, statsResponse, historyResponse] = await Promise.all([
-        getUserProfile(),
-        getUserStats(),
-        getUserHistory(5),
-      ]);
+      const userResponse = await getCurrentUser();
 
       if (userResponse.success && userResponse.data) {
-        setUser(userResponse.data);
-      }
-
-      if (statsResponse.success && statsResponse.data) {
-        setStats(statsResponse.data);
-      }
-
-      if (historyResponse.success && historyResponse.data) {
-        setHistory(historyResponse.data);
+        const currentUser = userResponse.data as User;
+        setUser(currentUser);
+        setStats((prev) => ({
+          ...prev,
+          totalXP: Number(currentUser?.xp ?? 0),
+          totalCoins: Number(currentUser?.coins ?? 0),
+          currentStreak: Number(currentUser?.streak ?? 0),
+          longestStreak: Number(currentUser?.streak ?? 0),
+          accuracy: Number(currentUser?.accuracy ?? 0),
+          averageScore: Number(currentUser?.accuracy ?? 0),
+        }));
+        setHistory([]);
+      } else {
+        setError("Failed to load profile data");
       }
     } catch (err) {
       console.error("Error loading profile:", err);
