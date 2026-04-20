@@ -42,6 +42,8 @@ export * as notificationApi from "./notifications";
 
 // Payments API
 export * as paymentApi from "./payments";
+export * as aiApi from "./ai";
+export * as reviewApi from "./reviews";
 
 export * as gradeApi from "./grades";
 export * as sectionApi from "./sections";
@@ -74,7 +76,32 @@ export { getAllGrades, getGrade } from "./grades";
 
 export { getSectionsByUnitProgress, getSection } from "./sections";
 
-export { getQuestionsByLesson, submitQuestionHistory } from "./questions";
+export {
+  getQuestionById,
+  getQuestionGroupById,
+  getQuestionsByLesson,
+  submitQuestionHistory,
+} from "./questions";
+
+export {
+  submitEssay,
+  getPersonalizedQuestions,
+} from "./ai";
+
+export {
+  createUnitReview,
+  updateUnitReview,
+  getUnitReviews,
+  getUnitReviewById,
+  createGroupReview,
+  updateGroupReview,
+  getGroupReviews,
+  getGroupReviewById,
+  createSemesterTest,
+  updateSemesterTest,
+  getSemesterTests,
+  getSemesterTestById,
+} from "./reviews";
 
 export {
   getLessonsBySectionProgress,

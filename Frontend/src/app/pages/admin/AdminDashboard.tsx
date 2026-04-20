@@ -31,7 +31,7 @@ export function AdminDashboard() {
         adminApi.getAllUsers({ page: 1, pageSize: 5, sortBy: 'joinedDate', sortOrder: 'desc' }),
       ]);
 
-      if (statsResponse.success) {
+      if (statsResponse.success && statsResponse.data) {
         // Map API response to component state structure
         const apiStats = statsResponse.data;
         setStats({
@@ -46,14 +46,14 @@ export function AdminDashboard() {
         });
       }
 
-      if (activityResponse.success) {
+      if (activityResponse.success && activityResponse.data) {
         // Extract daily active users count
         const dailyCounts = activityResponse.data.map(d => d.activeUsers);
         setActivityData(dailyCounts);
       }
 
-      if (usersResponse.success) {
-        setRecentUsers(usersResponse.data.data);
+      if (usersResponse.success && usersResponse.data) {
+        setRecentUsers(usersResponse.data.data ?? []);
       }
     } catch (err) {
       console.error('Error loading admin dashboard:', err);

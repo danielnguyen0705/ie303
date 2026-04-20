@@ -108,7 +108,8 @@ public class UserQuestionHistoryService {
         boolean matchedCorrectOption = questionOptionRepo.findByQuestionId(question.getId()).stream()
                 .anyMatch(option -> option.isCorrect()
                         && option.getContent() != null
-                        && option.getContent().trim().equalsIgnoreCase(normalizedAnswer));
+                        && normalizeComparableAnswer(option.getContent())
+                        .equals(normalizeComparableAnswer(normalizedAnswer)));
         if (matchedCorrectOption) {
             return true;
         }
@@ -118,7 +119,8 @@ public class UserQuestionHistoryService {
             return false;
         }
 
-        return correctAnswer.trim().equalsIgnoreCase(normalizedAnswer);
+        return normalizeComparableAnswer(correctAnswer)
+                .equals(normalizeComparableAnswer(normalizedAnswer));
     }
 
     private boolean isCorrectMatchingAnswer(Question question, String answerText) {
@@ -231,6 +233,17 @@ public class UserQuestionHistoryService {
             return null;
         }
         return value.trim().replaceAll("\\s+", " ").toLowerCase();
+    }
+
+    private String normalizeComparableAnswer(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value.trim()
+                .replaceAll("[_-]+", " ")
+                .replaceAll("\\s+", " ")
+                .toLowerCase();
     }
 
     private Long resolveLessonId(Question question) {

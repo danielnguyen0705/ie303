@@ -20,11 +20,18 @@ import { PaymentHistory } from "./pages/PaymentHistory";
 import { TestResults } from "./pages/TestResults";
 import { TestReview } from "./pages/TestReview";
 import { RevisionTest } from "./pages/RevisionTest";
+import { PersonalizedQuestions } from "./pages/PersonalizedQuestions";
+import { UserUnitReviews } from "./pages/UserUnitReviews";
+import { UserGroupReviews } from "./pages/UserGroupReviews";
+import { UserSemesterTests } from "./pages/UserSemesterTests";
 import { AdminLayout } from "./components/AdminLayout";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { UserManagement } from "./pages/admin/UserManagement";
 import { ContentManagement } from "./pages/admin/ContentManagement";
 import { QuestionBank } from "./pages/admin/QuestionBank";
+import { UnitReviews } from "./pages/UnitReviews";
+import { GroupReviews } from "./pages/GroupReviews";
+import { SemesterTests } from "./pages/SemesterTests";
 import { Reports } from "./pages/admin/Reports";
 import { VIPManagement } from "./pages/admin/VIPManagement";
 import { PaymentOffers } from "./pages/admin/PaymentOffers";
@@ -65,6 +72,10 @@ export const router = createBrowserRouter([
       { path: "shop", Component: Shop },
       { path: "topup", Component: Topup },
       { path: "payment-history", Component: PaymentHistory },
+      { path: "ai/personalized-questions", Component: PersonalizedQuestions },
+      { path: "reviews/unit", Component: UserUnitReviews },
+      { path: "reviews/group", Component: UserGroupReviews },
+      { path: "tests/semester", Component: UserSemesterTests },
     ],
   },
   {
@@ -78,6 +89,9 @@ export const router = createBrowserRouter([
           { path: "users", Component: UserManagement },
           { path: "content", Component: ContentManagement },
           { path: "questions", Component: QuestionBank },
+          { path: "unit-reviews", Component: UnitReviews },
+          { path: "group-reviews", Component: GroupReviews },
+          { path: "semester-tests", Component: SemesterTests },
           { path: "reports", Component: Reports },
           { path: "vip", Component: VIPManagement },
           { path: "payments", Component: PaymentOffers },
