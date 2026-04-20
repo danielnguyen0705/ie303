@@ -15,6 +15,9 @@ import {
   HelpCircle,
   LogOut,
   ChevronDown,
+  BookOpen,
+  Layers3,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -23,6 +26,9 @@ const navigation = [
   { name: "User Management", href: "/admin/users", icon: Users },
   { name: "Content Management", href: "/admin/content", icon: FileText },
   { name: "Question Bank", href: "/admin/questions", icon: MessageSquare },
+  { name: "Unit Reviews", href: "/admin/unit-reviews", icon: BookOpen },
+  { name: "Group Reviews", href: "/admin/group-reviews", icon: Layers3 },
+  { name: "Semester Tests", href: "/admin/semester-tests", icon: ClipboardCheck },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "VIP Management", href: "/admin/vip", icon: Crown },
   { name: "Payment Offers", href: "/admin/payments", icon: DollarSign },

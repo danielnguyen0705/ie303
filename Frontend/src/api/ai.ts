@@ -1,0 +1,57 @@
+import type {
+  ApiResponse,
+  EssaySubmissionRequest,
+  EssaySubmissionResult,
+  PersonalizedQuestionsRequest,
+} from "./types";
+import type { QuestionDto } from "./questions";
+import { createError, request } from "./utils/http";
+
+const hasPositiveNumber = (value: number): boolean =>
+  Number.isFinite(value) && value > 0;
+
+export async function submitEssay(
+  payload: EssaySubmissionRequest,
+): Promise<ApiResponse<EssaySubmissionResult>> {
+  if (!hasPositiveNumber(payload.questionId)) {
+    return createError("Invalid question id", "VALIDATION_ERROR");
+  }
+
+  if (!payload.answerText.trim()) {
+    return createError("Answer text is required", "VALIDATION_ERROR");
+  }
+
+  return request<EssaySubmissionResult>("/ai/essay/submit", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getPersonalizedQuestions(
+  payload: PersonalizedQuestionsRequest,
+): Promise<ApiResponse<QuestionDto[]>> {
+  if (!hasPositiveNumber(payload.questionCount)) {
+    return createError("Question count must be greater than 0", "VALIDATION_ERROR");
+  }
+
+  if (!hasPositiveNumber(payload.gradeId)) {
+    return createError("Invalid grade id", "VALIDATION_ERROR");
+  }
+
+  if (!hasPositiveNumber(payload.startUnit) || !hasPositiveNumber(payload.endUnit)) {
+    return createError("Invalid unit range", "VALIDATION_ERROR");
+  }
+
+  if (payload.startUnit > payload.endUnit) {
+    return createError("Start unit cannot be greater than end unit", "VALIDATION_ERROR");
+  }
+
+  if (!payload.topic.trim()) {
+    return createError("Topic is required", "VALIDATION_ERROR");
+  }
+
+  return request<QuestionDto[]>("/ai/personalized-questions", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

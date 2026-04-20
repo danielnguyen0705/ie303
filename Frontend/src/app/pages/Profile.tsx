@@ -12,8 +12,9 @@ import {
   BookOpen,
   Award,
   KeyRound,
+  GraduationCap,
 } from "lucide-react";
-import { getUserProfile, getUserStats, getUserHistory } from "@/api";
+import { getCurrentUser, getUserProfile, getUserStats, getUserHistory } from "@/api";
 import { changePassword as changePasswordApi } from "@/api/auth";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "@/data/mockData";
@@ -38,6 +39,16 @@ type HistoryItem = {
   xpGained: number;
 };
 
+type StudyingGrade = {
+  gradeId: number;
+  gradeName: string;
+  progressPercent: number;
+};
+
+type ProfileUser = User & {
+  studyingGrades?: StudyingGrade[];
+};
+
 const initialStats: UserStats = {
   totalLessonsCompleted: 0,
   totalTestsTaken: 0,
@@ -51,9 +62,10 @@ const initialStats: UserStats = {
 
 export function Profile() {
   const { logout, loading: authLoading } = useAuth();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ProfileUser | null>(null);
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [studyingGrades, setStudyingGrades] = useState<StudyingGrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [oldPassword, setOldPassword] = useState("");
@@ -86,14 +98,16 @@ export function Profile() {
       setLoading(true);
       setError(null);
 
-      const [userResponse, statsResponse, historyResponse] = await Promise.all([
+      const [userResponse, statsResponse, historyResponse, currentUserResponse] =
+        await Promise.all([
         getUserProfile(),
         getUserStats(),
         getUserHistory(5),
+        getCurrentUser(),
       ]);
 
       if (userResponse.success && userResponse.data) {
-        setUser(userResponse.data);
+        setUser(userResponse.data as ProfileUser);
       }
 
       if (statsResponse.success && statsResponse.data) {
@@ -102,6 +116,18 @@ export function Profile() {
 
       if (historyResponse.success && historyResponse.data) {
         setHistory(historyResponse.data);
+      }
+
+      if (currentUserResponse.success && currentUserResponse.data) {
+        const currentUserData = currentUserResponse.data as {
+          studyingGrades?: StudyingGrade[];
+        };
+        const gradeList = currentUserData.studyingGrades ?? [];
+        setStudyingGrades(
+          [...gradeList].sort(
+            (left, right) => right.progressPercent - left.progressPercent,
+          ),
+        );
       }
     } catch (err) {
       console.error("Error loading profile:", err);
@@ -225,6 +251,8 @@ export function Profile() {
   if (!user) return null;
 
   const vipBadge = getVIPBadge(user.vipStatus);
+  const activeStudyGrade =
+    studyingGrades.find((grade) => grade.progressPercent > 0) ?? null;
 
   return (
     <main className="pt-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8 pb-24 md:pb-12">
@@ -345,6 +373,49 @@ export function Profile() {
             Longest Streak
           </div>
         </div>
+      </section>
+
+      <section className="bg-white rounded-lg shadow-sm p-8">
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <h2 className="text-2xl font-black flex items-center gap-3">
+            <GraduationCap className="w-7 h-7 text-[#155ca5]" />
+            Studying Grades
+          </h2>
+          {activeStudyGrade && (
+            <div className="rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
+              Currently studying: {activeStudyGrade.gradeName} -{" "}
+              {Math.round(activeStudyGrade.progressPercent)}%
+            </div>
+          )}
+        </div>
+
+        {studyingGrades.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {studyingGrades.map((grade) => (
+              <div
+                key={grade.gradeId}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-black text-[#1e2e51]">{grade.gradeName}</div>
+                  <span className="text-xs font-bold text-[#155ca5]">
+                    {Math.round(grade.progressPercent)}%
+                  </span>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#155ca5]"
+                    style={{ width: `${Math.min(100, Math.max(0, grade.progressPercent))}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-gray-500">
+            No studying grades found yet.
+          </div>
+        )}
       </section>
 
       {/* Learning Overview */}

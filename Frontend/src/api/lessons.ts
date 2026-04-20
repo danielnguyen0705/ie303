@@ -36,6 +36,7 @@ export interface LessonDetailResult {
   lessonNumber: number;
   title: string;
   sectionId: number;
+  isVipOnly?: boolean;
 }
 
 export async function getLessonsBySectionProgress(
