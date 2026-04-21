@@ -57,6 +57,7 @@ const toDisplayItem = (
   name: item.name,
   description: item.description || "",
   type: TYPE_TO_DISPLAY[item.type],
+  shopType: item.type,
   price: item.price,
   icon: TYPE_TO_ICON[item.type],
   duration: item.durationDays ?? undefined,

@@ -211,6 +211,7 @@ export interface ShopItem {
   name: string;
   description: string;
   type: "powerup" | "cosmetic" | "subscription" | "boost";
+  shopType?: ShopItemType;
   price: number;
   icon: string;
   duration?: number;
