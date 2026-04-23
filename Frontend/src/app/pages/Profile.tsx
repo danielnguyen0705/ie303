@@ -12,17 +12,64 @@ import {
   BookOpen,
   Award,
   KeyRound,
+  Lock,
+  Palette,
   GraduationCap,
 } from "lucide-react";
 import {
   changePassword as changePasswordApi,
+
+  equipAvatar,
+  equipBackground,
+  getActiveShopItems,
   getCurrentUser,
-  getUserHistory,
-  getUserProfile,
-  getUserStats,
+  getMyShopItems,
 } from "@/api";
 import { useAuth } from "@/context/AuthContext";
-import type { User } from "@/data/mockData";
+
+type CurrentUserProfile = {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  coin: number;
+  exp: number;
+  score: number;
+  streak: number;
+  lastStudyDate?: string;
+  vipExpiredAt?: string | null;
+  isVip: boolean;
+  createdAt: string;
+  studyingGrades?: Array<{
+    gradeId: number;
+    gradeName: string;
+    progressPercent: number;
+  }>;
+};
+
+type ProfileUser = {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  avatar: string;
+  avatarItemId: number | null;
+  backgroundImageUrl: string | null;
+  backgroundItemId: number | null;
+  lastStudyDate: string | null;
+  vipExpiredAt: string | null;
+  isVip: boolean;
+  createdAt: string;
+  studyProgress: number;
+};
+
+type CosmeticOption = {
+  id: number;
+  name: string;
+  imageUrl: string;
+  owned: boolean;
+  equipped: boolean;
+};
 
 type UserStats = {
   totalLessonsCompleted: number;
@@ -50,10 +97,6 @@ type StudyingGrade = {
   progressPercent: number;
 };
 
-type ProfileUser = User & {
-  studyingGrades?: StudyingGrade[];
-};
-
 const initialStats: UserStats = {
   totalLessonsCompleted: 0,
   totalTestsTaken: 0,
@@ -63,6 +106,18 @@ const initialStats: UserStats = {
   currentStreak: 0,
   longestStreak: 0,
   accuracy: 0,
+};
+
+const sortCosmeticOptions = (options: CosmeticOption[]): CosmeticOption[] => {
+  return [...options].sort((a, b) => {
+    if (a.owned !== b.owned) {
+      return a.owned ? -1 : 1;
+    }
+    if (a.equipped !== b.equipped) {
+      return a.equipped ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
 };
 
 export function Profile() {
@@ -81,6 +136,22 @@ export function Profile() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [avatarOptions, setAvatarOptions] = useState<CosmeticOption[]>([]);
+  const [backgroundOptions, setBackgroundOptions] = useState<CosmeticOption[]>(
+    [],
+  );
+  const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
+  const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(null);
+  const [selectedBackgroundId, setSelectedBackgroundId] = useState<
+    number | null
+  >(null);
+  const [customizationError, setCustomizationError] = useState<string | null>(
+    null,
+  );
+  const [savingCustomization, setSavingCustomization] = useState(false);
+  const [isAvatarPickerModalOpen, setIsAvatarPickerModalOpen] = useState(false);
+  const [isBackgroundPickerModalOpen, setIsBackgroundPickerModalOpen] =
+    useState(false);
 
   useEffect(() => {
     loadProfileData();
@@ -103,36 +174,103 @@ export function Profile() {
       setLoading(true);
       setError(null);
 
-      const [userResponse, statsResponse, historyResponse, currentUserResponse] =
+      const [userResponse, shopItemsResponse, myItemsResponse] =
         await Promise.all([
-        getUserProfile(),
-        getUserStats(),
-        getUserHistory(5),
-        getCurrentUser(),
-      ]);
+          getCurrentUser(),
+          getActiveShopItems(),
+          getMyShopItems(),
+        ]);
 
       if (userResponse.success && userResponse.data) {
-        setUser(userResponse.data as ProfileUser);
-      }
-
-      if (statsResponse.success && statsResponse.data) {
-        setStats(statsResponse.data);
-      }
-
-      if (historyResponse.success && historyResponse.data) {
-        setHistory(historyResponse.data);
-      }
-
-      if (currentUserResponse.success && currentUserResponse.data) {
-        const currentUserData = currentUserResponse.data as {
-          studyingGrades?: StudyingGrade[];
-        };
-        const gradeList = currentUserData.studyingGrades ?? [];
-        setStudyingGrades(
-          [...gradeList].sort(
-            (left, right) => right.progressPercent - left.progressPercent,
-          ),
+        const currentUser = userResponse.data as CurrentUserProfile;
+        const allShopItems =
+          shopItemsResponse.success && shopItemsResponse.data
+            ? shopItemsResponse.data
+            : [];
+        const ownedItems =
+          myItemsResponse.success && myItemsResponse.data
+            ? myItemsResponse.data
+            : [];
+        const ownedShopItemIds = new Set(
+          ownedItems.map((ownedItem) => ownedItem.shopItemId),
         );
+
+        const equippedAvatarId =
+          ownedItems.find((item) => item.type === "AVATAR" && item.equipped)
+            ?.shopItemId ?? null;
+        const equippedBackgroundId =
+          ownedItems.find((item) => item.type === "BACKGROUND" && item.equipped)
+            ?.shopItemId ?? null;
+
+        const mappedAvatarOptions: CosmeticOption[] = allShopItems
+          .filter((item) => item.shopType === "AVATAR")
+          .map((item) => ({
+            id: Number(item.id),
+            name: item.name,
+            imageUrl: item.imageUrl || "",
+            owned: ownedShopItemIds.has(Number(item.id)),
+            equipped: equippedAvatarId === Number(item.id),
+          }));
+
+        const mappedBackgroundOptions: CosmeticOption[] = allShopItems
+          .filter((item) => item.shopType === "BACKGROUND")
+          .map((item) => ({
+            id: Number(item.id),
+            name: item.name,
+            imageUrl: item.imageUrl || "",
+            owned: ownedShopItemIds.has(Number(item.id)),
+            equipped: equippedBackgroundId === Number(item.id),
+          }));
+
+        setAvatarOptions(sortCosmeticOptions(mappedAvatarOptions));
+        setBackgroundOptions(sortCosmeticOptions(mappedBackgroundOptions));
+        setSelectedAvatarId(equippedAvatarId);
+        setSelectedBackgroundId(equippedBackgroundId);
+
+        const equippedAvatarImage = mappedAvatarOptions.find(
+          (item) => item.id === equippedAvatarId,
+        )?.imageUrl;
+        const equippedBackgroundImage = mappedBackgroundOptions.find(
+          (item) => item.id === equippedBackgroundId,
+        )?.imageUrl;
+        const studyProgress =
+          currentUser.studyingGrades && currentUser.studyingGrades.length > 0
+            ? currentUser.studyingGrades.reduce(
+                (acc, grade) => acc + Number(grade.progressPercent || 0),
+                0,
+              ) / currentUser.studyingGrades.length
+            : 0;
+
+        setUser({
+          id: Number(currentUser.id),
+          username: currentUser.username,
+          email: currentUser.email,
+          role: currentUser.role,
+          avatar:
+            equippedAvatarImage ||
+            `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.username || "User")}`,
+          avatarItemId: equippedAvatarId,
+          backgroundImageUrl: equippedBackgroundImage || null,
+          backgroundItemId: equippedBackgroundId,
+          lastStudyDate: currentUser.lastStudyDate ?? null,
+          vipExpiredAt: currentUser.vipExpiredAt ?? null,
+          isVip: Boolean(currentUser.isVip),
+          createdAt: currentUser.createdAt,
+          studyProgress,
+        });
+
+        setStats((prev) => ({
+          ...prev,
+          totalXP: Number(currentUser.exp ?? 0),
+          totalCoins: Number(currentUser.coin ?? 0),
+          currentStreak: Number(currentUser.streak ?? 0),
+          longestStreak: Number(currentUser.streak ?? 0),
+          accuracy: Number(studyProgress ?? 0),
+          averageScore: Number(currentUser.score ?? 0),
+        }));
+        setHistory([]);
+      } else {
+        setError("Failed to load profile data");
       }
     } catch (err) {
       console.error("Error loading profile:", err);
@@ -142,11 +280,8 @@ export function Profile() {
     }
   };
 
-  const getVIPBadge = (vipStatus: string) => {
-    if (vipStatus === "premium")
-      return { label: "Premium Member", color: "bg-purple-600" };
-    if (vipStatus === "elite")
-      return { label: "Elite Member", color: "bg-amber-600" };
+  const getVIPBadge = (isVip: boolean) => {
+    if (isVip) return { label: "VIP Member", color: "bg-amber-600" };
     return null;
   };
 
@@ -217,6 +352,113 @@ export function Profile() {
     setPasswordSuccess(null);
   };
 
+  const openCustomizeModal = () => {
+    if (!user) {
+      return;
+    }
+
+    setCustomizationError(null);
+    setSelectedAvatarId(user.avatarItemId);
+    setSelectedBackgroundId(user.backgroundItemId);
+    setIsAvatarPickerModalOpen(false);
+    setIsBackgroundPickerModalOpen(false);
+    setIsCustomizeModalOpen(true);
+  };
+
+  const closeCustomizeModal = () => {
+    if (savingCustomization) {
+      return;
+    }
+
+    setCustomizationError(null);
+    setIsAvatarPickerModalOpen(false);
+    setIsBackgroundPickerModalOpen(false);
+    setIsCustomizeModalOpen(false);
+  };
+
+  const handleSaveCustomization = async () => {
+    if (!user) {
+      return;
+    }
+
+    setCustomizationError(null);
+    setSavingCustomization(true);
+
+    try {
+      const avatarChanged =
+        selectedAvatarId !== null && selectedAvatarId !== user.avatarItemId;
+      const backgroundChanged =
+        selectedBackgroundId !== null &&
+        selectedBackgroundId !== user.backgroundItemId;
+
+      if (avatarChanged) {
+        const response = await equipAvatar(selectedAvatarId);
+        if (!response.success) {
+          setCustomizationError(
+            response.error?.message || "Failed to equip avatar.",
+          );
+          return;
+        }
+      }
+
+      if (backgroundChanged) {
+        const response = await equipBackground(selectedBackgroundId);
+        if (!response.success) {
+          setCustomizationError(
+            response.error?.message || "Failed to equip background.",
+          );
+          return;
+        }
+      }
+
+      const selectedAvatar = avatarOptions.find(
+        (option) => option.id === selectedAvatarId,
+      );
+      const selectedBackground = backgroundOptions.find(
+        (option) => option.id === selectedBackgroundId,
+      );
+
+      setAvatarOptions((prev) =>
+        sortCosmeticOptions(
+          prev.map((item) => ({
+            ...item,
+            equipped: selectedAvatarId !== null && item.id === selectedAvatarId,
+          })),
+        ),
+      );
+      setBackgroundOptions((prev) =>
+        sortCosmeticOptions(
+          prev.map((item) => ({
+            ...item,
+            equipped:
+              selectedBackgroundId !== null && item.id === selectedBackgroundId,
+          })),
+        ),
+      );
+
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              avatar:
+                selectedAvatar?.imageUrl ||
+                `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(prev.username || "User")}`,
+              avatarItemId: selectedAvatarId,
+              backgroundImageUrl: selectedBackground?.imageUrl || null,
+              backgroundItemId: selectedBackgroundId,
+            }
+          : prev,
+      );
+
+      setIsCustomizeModalOpen(false);
+    } catch (err) {
+      console.error("Failed to save customization:", err);
+      setCustomizationError("Failed to save customization. Please try again.");
+    } finally {
+      setSavingCustomization(false);
+    }
+  };
+
   const handleLogout = async (): Promise<void> => {
     setLogoutError(null);
     const isSuccess = await logout();
@@ -255,22 +497,39 @@ export function Profile() {
 
   if (!user) return null;
 
-  const vipBadge = getVIPBadge(user.vipStatus);
-  const activeStudyGrade =
-    studyingGrades.find((grade) => grade.progressPercent > 0) ?? null;
+  const vipBadge = getVIPBadge(user.isVip);
+  const selectedAvatarOption =
+    avatarOptions.find((item) => item.id === selectedAvatarId) ||
+    avatarOptions.find((item) => item.equipped) ||
+    null;
+  const selectedBackgroundOption =
+    backgroundOptions.find((item) => item.id === selectedBackgroundId) ||
+    backgroundOptions.find((item) => item.equipped) ||
+    null;
 
   return (
     <main className="pt-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8 pb-24 md:pb-12">
       {/* Header Profile Card */}
       <section className="relative">
-        <div className="bg-white rounded-lg p-8 md:p-12 shadow-sm flex flex-col md:flex-row items-center gap-8 overflow-hidden">
+        <div
+          className="bg-white rounded-lg p-8 md:p-12 shadow-sm flex flex-col md:flex-row items-center gap-8 overflow-hidden relative"
+          style={
+            user.backgroundImageUrl
+              ? {
+                  backgroundImage: `linear-gradient(rgba(255,255,255,0.86), rgba(255,255,255,0.86)), url(${user.backgroundImageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : undefined
+          }
+        >
           {/* Decorative element */}
           <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#73aaf9]/20 rounded-full blur-3xl" />
           <div className="relative group">
             <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-4 border-[#155ca5]/10 p-1 bg-white">
               <img
                 src={user.avatar}
-                alt={user.name}
+                alt={user.username}
                 className="w-full h-full rounded-full object-cover"
               />
             </div>
@@ -286,10 +545,10 @@ export function Profile() {
           <div className="flex-1 text-center md:text-left space-y-4">
             <div>
               <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-1">
-                {user.name}
+                {user.username}
               </h1>
               <p className="font-mono text-[#155ca5] font-bold uppercase tracking-widest text-sm">
-                Level {user.level} - Master Scholar
+                {user.role} • ID #{user.id}
               </p>
             </div>
             <div className="flex flex-wrap justify-center md:justify-start gap-4">
@@ -314,7 +573,11 @@ export function Profile() {
             </div>
           </div>
           <div className="w-full md:w-auto flex flex-col gap-3">
-            <button className="bg-[#155ca5] text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg shadow-[#155ca5]/20 hover:scale-105 active:scale-95 transition-all">
+            <button
+              type="button"
+              onClick={openCustomizeModal}
+              className="bg-[#155ca5] text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg shadow-[#155ca5]/20 hover:scale-105 active:scale-95 transition-all"
+            >
               Edit Profile
             </button>
             <button className="bg-gray-100 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors">
@@ -359,11 +622,11 @@ export function Profile() {
               <Target className="w-6 h-6 text-[#f39c12]" />
             </div>
             <div className="text-3xl font-black">
-              {stats.averageScore.toFixed(1)}%
+              {Math.round(stats.averageScore).toLocaleString()}
             </div>
           </div>
           <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
-            Average Score
+            Score
           </div>
         </div>
 
@@ -386,10 +649,9 @@ export function Profile() {
             <GraduationCap className="w-7 h-7 text-[#155ca5]" />
             Studying Grades
           </h2>
-          {activeStudyGrade && (
+          {studyingGrades.length > 0 && (
             <div className="rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
-              Currently studying: {activeStudyGrade.gradeName} -{" "}
-              {Math.round(activeStudyGrade.progressPercent)}%
+              {studyingGrades.length} grade{studyingGrades.length !== 1 ? 's' : ''} in progress
             </div>
           )}
         </div>
@@ -402,7 +664,9 @@ export function Profile() {
                 className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="font-black text-[#1e2e51]">{grade.gradeName}</div>
+                  <div className="font-black text-[#1e2e51]">
+                    {grade.gradeName}
+                  </div>
                   <span className="text-xs font-bold text-[#155ca5]">
                     {Math.round(grade.progressPercent)}%
                   </span>
@@ -410,7 +674,9 @@ export function Profile() {
                 <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-[#155ca5]"
-                    style={{ width: `${Math.min(100, Math.max(0, grade.progressPercent))}%` }}
+                    style={{
+                      width: `${Math.min(100, Math.max(0, grade.progressPercent))}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -483,28 +749,42 @@ export function Profile() {
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
               <span className="text-gray-600 font-medium">Member Since</span>
-              <span className="font-bold">{formatDate(user.joinedDate)}</span>
+              <span className="font-bold">{formatDate(user.createdAt)}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
               <span className="text-gray-600 font-medium">Account Type</span>
               <span
                 className={`font-bold capitalize ${
-                  user.vipStatus === "free"
-                    ? "text-gray-600"
-                    : user.vipStatus === "premium"
-                      ? "text-purple-600"
-                      : "text-amber-600"
+                  user.isVip ? "text-amber-600" : "text-gray-600"
                 }`}
               >
-                {user.vipStatus}
+                {user.isVip ? "VIP" : "Free"}
               </span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">Accuracy Rate</span>
-              <span className="font-bold text-[#27ae60]">
-                {stats.accuracy}%
+              <span className="text-gray-600 font-medium">Role</span>
+              <span className="font-bold text-[#155ca5]">{user.role}</span>
+            </div>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-600 font-medium">Last Study Date</span>
+              <span className="font-bold">
+                {user.lastStudyDate ? formatDate(user.lastStudyDate) : "N/A"}
               </span>
             </div>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-600 font-medium">Study Progress</span>
+              <span className="font-bold text-[#27ae60]">
+                {stats.accuracy.toFixed(1)}%
+              </span>
+            </div>
+            {user.isVip && user.vipExpiredAt && (
+              <div className="flex justify-between py-3 border-b border-gray-200">
+                <span className="text-gray-600 font-medium">VIP Expires</span>
+                <span className="font-bold text-amber-600">
+                  {formatDate(user.vipExpiredAt)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between py-3">
               <span className="text-gray-600 font-medium">Total XP</span>
               <span className="font-bold text-[#155ca5]">
@@ -606,6 +886,325 @@ export function Profile() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {isCustomizeModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] px-4 py-6 flex items-center justify-center"
+          onClick={closeCustomizeModal}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[84vh] overflow-y-auto bg-white rounded-xl shadow-xl p-4 md:p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="font-black text-xl md:text-2xl text-slate-900 flex items-center gap-2">
+                <Palette className="w-5 h-5 text-[#155ca5]" />
+                Customize Profile
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-base md:text-lg text-slate-900">
+                  Avatars
+                </h4>
+                <span className="text-xs font-semibold text-slate-500">
+                  {avatarOptions.filter((item) => item.owned).length}/
+                  {avatarOptions.length} owned
+                </span>
+              </div>
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/60">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#155ca5]/20 bg-slate-100 shrink-0">
+                      {selectedAvatarOption?.imageUrl ? (
+                        <img
+                          src={selectedAvatarOption.imageUrl}
+                          alt={selectedAvatarOption.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={user.avatar}
+                          alt={user.username}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Current avatar
+                      </p>
+                      <p className="font-bold text-slate-900 truncate">
+                        {selectedAvatarOption?.name || "Default avatar"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAvatarPickerModalOpen(true)}
+                    className="px-3 py-2 rounded-md bg-[#155ca5] text-white text-sm font-bold hover:brightness-105 transition-colors"
+                  >
+                    Edit avatar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-base md:text-lg text-slate-900">
+                  Backgrounds
+                </h4>
+                <span className="text-xs font-semibold text-slate-500">
+                  {backgroundOptions.filter((item) => item.owned).length}/
+                  {backgroundOptions.length} owned
+                </span>
+              </div>
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/60 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Current background
+                    </p>
+                    <p className="font-bold text-slate-900 truncate">
+                      {selectedBackgroundOption?.name || "Default background"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsBackgroundPickerModalOpen(true)}
+                    className="px-3 py-2 rounded-md bg-[#155ca5] text-white text-sm font-bold hover:brightness-105 transition-colors"
+                  >
+                    Edit background
+                  </button>
+                </div>
+
+                <div className="h-24 md:h-28 rounded-md overflow-hidden bg-slate-100 border border-slate-200">
+                  {selectedBackgroundOption?.imageUrl ? (
+                    <img
+                      src={selectedBackgroundOption.imageUrl}
+                      alt={selectedBackgroundOption.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : user.backgroundImageUrl ? (
+                    <img
+                      src={user.backgroundImageUrl}
+                      alt={`${user.username} background`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full grid place-items-center text-xs text-slate-500">
+                      No Image
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {customizationError && (
+              <p className="text-sm font-semibold text-red-600">
+                {customizationError}
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={closeCustomizeModal}
+                disabled={savingCustomization}
+                className="px-4 py-2 rounded-md bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCustomization}
+                disabled={savingCustomization}
+                className="px-4 py-2 rounded-md bg-[#155ca5] text-white font-bold hover:brightness-105 transition-colors disabled:opacity-70"
+              >
+                {savingCustomization ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </div>
+
+          {isAvatarPickerModalOpen && (
+            <div
+              className="fixed inset-0 z-[60] bg-black/45 px-4 py-6 flex items-center justify-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAvatarPickerModalOpen(false);
+              }}
+            >
+              <div
+                className="w-full max-w-xl max-h-[82vh] bg-white rounded-xl shadow-xl flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <h4 className="font-black text-lg text-slate-900 text-center">
+                    Choose Avatar
+                  </h4>
+
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {avatarOptions.map((item) => {
+                    const isLocked = !item.owned;
+                    const isSelected = selectedAvatarId === item.id;
+
+                    return (
+                      <button
+                        key={`avatar-modal-${item.id}`}
+                        type="button"
+                        onClick={() => {
+                          if (isLocked) {
+                            return;
+                          }
+                          setSelectedAvatarId(item.id);
+                        }}
+                        className={`relative rounded-lg border p-2 text-left transition-all ${
+                          isSelected
+                            ? "border-[#155ca5] bg-[#155ca5]/5"
+                            : "border-slate-200 hover:border-slate-300"
+                        } ${isLocked ? "opacity-70" : ""}`}
+                      >
+                        <div className="aspect-square rounded-md overflow-hidden bg-slate-100">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full grid place-items-center text-xs text-slate-500">
+                              No Image
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-1.5 text-xs md:text-sm font-semibold truncate">
+                          {item.name}
+                        </p>
+                        {item.equipped && (
+                          <span className="inline-block text-[11px] font-bold text-[#155ca5]">
+                            Equipped
+                          </span>
+                        )}
+                        {isLocked && (
+                          <div className="absolute inset-0 rounded-lg bg-black/35 grid place-items-center">
+                            <div className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              Locked
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 p-4 bg-white">
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsAvatarPickerModalOpen(false)}
+                      className="px-6 py-2.5 rounded-md bg-[#155ca5] text-white font-bold hover:brightness-105 transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isBackgroundPickerModalOpen && (
+            <div
+              className="fixed inset-0 z-[60] bg-black/45 px-4 py-6 flex items-center justify-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsBackgroundPickerModalOpen(false);
+              }}
+            >
+              <div
+                className="w-full max-w-2xl max-h-[82vh] bg-white rounded-xl shadow-xl flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <h4 className="font-black text-lg text-slate-900 text-center">
+                    Choose Background
+                  </h4>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {backgroundOptions.map((item) => {
+                    const isLocked = !item.owned;
+                    const isSelected = selectedBackgroundId === item.id;
+
+                    return (
+                      <button
+                        key={`background-modal-${item.id}`}
+                        type="button"
+                        onClick={() => {
+                          if (isLocked) {
+                            return;
+                          }
+                          setSelectedBackgroundId(item.id);
+                        }}
+                        className={`relative rounded-lg border p-2 text-left transition-all ${
+                          isSelected
+                            ? "border-[#155ca5] bg-[#155ca5]/5"
+                            : "border-slate-200 hover:border-slate-300"
+                        } ${isLocked ? "opacity-70" : ""}`}
+                      >
+                        <div className="h-20 rounded-md overflow-hidden bg-slate-100">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full grid place-items-center text-xs text-slate-500">
+                              No Image
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-1.5 text-xs md:text-sm font-semibold truncate">
+                          {item.name}
+                        </p>
+                        {item.equipped && (
+                          <span className="inline-block text-[11px] font-bold text-[#155ca5]">
+                            Equipped
+                          </span>
+                        )}
+                        {isLocked && (
+                          <div className="absolute inset-0 rounded-lg bg-black/35 grid place-items-center">
+                            <div className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              Locked
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 p-4 bg-white">
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsBackgroundPickerModalOpen(false)}
+                      className="px-6 py-2.5 rounded-md bg-[#155ca5] text-white font-bold hover:brightness-105 transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </main>
