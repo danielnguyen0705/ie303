@@ -35,9 +35,21 @@ function clampProgress(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function getSectionStyle(section: SectionProgressItem, index: number) {
+function isSectionUnlocked(sections: SectionProgressItem[], index: number) {
+  if (index <= 0) {
+    return true;
+  }
+
+  return clampProgress(sections[index - 1]?.progressPercent ?? 0) >= 100;
+}
+
+function getSectionStyle(
+  section: SectionProgressItem,
+  index: number,
+  sections: SectionProgressItem[],
+) {
   const progress = clampProgress(section.progressPercent);
-  const isLocked = index > 0 && progress === 0;
+  const isLocked = !isSectionUnlocked(sections, index);
   const isCurrent = !isLocked && progress === 0;
   const isCompleted = progress >= 100;
 
@@ -322,7 +334,7 @@ export function SectionSelection() {
               >
                 {positionedSections.slice(0, -1).map((section, index) => {
                   const next = positionedSections[index + 1];
-                  const nextStyle = getSectionStyle(next, index + 1);
+                  const nextStyle = getSectionStyle(next, index + 1, positionedSections);
 
                   return buildSectionPath(
                     section,
@@ -335,7 +347,7 @@ export function SectionSelection() {
               </svg>
 
               {positionedSections.map((section, index) => {
-                const style = getSectionStyle(section, index);
+                const style = getSectionStyle(section, index, positionedSections);
                 const progress = clampProgress(section.progressPercent);
 
                 return (

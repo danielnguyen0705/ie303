@@ -18,6 +18,8 @@ import {
   BookOpen,
   Layers3,
   ClipboardCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -40,6 +42,7 @@ const navigation = [
 export function AdminLayout() {
   const location = useLocation();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const { logout, loading } = useAuth();
 
@@ -62,27 +65,53 @@ export function AdminLayout() {
     setIsUserMenuOpen(false);
   };
 
+  const sidebarWidthClass = isSidebarCollapsed ? "w-[92px]" : "w-[270px]";
+  const contentOffsetClass = isSidebarCollapsed ? "ml-[92px]" : "ml-[270px]";
+  const headerWidthClass = isSidebarCollapsed
+    ? "w-[calc(100%-92px)]"
+    : "w-[calc(100%-270px)]";
+
   return (
     <div className="min-h-screen bg-[#f7f9fc] flex">
       {/* Sidebar */}
-      <aside className="w-[270px] h-screen fixed left-0 top-0 bg-[#1a1a2e] shadow-xl flex flex-col z-50 overflow-y-auto">
-        <div className="px-6 py-8">
-          <div className="flex items-center gap-3">
+      <aside className={`${sidebarWidthClass} h-screen fixed left-0 top-0 bg-[#1a1a2e] shadow-xl flex flex-col z-50 overflow-y-auto transition-all duration-200`}>
+        <div className={`${isSidebarCollapsed ? "px-4 py-6" : "px-6 py-8"}`}>
+          <div className={`flex ${isSidebarCollapsed ? "justify-center" : "items-center gap-3"}`}>
             <div className="w-10 h-10 bg-[#8b0000] flex items-center justify-center rounded-lg shadow-inner">
               <LayoutDashboard className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight uppercase">
-                UIFIVE
-              </h1>
-              <p className="text-[10px] text-slate-400 font-medium tracking-[0.2em] uppercase">
-                Admin Console
-              </p>
-            </div>
+            {!isSidebarCollapsed && (
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-tight uppercase">
+                  UIFIVE
+                </h1>
+                <p className="text-[10px] text-slate-400 font-medium tracking-[0.2em] uppercase">
+                  Admin Console
+                </p>
+              </div>
+            )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+            className={`mt-5 flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-300 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? "mx-auto justify-center" : "gap-2"}`}
+            title={isSidebarCollapsed ? "Mở sidebar" : "Thu gọn sidebar"}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
+            {!isSidebarCollapsed && (
+              <span className="text-xs font-semibold uppercase tracking-[0.18em]">
+                Thu gọn
+              </span>
+            )}
+          </button>
         </div>
 
-        <nav className="flex-1 mt-4">
+        <nav className={`flex-1 ${isSidebarCollapsed ? "mt-2" : "mt-4"}`}>
           {navigation.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -91,43 +120,61 @@ export function AdminLayout() {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex items-center px-6 py-3.5 transition-colors cursor-pointer ${
+                title={item.name}
+                className={`flex items-center transition-colors cursor-pointer ${
+                  isSidebarCollapsed
+                    ? "justify-center px-4 py-3.5"
+                    : "px-6 py-3.5"
+                } ${
                   active
                     ? "border-l-4 border-red-600 bg-white/10 text-white"
                     : "text-slate-400 opacity-80 hover:bg-white/5 hover:text-white"
                 }`}
               >
                 <Icon
-                  className={`mr-4 ${active ? "opacity-100" : ""}`}
+                  className={isSidebarCollapsed ? "" : `mr-4 ${active ? "opacity-100" : ""}`}
                   size={20}
                 />
-                <span className="font-inter text-[13px] font-medium tracking-wide uppercase">
-                  {item.name}
-                </span>
+                {!isSidebarCollapsed && (
+                  <span className="font-inter text-[13px] font-medium tracking-wide uppercase">
+                    {item.name}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-6">
+        <div className={`${isSidebarCollapsed ? "p-4" : "p-6"}`}>
           <div className="bg-white/5 rounded-lg p-4">
-            <p className="text-[11px] text-slate-500 uppercase tracking-widest mb-2">
-              System Load
-            </p>
-            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-[#b02d21] h-full w-[42%]"></div>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-2">
-              v2.4.0 Stable Build
-            </p>
+            {!isSidebarCollapsed && (
+              <>
+                <p className="text-[11px] text-slate-500 uppercase tracking-widest mb-2">
+                  System Load
+                </p>
+                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-[#b02d21] h-full w-[42%]"></div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">
+                  v2.4.0 Stable Build
+                </p>
+              </>
+            )}
+            {isSidebarCollapsed && (
+              <div className="flex justify-center">
+                <div className="h-9 w-9 rounded-full bg-[#b02d21]/20 flex items-center justify-center">
+                  <BarChart3 size={16} className="text-[#ff8f84]" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className="ml-[270px] flex-1 flex flex-col">
+      <div className={`${contentOffsetClass} flex-1 flex flex-col transition-all duration-200`}>
         {/* Top Navigation */}
-        <header className="h-[60px] fixed top-0 right-0 w-[calc(100%-270px)] flex justify-between items-center px-6 bg-white shadow-sm z-40">
+        <header className={`h-[60px] fixed top-0 right-0 ${headerWidthClass} flex justify-between items-center px-6 bg-white shadow-sm z-40 transition-all duration-200`}>
           <div className="flex items-center flex-1">
             <div className="relative w-full max-w-md">
               <Search

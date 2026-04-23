@@ -35,9 +35,17 @@ function clampProgress(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function getUnitStyle(unit: UnitProgressItem, index: number) {
+function isUnitUnlocked(units: UnitProgressItem[], index: number) {
+  if (index <= 0) {
+    return true;
+  }
+
+  return clampProgress(units[index - 1]?.progressPercent ?? 0) >= 100;
+}
+
+function getUnitStyle(unit: UnitProgressItem, index: number, units: UnitProgressItem[]) {
   const progress = clampProgress(unit.progressPercent);
-  const isLocked = index > 0 && progress === 0;
+  const isLocked = !isUnitUnlocked(units, index);
   const isCurrent = !isLocked && progress === 0;
   const isCompleted = progress >= 100;
 
@@ -319,7 +327,7 @@ export function GradeUnits() {
               >
                 {positionedUnits.slice(0, -1).map((unit, index) => {
                   const next = positionedUnits[index + 1];
-                  const nextStyle = getUnitStyle(next, index + 1);
+                  const nextStyle = getUnitStyle(next, index + 1, positionedUnits);
 
                   return buildUnitPath(
                     unit,
@@ -332,7 +340,7 @@ export function GradeUnits() {
               </svg>
 
               {positionedUnits.map((unit, index) => {
-                const style = getUnitStyle(unit, index);
+                const style = getUnitStyle(unit, index, positionedUnits);
                 const progress = clampProgress(unit.progressPercent);
 
                 return (
