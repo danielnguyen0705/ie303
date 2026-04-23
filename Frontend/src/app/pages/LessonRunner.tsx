@@ -16,6 +16,7 @@ import {
 import {
   completeLesson,
   getLessonById,
+  getLessonsBySectionProgress,
   getQuestionsByLesson,
   submitEssay,
   submitQuestionHistory,
@@ -53,6 +54,15 @@ type LessonRewardState = {
   expEarned: number;
   progressPercent: number;
   currentExp: number;
+};
+
+type SectionLessonProgressItem = {
+  lessonId: number;
+  lessonTitle: string;
+  lessonNumber: number;
+  completed: boolean;
+  unlocked: boolean;
+  current: boolean;
 };
 
 function buildRunnerItems(data: LessonQuestionResponse): RunnerItem[] {
@@ -126,12 +136,7 @@ function isFillType(type: QuestionType) {
 }
 
 function isManualType(type: QuestionType) {
-  return [
-    "SENTENCE_REWRITE",
-    "ESSAY_WRITING",
-    "PRONUNCIATION",
-    "TOPIC_SPEAKING",
-  ].includes(type);
+  return ["SENTENCE_REWRITE", "ESSAY_WRITING"].includes(type);
 }
 
 function isAutoGradedType(type: QuestionType) {
@@ -384,7 +389,7 @@ function GroupSharedContent({
   if (!hasContent) return null;
 
   return (
-    <div className="bg-[#f8fbff] border border-[#dbeafe] rounded-3xl p-6 md:p-8 space-y-5">
+    <div className="bg-[#f8fbff] border border-[#dbeafe] rounded-3xl p-6 md:p-7 space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-2">
           {group.title && (
@@ -408,13 +413,27 @@ function GroupSharedContent({
       </div>
 
       {group.sharedContent && (
-        <div className="text-gray-700 leading-7 whitespace-pre-wrap rounded-2xl bg-white/70 border border-[#e5eefc] p-5">
+        <div className="text-base text-gray-700 leading-7 whitespace-pre-wrap rounded-2xl bg-white/70 border border-[#e5eefc] p-5">
           {group.sharedContent}
         </div>
       )}
 
       <MediaBlock imageUrl={group.imageUrl} audioUrl={group.audioUrl} />
     </div>
+  );
+}
+
+function isListeningPassageGroup(group: QuestionGroupDto | null) {
+  return group?.groupType === "LISTENING_PASSAGE";
+}
+
+function isCompactPassageGroup(group: QuestionGroupDto | null) {
+  if (!group) return false;
+
+  return (
+    group.groupType === "LISTENING_PASSAGE" ||
+    group.groupType === "READING_PASSAGE" ||
+    Boolean(group.sharedContent?.trim())
   );
 }
 
@@ -428,6 +447,7 @@ function LessonRunner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentGroupQuestionIndex, setCurrentGroupQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerState>({});
   const [finished, setFinished] = useState(false);
   const [submittingCurrent, setSubmittingCurrent] = useState(false);
@@ -436,6 +456,7 @@ function LessonRunner() {
   const [completeApiError, setCompleteApiError] = useState<string | null>(null);
   const [lessonReward, setLessonReward] = useState<LessonRewardState | null>(null);
   const [sectionId, setSectionId] = useState<number | null>(null);
+  const [sectionLessons, setSectionLessons] = useState<SectionLessonProgressItem[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [speechError, setSpeechError] = useState<string | null>(null);
@@ -453,6 +474,24 @@ function LessonRunner() {
     onerror: ((event: { error?: string }) => void) | null;
     onend: (() => void) | null;
   } | null>(null);
+
+  useEffect(() => {
+    stopSpeechCapture();
+    setCurrentIndex(0);
+    setCurrentGroupQuestionIndex(0);
+    setAnswers({});
+    setFinished(false);
+    setSubmittingCurrent(false);
+    setSubmitApiError(null);
+    setCompletingLesson(false);
+    setCompleteApiError(null);
+    setLessonReward(null);
+    setSectionId(null);
+    setSectionLessons([]);
+    setSpeechPreview("");
+    setSpeechSessionQuestionId(null);
+    setSpeechError(null);
+  }, [lessonIdNumber]);
 
   useEffect(() => {
     const loadQuestions = async () => {
@@ -498,9 +537,41 @@ function LessonRunner() {
     void loadLessonMeta();
   }, [lessonIdNumber]);
 
+  useEffect(() => {
+    const loadSectionLessons = async () => {
+      if (!sectionId || Number.isNaN(sectionId)) {
+        setSectionLessons([]);
+        return;
+      }
+
+      const res = await getLessonsBySectionProgress(sectionId);
+      if (res.success && res.data) {
+        setSectionLessons(
+          [...res.data].sort(
+            (a, b) => a.lessonNumber - b.lessonNumber || a.lessonId - b.lessonId,
+          ),
+        );
+      }
+    };
+
+    void loadSectionLessons();
+  }, [sectionId]);
+
   const currentItem = items[currentIndex];
   const currentGroup = currentItem?.group ?? null;
   const currentQuestions = currentItem?.questions ?? [];
+  const isListeningItem = isListeningPassageGroup(currentGroup);
+  const isCompactPassageItem = isCompactPassageGroup(currentGroup);
+  const activeQuestionIndex =
+    currentQuestions.length === 0
+      ? 0
+      : Math.min(currentGroupQuestionIndex, currentQuestions.length - 1);
+  const visibleQuestions =
+    isCompactPassageItem
+      ? currentQuestions
+      : currentGroup && currentQuestions.length > 0
+      ? [currentQuestions[activeQuestionIndex]]
+      : currentQuestions;
   const totalQuestions = useMemo(
     () => items.reduce((sum, item) => sum + item.questions.length, 0),
     [items],
@@ -543,6 +614,22 @@ function LessonRunner() {
     items.length > 0
       ? Math.round(((currentIndex + 1) / items.length) * 100)
       : 0;
+
+  const nextLesson = useMemo(() => {
+    if (!sectionLessons.length || !lessonIdNumber || Number.isNaN(lessonIdNumber)) {
+      return null;
+    }
+
+    const currentLessonIndex = sectionLessons.findIndex(
+      (lesson) => lesson.lessonId === lessonIdNumber,
+    );
+
+    if (currentLessonIndex < 0 || currentLessonIndex >= sectionLessons.length - 1) {
+      return null;
+    }
+
+    return sectionLessons[currentLessonIndex + 1] ?? null;
+  }, [lessonIdNumber, sectionLessons]);
 
   const setAnswer = (questionId: number, answer: UserAnswer) => {
     setSubmitApiError(null);
@@ -785,6 +872,10 @@ function LessonRunner() {
     }
   }, [currentQuestions, isListening, speechSessionQuestionId]);
 
+  useEffect(() => {
+    setCurrentGroupQuestionIndex(0);
+  }, [currentIndex]);
+
   const updateMatchingAnswer = (
     questionId: number,
     leftItem: string,
@@ -880,6 +971,98 @@ function LessonRunner() {
     return false;
   };
 
+  const submitStoredQuestion = async (
+    question: QuestionDto,
+    saved: NonNullable<AnswerState[number]>,
+  ) => {
+    let correct: boolean | null = null;
+    let feedback: string | null = null;
+    let score: number | null = null;
+    let submitted = false;
+
+    if (isMCQ(question.questionType)) {
+      const selected = normalizeText(String(saved.answer));
+      const correctOption = question.options.find((o) => o.isCorrect);
+      correct = correctOption
+        ? normalizeText(correctOption.optionKey) === selected ||
+          normalizeText(correctOption.content) === selected
+        : false;
+    } else if (question.questionType === "TRUE_FALSE_NG") {
+      const selected = normalizeText(String(saved.answer));
+      const expected = getTrueFalseExpected(question);
+      correct = selected === expected;
+    } else if (isFillType(question.questionType)) {
+      const typed = normalizeText(String(saved.answer));
+      const expected = normalizeText(String(question.correctAnswer ?? ""));
+      correct = typed === expected;
+    } else if (question.questionType === "SENTENCE_REORDER") {
+      const builtSentence = getDisplayedReorderSentence(question.id);
+      const expected = normalizeText(String(question.correctAnswer ?? ""));
+      correct = normalizeText(builtSentence) === expected;
+    } else if (question.questionType === "MATCHING") {
+      const answerMap =
+        saved.answer &&
+        typeof saved.answer === "object" &&
+        !Array.isArray(saved.answer)
+          ? saved.answer
+          : {};
+
+      const expectedMap =
+        parseJsonSafe<Record<string, string>>(question.correctAnswer || "") ||
+        getMatchingData(question)?.answers ||
+        null;
+
+      if (!expectedMap) {
+        correct = null;
+      } else {
+        const leftItems = Object.keys(expectedMap);
+        correct = leftItems.every(
+          (left) =>
+            normalizeText(answerMap[left] || "") ===
+            normalizeText(expectedMap[left] || ""),
+        );
+      }
+    } else if (isManualType(question.questionType)) {
+      correct = null;
+    }
+
+    const answerText = toAnswerText(saved.answer, question);
+
+    if (question.questionType === "ESSAY_WRITING") {
+      const res = await submitEssay({
+        questionId: question.id,
+        answerText,
+      });
+
+      if (res.success && res.data) {
+        correct = null;
+        feedback = res.data.feedback;
+        score = res.data.score;
+        submitted = true;
+      } else if (!res.success) {
+        setSubmitApiError(
+          res.error?.message || "KhÃƒÂ´ng gÃ¡Â»Â­i Ã„â€˜Ã†Â°Ã¡Â»Â£c bÃƒ i essay lÃƒÂªn hÃ¡Â»â€¡ thÃ¡Â»â€˜ng.",
+        );
+      }
+    } else {
+      const res = await submitQuestionHistory({
+        questionId: question.id,
+        answer_text: answerText,
+      });
+
+      if (res.success && res.data) {
+        correct = isManualType(question.questionType) ? null : res.data.correct;
+        submitted = true;
+      } else if (!res.success) {
+        setSubmitApiError(
+          res.error?.message || "KhÃ´ng gá»­i Ä‘Æ°á»£c cÃ¢u tráº£ lá»i lÃªn há»‡ thá»‘ng.",
+        );
+      }
+    }
+
+    return { submitted, correct, feedback, score };
+  };
+
   const submitQuestion = async (question: QuestionDto) => {
     const saved = answers[question.id];
     if (!saved) return;
@@ -888,9 +1071,10 @@ function LessonRunner() {
     setSubmitApiError(null);
 
     try {
-      let correct: boolean | null = false;
+      let correct: boolean | null = null;
       let feedback: string | null = null;
       let score: number | null = null;
+      let submitted = false;
 
       if (isMCQ(question.questionType)) {
         const selected = normalizeText(String(saved.answer));
@@ -939,7 +1123,6 @@ function LessonRunner() {
       }
 
       const answerText = toAnswerText(saved.answer, question);
-      const evaluatedCorrect = correct;
 
       if (question.questionType === "ESSAY_WRITING") {
         const res = await submitEssay({
@@ -951,6 +1134,7 @@ function LessonRunner() {
           correct = null;
           feedback = res.data.feedback;
           score = res.data.score;
+          submitted = true;
         } else if (!res.success) {
           setSubmitApiError(
             res.error?.message || "KhÃ´ng gá»­i Ä‘Æ°á»£c bÃ i essay lÃªn há»‡ thá»‘ng.",
@@ -964,7 +1148,8 @@ function LessonRunner() {
       });
 
       if (res.success && res.data) {
-        correct = evaluatedCorrect;
+        correct = isManualType(question.questionType) ? null : res.data.correct;
+        submitted = true;
       } else if (!res.success) {
         setSubmitApiError(
           res.error?.message || "Không gửi được câu trả lời lên hệ thống.",
@@ -977,7 +1162,7 @@ function LessonRunner() {
         ...prev,
         [question.id]: {
           ...prev[question.id],
-          submitted: true,
+          submitted,
           correct,
           feedback,
           score,
@@ -985,6 +1170,14 @@ function LessonRunner() {
       }));
     } finally {
       setSubmittingCurrent(false);
+    }
+  };
+
+  const submitCurrentItem = async () => {
+    for (const question of currentQuestions) {
+      if (!answers[question.id]?.submitted && canSubmitQuestion(question)) {
+        await submitQuestion(question);
+      }
     }
   };
 
@@ -1063,6 +1256,7 @@ function LessonRunner() {
   const renderAnswerArea = (
     question: QuestionDto,
     group: QuestionGroupDto | null,
+    compact = false,
   ) => {
     const currentAnswer = getQuestionAnswer(question.id);
     const wordBank = getWordBank(group);
@@ -1071,7 +1265,7 @@ function LessonRunner() {
 
     if (isMCQ(question.questionType)) {
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`grid gap-3 ${compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 gap-4"}`}>
           {question.options.map((option) => {
             const selected = currentAnswer?.answer === option.optionKey;
             const submitted = currentAnswer?.submitted;
@@ -1095,13 +1289,13 @@ function LessonRunner() {
                 key={`${option.id}-${option.optionKey}-${option.content}`}
                 disabled={submitted}
                 onClick={() => setAnswer(question.id, option.optionKey)}
-                className={`text-left rounded-2xl border-2 p-5 transition-all ${extraClass}`}
+                className={`text-left rounded-2xl border-2 transition-all ${compact ? "p-3.5" : "p-5"} ${extraClass}`}
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 shrink-0 rounded-full bg-white border flex items-center justify-center font-black text-[#1e2e51]">
+                <div className={`${compact ? "flex items-center gap-3" : "flex items-center gap-4"}`}>
+                  <div className={`${compact ? "h-8 w-8 text-sm" : "w-10 h-10"} shrink-0 rounded-full bg-white border flex items-center justify-center font-black text-[#1e2e51]`}>
                     {option.optionKey}
                   </div>
-                  <div className="font-semibold text-[#1e2e51]">
+                  <div className={`${compact ? "text-sm font-semibold" : "font-semibold"} text-[#1e2e51]`}>
                     {option.content}
                   </div>
                 </div>
@@ -1116,7 +1310,7 @@ function LessonRunner() {
       const values = ["true", "false", "not given"];
 
       return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid gap-3 ${compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3 gap-4"}`}>
           {values.map((value) => {
             const selected = currentAnswer?.answer === value;
             const submitted = currentAnswer?.submitted;
@@ -1140,7 +1334,7 @@ function LessonRunner() {
                 key={value}
                 disabled={submitted}
                 onClick={() => setAnswer(question.id, value)}
-                className={`rounded-2xl border-2 p-5 font-bold uppercase transition-all ${extraClass}`}
+                className={`rounded-2xl border-2 font-bold uppercase transition-all ${compact ? "p-3.5 text-sm" : "p-5"} ${extraClass}`}
               >
                 {value}
               </button>
@@ -1517,6 +1711,10 @@ function LessonRunner() {
     if (!currentAnswer?.submitted) return null;
 
     const isUngraded = currentAnswer.correct === null;
+    const isManualQuestion = isManualType(question.questionType);
+    const hasAiWritingResult =
+      question.questionType === "ESSAY_WRITING" &&
+      (typeof currentAnswer.score === "number" || !!currentAnswer.feedback);
 
     return (
       <div
@@ -1558,7 +1756,7 @@ function LessonRunner() {
                   : "Chưa đúng"}
             </p>
 
-            {question.explanation && (
+            {!isManualQuestion && question.explanation && (
               <p className="text-gray-700">{question.explanation}</p>
             )}
 
@@ -1574,7 +1772,7 @@ function LessonRunner() {
               </p>
             )}
 
-            {!isUngraded &&
+            {false &&
               !currentAnswer.correct &&
               question.correctAnswer && (
                 <p className="text-sm font-semibold text-gray-600">
@@ -1589,7 +1787,7 @@ function LessonRunner() {
                 </p>
               )}
 
-            {isManualType(question.questionType) && (
+            {isManualQuestion && (
               <p className="text-sm text-gray-600">
                 Dạng này đã được gửi đi, hệ thống sẽ dùng nội dung bạn nộp để đánh giá thay vì chấm đúng/sai ngay.
               </p>
@@ -1717,10 +1915,16 @@ function LessonRunner() {
 
             {sectionId && (
               <button
-                onClick={() => navigate(`/sections/${sectionId}/lessons`)}
+                onClick={() => {
+                  if (nextLesson) {
+                    navigate(`/lessons/${nextLesson.lessonId}`);
+                    return;
+                  }
+                  navigate(`/sections/${sectionId}/lessons`);
+                }}
                 className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d]"
               >
-                End lesson
+                {nextLesson ? "Next Lesson" : "Ve lesson list"}
               </button>
             )}
           </div>
@@ -1732,8 +1936,8 @@ function LessonRunner() {
   if (!currentItem || currentQuestions.length === 0) return null;
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10 pb-28">
-      <section className="mb-8">
+    <main className={`${isListeningItem ? "max-w-7xl" : "max-w-6xl"} mx-auto px-4 md:px-6 py-6 md:py-8 pb-24`}>
+      <section className="mb-6">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
@@ -1742,7 +1946,7 @@ function LessonRunner() {
           Quay lại
         </Link>
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-4 space-y-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
               Lesson {lessonId}
@@ -1761,24 +1965,80 @@ function LessonRunner() {
         </div>
       </section>
 
-      <section className="space-y-6">
-        <GroupSharedContent group={currentGroup} />
+      <section className={isCompactPassageItem ? "grid gap-4 xl:grid-cols-[minmax(420px,1.08fr)_minmax(0,0.92fr)] xl:items-start" : "space-y-4"}>
+        {isCompactPassageItem ? (
+          <div className="xl:sticky xl:top-6">
+            <GroupSharedContent group={currentGroup} />
+          </div>
+        ) : (
+          <GroupSharedContent group={currentGroup} />
+        )}
 
-        <div className="space-y-5">
-          {currentQuestions.map((question, questionIndex) => {
+        <div className="space-y-4">
+          {currentGroup && currentQuestions.length > 1 && !isCompactPassageItem && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-[#155ca5]">
+                    Group Questions
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Chuyển từng câu trong cùng một màn để đỡ cuộn dài.
+                  </p>
+                </div>
+                <div className="rounded-full bg-[#155ca5]/10 px-3 py-1.5 text-sm font-bold text-[#155ca5]">
+                  Câu {activeQuestionIndex + 1}/{currentQuestions.length}
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {currentQuestions.map((question, index) => {
+                  const state = getQuestionAnswer(question.id);
+                  const active = index === activeQuestionIndex;
+                  const buttonClass = active
+                    ? "border-[#155ca5] bg-[#155ca5] text-white"
+                    : state?.submitted
+                      ? state.correct === true
+                        ? "border-green-300 bg-green-50 text-green-700"
+                        : state.correct === false
+                          ? "border-red-300 bg-red-50 text-red-700"
+                          : "border-amber-300 bg-amber-50 text-amber-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-[#155ca5]/35 hover:bg-[#f8fbff]";
+
+                  return (
+                    <button
+                      key={`group-nav-${question.id}`}
+                      type="button"
+                      onClick={() => setCurrentGroupQuestionIndex(index)}
+                      className={`flex min-w-10 items-center justify-center rounded-full border px-3 py-2 text-sm font-black transition ${buttonClass}`}
+                    >
+                      {index + 1}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {visibleQuestions.map((question) => {
+            const questionIndex = currentQuestions.findIndex((item) => item.id === question.id);
             const questionAnswer = getQuestionAnswer(question.id);
             const mediaImageUrl = getQuestionImageUrl(currentGroup, question);
-            const mediaAudioUrl = getQuestionAudioUrl(currentGroup, question);
+            const mediaAudioUrl = isListeningItem
+              ? question.audioUrl && question.audioUrl !== currentGroup?.audioUrl
+                ? getQuestionAudioUrl(currentGroup, question)
+                : null
+              : getQuestionAudioUrl(currentGroup, question);
 
             return (
               <div
                 key={question.id}
-                className="bg-white rounded-3xl shadow-sm p-6 md:p-8 space-y-6"
+                className={`bg-white shadow-sm ${isCompactPassageItem ? "rounded-2xl p-4 space-y-4" : "rounded-3xl p-5 md:p-6 space-y-5"}`}
               >
-                <div className="space-y-3">
+                <div className={isCompactPassageItem ? "space-y-2" : "space-y-3"}>
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <div className="inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-[#155ca5] px-3 text-sm font-black text-white">
+                      <div className={`inline-flex items-center justify-center rounded-full bg-[#155ca5] px-3 font-black text-white ${isCompactPassageItem ? "h-8 min-w-8 text-xs" : "h-9 min-w-9 text-sm"}`}>
                         {questionIndex + 1}
                       </div>
                       <div className="inline-block px-3 py-1 rounded-full bg-[#f3f7ff] text-[#155ca5] text-xs font-bold uppercase tracking-wider">
@@ -1798,12 +2058,12 @@ function LessonRunner() {
                   </div>
 
                   {question.instruction && (
-                    <p className="text-sm font-medium text-gray-500">
+                    <p className={`${isCompactPassageItem ? "text-xs" : "text-sm"} font-medium text-gray-500`}>
                       {question.instruction}
                     </p>
                   )}
 
-                  <h2 className="text-2xl md:text-3xl font-black text-[#1e2e51] leading-tight">
+                  <h2 className={`${isCompactPassageItem ? "text-base md:text-lg" : "text-xl md:text-2xl"} font-black text-[#1e2e51] leading-tight`}>
                     {question.content}
                   </h2>
                 </div>
@@ -1812,10 +2072,52 @@ function LessonRunner() {
 
                 {renderQuestionHint(question, currentGroup)}
 
-                {renderAnswerArea(question, currentGroup)}
+                {renderAnswerArea(question, currentGroup, isCompactPassageItem)}
 
                 {renderFeedback(question)}
 
+                {!isListeningItem && !isCompactPassageItem && (
+                  <div className={`flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 ${isCompactPassageItem ? "pt-3" : "pt-4"}`}>
+                    {currentGroup && !isCompactPassageItem ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentGroupQuestionIndex((prev) => Math.max(prev - 1, 0))}
+                          disabled={activeQuestionIndex === 0}
+                          className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition hover:border-[#155ca5] hover:text-[#155ca5] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Câu trước
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCurrentGroupQuestionIndex((prev) =>
+                              Math.min(prev + 1, currentQuestions.length - 1),
+                            )
+                          }
+                          disabled={activeQuestionIndex >= currentQuestions.length - 1}
+                          className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition hover:border-[#155ca5] hover:text-[#155ca5] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Câu sau
+                        </button>
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+
+                    {!questionAnswer?.submitted && (
+                      <button
+                        onClick={() => void submitQuestion(question)}
+                        disabled={!canSubmitQuestion(question) || submittingCurrent}
+                        className={`rounded-xl bg-[#155ca5] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0f4c88] ${isCompactPassageItem ? "px-4 py-2.5 text-sm" : "px-6 py-3"}`}
+                      >
+                        {submittingCurrent ? "Đang nộp..." : "Nộp câu trả lời"}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {!isListeningItem && false && (
                 <div className="flex items-center justify-end gap-3">
                   {!questionAnswer?.submitted && (
                     <button
@@ -1827,6 +2129,7 @@ function LessonRunner() {
                     </button>
                   )}
                 </div>
+                )}
               </div>
             );
           })}
@@ -1839,6 +2142,34 @@ function LessonRunner() {
         </div>
 
         <div className="flex items-center gap-3">
+          {isCompactPassageItem && !isCurrentItemComplete && (
+            <button
+              onClick={() => void submitCurrentItem()}
+              disabled={
+                submittingCurrent ||
+                currentQuestions.some((question) => !canSubmitQuestion(question))
+              }
+              className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold hover:bg-[#0f4c88] disabled:opacity-60"
+            >
+              {submittingCurrent
+                ? "\u0110ang n\u1ed9p..."
+                : isListeningItem
+                  ? "N\u1ed9p to\u00e0n b\u1ed9 c\u00e2u nghe"
+                  : "N\u1ed9p to\u00e0n b\u1ed9 c\u00e2u h\u1ecfi"}
+            </button>
+          )}
+          {false && isCompactPassageItem && !isCurrentItemComplete && (
+            <button
+              onClick={() => void submitCurrentItem()}
+              disabled={
+                submittingCurrent ||
+                currentQuestions.some((question) => !canSubmitQuestion(question))
+              }
+              className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold hover:bg-[#0f4c88] disabled:opacity-60"
+            >
+              {submittingCurrent ? "Äang ná»™p..." : "Ná»™p toÃ n bá»™ cÃ¢u nghe"}
+            </button>
+          )}
           <button
             onClick={goNext}
             disabled={!isCurrentItemComplete || (currentIndex === items.length - 1 && completingLesson)}

@@ -25,7 +25,7 @@ public class LearningProgressService {
 
     private static final int LESSON_COMPLETION_COIN_REWARD = 18;
     private static final int LESSON_COMPLETION_EXP_REWARD = 36;
-    private static final double LESSON_PASS_ACCURACY = 80.0;
+    private static final double LESSON_PASS_ACCURACY = 0.0;
 
     private final UserService userService;
     private final UserRepo userRepo;

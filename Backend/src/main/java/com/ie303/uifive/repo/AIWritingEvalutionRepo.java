@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface AIWritingEvalutionRepo extends JpaRepository<AIWritingEvaluation, Long> {
+    void deleteByQuestionId(Long questionId);
 }

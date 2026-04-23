@@ -11,6 +11,7 @@ import java.util.Optional;
 
 public interface UserLessonProgressRepo extends JpaRepository<UserLessonProgress, Long> {
     Optional<UserLessonProgress> findByUserIdAndLessonId(Long userId, Long lessonId);
+    void deleteByLessonId(Long lessonId);
 
     @Query("""
         select distinct ulp.lesson.section.unit.grade

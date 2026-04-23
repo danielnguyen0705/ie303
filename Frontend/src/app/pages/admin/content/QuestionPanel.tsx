@@ -155,6 +155,7 @@ type ExcelGroupRow = {
 
 type ExcelGroupQuestionRow = {
   groupKey?: string;
+  questionType?: string;
   content?: string;
   instruction?: string;
   questionData?: string;
@@ -373,12 +374,12 @@ function getQuestionDataFieldMeta(type?: string) {
     case "WORD_BANK_FILL":
       return {
         label: "Word Bank Data",
-        placeholder: 'Vi du: {"bank":["analyze","design","ship"]}',
+        placeholder: 'Vi du: {"wordBank":["analyze","design","ship"]}',
       };
     case "SENTENCE_REORDER":
       return {
         label: "Sentence Parts",
-        placeholder: 'Vi du: ["First, gather data", "then compare results"]',
+        placeholder: 'Vi du: {"words":["First, gather data","then compare results"]}',
       };
     case "ESSAY_WRITING":
       return {
@@ -853,6 +854,9 @@ export default function QuestionPanel({
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>(
     {},
   );
+  const [expandedEditorQuestions, setExpandedEditorQuestions] = useState<
+    Record<number, boolean>
+  >({ 0: true });
 
   const normalized = useMemo(
     () => normalizePayload(questionsPayload),
@@ -880,6 +884,7 @@ export default function QuestionPanel({
     setSubmitting(false);
     setSingleForm(createEmptySingleForm());
     setGroupForm(createEmptyGroupForm());
+    setExpandedEditorQuestions({ 0: true });
   };
 
   const openCreateDialog = () => {
@@ -1007,10 +1012,18 @@ export default function QuestionPanel({
   };
 
   const addChildQuestion = () => {
-    setGroupForm((prev) => ({
-      ...prev,
-      questions: [...prev.questions, createEmptyGroupChild()],
-    }));
+    setGroupForm((prev) => {
+      const nextIndex = prev.questions.length;
+      setExpandedEditorQuestions((current) => ({
+        ...current,
+        [nextIndex]: true,
+      }));
+
+      return {
+        ...prev,
+        questions: [...prev.questions, createEmptyGroupChild()],
+      };
+    });
   };
 
   const removeChildQuestion = (index: number) => {
@@ -1021,6 +1034,43 @@ export default function QuestionPanel({
         questions: prev.questions.filter((_, i) => i !== index),
       };
     });
+
+    setExpandedEditorQuestions((prev) => {
+      const nextEntries = Object.entries(prev).reduce<Record<number, boolean>>(
+        (acc, [rawKey, value]) => {
+          const key = Number(rawKey);
+          if (key < index) {
+            acc[key] = value;
+          } else if (key > index) {
+            acc[key - 1] = value;
+          }
+          return acc;
+        },
+        {},
+      );
+
+      if (Object.keys(nextEntries).length === 0) {
+        nextEntries[0] = true;
+      }
+
+      return nextEntries;
+    });
+  };
+
+  const toggleEditorQuestion = (index: number) => {
+    setExpandedEditorQuestions((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
+  const setAllEditorQuestionsExpanded = (expanded: boolean) => {
+    setExpandedEditorQuestions(
+      groupForm.questions.reduce<Record<number, boolean>>((acc, _, index) => {
+        acc[index] = expanded;
+        return acc;
+      }, {}),
+    );
   };
 
   const validateSingle = () => {
@@ -1221,17 +1271,21 @@ export default function QuestionPanel({
         );
 
         for (const child of children) {
+          const explicitChildType = String(child.questionType || "")
+            .trim()
+            .toUpperCase();
+          const resolvedChildType = explicitChildType || childType;
           const content = String(child.content || "").trim();
           if (!content) continue;
 
           const questionRes = await adminApi.createContentQuestion({
             lessonId: selectedLesson.id,
-            questionType: childType as never,
+            questionType: resolvedChildType as never,
             content,
             instruction: String(child.instruction || "").trim() || undefined,
             questionData: String(child.questionData || "").trim() || undefined,
             explanation: String(child.explanation || "").trim() || undefined,
-            correctAnswer: shouldImportCorrectAnswer(childType)
+            correctAnswer: shouldImportCorrectAnswer(resolvedChildType)
               ? String(child.correctAnswer || "").trim() || undefined
               : undefined,
             questionGroupId: groupRes.data.id,
@@ -1243,10 +1297,10 @@ export default function QuestionPanel({
             );
           }
 
-          if (isOptionBasedType(childType)) {
+          if (isOptionBasedType(resolvedChildType)) {
             const options = buildOptionsFromExcelRow({
               ...child,
-              questionType: childType,
+              questionType: resolvedChildType,
             });
             if (options.length === 0) {
               throw new Error(
@@ -2234,9 +2288,14 @@ export default function QuestionPanel({
                     />
                   ) : shouldShowQuestionData(selectedSingleType) && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        {getQuestionDataFieldMeta(selectedSingleType).label}
-                      </label>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">
+                          {getQuestionDataFieldMeta(selectedSingleType).label}
+                        </label>
+                        <p className="text-xs text-slate-500">
+                          Dữ liệu này được lưu thẳng vào cột `question_data` bên backend dưới dạng TEXT.
+                        </p>
+                      </div>
                       <Textarea
                         rows={3}
                         value={singleForm.questionData}
@@ -2495,15 +2554,32 @@ export default function QuestionPanel({
                       </p>
                     </div>
 
-                    <Button type="button" variant="outline" onClick={addChildQuestion}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add child question
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setAllEditorQuestionsExpanded(false)}
+                      >
+                        Thu gọn hết
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setAllEditorQuestionsExpanded(true)}
+                      >
+                        Mở rộng hết
+                      </Button>
+                      <Button type="button" variant="outline" onClick={addChildQuestion}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add child question
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="max-h-[420px] overflow-y-auto pr-1 space-y-4">
                     {groupForm.questions.map((question, qIndex) => {
                       const childType = getDefaultChildType(selectedGroupType);
+                      const isExpanded = expandedEditorQuestions[qIndex] !== false;
 
                       return (
                         <div
@@ -2511,14 +2587,33 @@ export default function QuestionPanel({
                           className="rounded-xl border border-slate-200 p-4 space-y-4"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="font-bold text-slate-900">
-                                Question {qIndex + 1}
-                              </p>
+                            <button
+                              type="button"
+                              onClick={() => toggleEditorQuestion(qIndex)}
+                              className="min-w-0 flex-1 text-left"
+                            >
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                                )}
+                                <p className="font-bold text-slate-900">
+                                  Question {qIndex + 1}
+                                </p>
+                              </div>
                               <p className="text-xs text-slate-500 mt-1">
                                 Child type: {childType}
                               </p>
-                            </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleEditorQuestion(qIndex)}
+                              className="text-sm text-slate-500 hover:text-slate-700"
+                            >
+                              {isExpanded ? "Thu gọn" : "Mở rộng"}
+                            </button>
 
                             {groupForm.questions.length > 1 && (
                               <button
@@ -2531,6 +2626,8 @@ export default function QuestionPanel({
                             )}
                           </div>
 
+                          {isExpanded && (
+                            <>
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Content</label>
                             <Textarea
@@ -2676,6 +2773,8 @@ export default function QuestionPanel({
                                 ))}
                               </div>
                             </div>
+                          )}
+                            </>
                           )}
                         </div>
                       );

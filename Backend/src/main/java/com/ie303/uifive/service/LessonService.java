@@ -11,6 +11,7 @@ import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.SectionRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class LessonService {
     private final LessonRepo lessonRepo;
     private final SectionRepo sectionRepo;
     private final LessonMapper lessonMapper;
+    private final ContentDeletionService contentDeletionService;
 
     public LessonResponse create(LessonRequest request) {
         Lesson lesson = lessonMapper.toEntity(request);
@@ -71,11 +73,12 @@ public class LessonService {
         return response;
     }
 
+    @Transactional
     public void delete(Long id) {
         if (!lessonRepo.existsById(id)) {
             throw new AppException(ErrorCode.LESSON_NOT_FOUND);
         }
 
-        lessonRepo.deleteById(id);
+        contentDeletionService.deleteLesson(id);
     }
 }

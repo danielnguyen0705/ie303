@@ -9,6 +9,7 @@ import com.ie303.uifive.mapper.GradeMapper;
 import com.ie303.uifive.repo.GradeRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ public class GradeService {
 
     private final GradeRepo repo;
     private final GradeMapper mapper;
+    private final ContentDeletionService contentDeletionService;
 
     // ================= CREATE =================
     public GradeResponse create(GradeRequest request) {
@@ -63,10 +65,12 @@ public class GradeService {
     }
 
     // ================= DELETE =================
+    @Transactional
     public void delete(Long id) {
         if (!repo.existsById(id)) {
             throw new AppException(ErrorCode.GRADE_NOT_FOUND);
         }
+        contentDeletionService.deleteGrade(id);
         repo.deleteById(id);
     }
 }

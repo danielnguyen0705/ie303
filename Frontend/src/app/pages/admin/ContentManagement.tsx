@@ -35,6 +35,27 @@ import QuestionPanel from "./content/QuestionPanel";
 
 type ActiveStage = "grade" | "unit" | "section" | "lesson" | "question";
 
+const SECTION_TYPE_OPTIONS: SectionType[] = [
+  "GETTING_STARTED",
+  "LANGUAGE",
+  "READING",
+  "SPEAKING",
+  "LISTENING",
+  "WRITING",
+  "COMMUNICATION_CULTURE_CLIL",
+  "LOOKING_BACK",
+  "UNIT_REVISION",
+];
+
+const SKILL_TYPE_OPTIONS: SkillType[] = [
+  "VOCABULARY",
+  "GRAMMAR",
+  "READING",
+  "LISTENING",
+  "SPEAKING",
+  "WRITING",
+];
+
 function getUnitDisplayNumber(unit: Unit, index: number): number {
   return unit.unitNumber ?? unit.orderIndex ?? index + 1;
 }
@@ -150,18 +171,36 @@ export function ContentManagement() {
   const [isCreateGradeOpen, setIsCreateGradeOpen] = useState(false);
   const [newGradeName, setNewGradeName] = useState("");
   const [newGradeDescription, setNewGradeDescription] = useState("");
+  const [updatingGrade, setUpdatingGrade] = useState(false);
+  const [isEditGradeOpen, setIsEditGradeOpen] = useState(false);
+  const [editingGrade, setEditingGrade] = useState<Grade | null>(null);
+  const [editGradeName, setEditGradeName] = useState("");
+  const [editGradeDescription, setEditGradeDescription] = useState("");
 
   const [creatingUnit, setCreatingUnit] = useState(false);
   const [isCreateUnitOpen, setIsCreateUnitOpen] = useState(false);
   const [newUnitName, setNewUnitName] = useState("");
   const [newUnitDescription, setNewUnitDescription] = useState("");
   const [newUnitOrderIndex, setNewUnitOrderIndex] = useState("");
+  const [updatingUnit, setUpdatingUnit] = useState(false);
+  const [isEditUnitOpen, setIsEditUnitOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+  const [editUnitName, setEditUnitName] = useState("");
+  const [editUnitDescription, setEditUnitDescription] = useState("");
+  const [editUnitOrderIndex, setEditUnitOrderIndex] = useState("");
 
   const [creatingSection, setCreatingSection] = useState(false);
   const [isCreateSectionOpen, setIsCreateSectionOpen] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
   const [newSectionOrderIndex, setNewSectionOrderIndex] = useState("");
   const [newSectionType, setNewSectionType] =
+    useState<SectionType>("GETTING_STARTED");
+  const [updatingSection, setUpdatingSection] = useState(false);
+  const [isEditSectionOpen, setIsEditSectionOpen] = useState(false);
+  const [editingSection, setEditingSection] = useState<Section | null>(null);
+  const [editSectionName, setEditSectionName] = useState("");
+  const [editSectionOrderIndex, setEditSectionOrderIndex] = useState("");
+  const [editSectionType, setEditSectionType] =
     useState<SectionType>("GETTING_STARTED");
 
   const [creatingLesson, setCreatingLesson] = useState(false);
@@ -433,6 +472,79 @@ export function ContentManagement() {
     }
   };
 
+  const openEditGradeDialog = (grade: Grade) => {
+    setEditingGrade(grade);
+    setEditGradeName(grade.name || "");
+    setEditGradeDescription(grade.description || "");
+    setIsEditGradeOpen(true);
+  };
+
+  const handleUpdateGrade = async () => {
+    if (!editingGrade) return;
+
+    const gradeName = editGradeName.trim();
+    const gradeDescription = editGradeDescription.trim();
+
+    if (!gradeName) {
+      showError({
+        title: "Missing information",
+        message: "Please enter a grade name",
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+      return;
+    }
+
+    try {
+      setUpdatingGrade(true);
+
+      const response = await adminApi.updateGrade({
+        gradeId: editingGrade.id,
+        data: {
+          name: gradeName,
+          description: gradeDescription || undefined,
+        },
+      });
+
+      if (response.success && response.data) {
+        const updatedGrade = response.data;
+
+        setGrades((prev) =>
+          prev.map((grade) =>
+            grade.id === updatedGrade.id ? updatedGrade : grade,
+          ),
+        );
+
+        if (selectedGrade?.id === updatedGrade.id) {
+          setSelectedGrade(updatedGrade);
+        }
+
+        setIsEditGradeOpen(false);
+        setEditingGrade(null);
+        setEditGradeName("");
+        setEditGradeDescription("");
+
+        success({
+          title: "Success",
+          message: "Grade updated successfully",
+          autoClose: true,
+          showCancelButton: false,
+        });
+      } else {
+        showError({
+          title: "Failed to update grade",
+          message: response.error?.message || "An error occurred",
+          showCancelButton: false,
+          confirmText: "Close",
+        });
+      }
+    } catch (err) {
+      console.error("Error updating grade:", err);
+    } finally {
+      setUpdatingGrade(false);
+    }
+  };
+
   const handleCreateUnit = async () => {
     if (!selectedGrade) {
       showError({
@@ -511,6 +623,93 @@ export function ContentManagement() {
       console.error("Error creating unit:", err);
     } finally {
       setCreatingUnit(false);
+    }
+  };
+
+  const openEditUnitDialog = (unit: Unit) => {
+    setEditingUnit(unit);
+    setEditUnitName(unit.name || "");
+    setEditUnitDescription(unit.description || "");
+    setEditUnitOrderIndex(String(unit.unitNumber ?? unit.orderIndex ?? ""));
+    setIsEditUnitOpen(true);
+  };
+
+  const handleUpdateUnit = async () => {
+    if (!editingUnit || !selectedGrade) return;
+
+    const unitName = editUnitName.trim();
+    const unitDescription = editUnitDescription.trim();
+
+    if (!unitName) {
+      showError({
+        title: "Missing information",
+        message: "Please enter a unit name",
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+      return;
+    }
+
+    const parsedOrderIndex = editUnitOrderIndex.trim()
+      ? Number(editUnitOrderIndex.trim())
+      : NaN;
+
+    const safeOrderIndex =
+      Number.isFinite(parsedOrderIndex) && parsedOrderIndex > 0
+        ? parsedOrderIndex
+        : editingUnit.unitNumber ?? editingUnit.orderIndex ?? 1;
+
+    try {
+      setUpdatingUnit(true);
+
+      const response = await adminApi.updateUnit({
+        unitId: editingUnit.id,
+        data: {
+          gradeId: selectedGrade.id,
+          name: unitName,
+          description: unitDescription || undefined,
+          unitNumber: safeOrderIndex,
+          orderIndex: safeOrderIndex,
+        },
+      });
+
+      if (response.success && response.data) {
+        const updatedUnit = response.data;
+
+        setUnits((prev) =>
+          sortUnits(
+            prev.map((unit) => (unit.id === updatedUnit.id ? updatedUnit : unit)),
+          ),
+        );
+
+        if (selectedUnit?.id === updatedUnit.id) {
+          setSelectedUnit(updatedUnit);
+        }
+
+        setIsEditUnitOpen(false);
+        setEditingUnit(null);
+        setEditUnitName("");
+        setEditUnitDescription("");
+        setEditUnitOrderIndex("");
+
+        success({
+          title: "Success",
+          message: "Unit updated successfully",
+          autoClose: true,
+          showCancelButton: false,
+        });
+      } else {
+        showError({
+          title: "Failed to update unit",
+          message: response.error?.message || "An error occurred",
+          showCancelButton: false,
+          confirmText: "Close",
+        });
+      }
+    } catch (err) {
+      console.error("Error updating unit:", err);
+    } finally {
+      setUpdatingUnit(false);
     }
   };
 
@@ -593,6 +792,96 @@ export function ContentManagement() {
       console.error("Error creating section:", err);
     } finally {
       setCreatingSection(false);
+    }
+  };
+
+  const openEditSectionDialog = (section: Section) => {
+    setEditingSection(section);
+    setEditSectionName(section.name || "");
+    setEditSectionOrderIndex(
+      String(section.sectionNumber ?? section.orderIndex ?? ""),
+    );
+    setEditSectionType(section.sectionType || "GETTING_STARTED");
+    setIsEditSectionOpen(true);
+  };
+
+  const handleUpdateSection = async () => {
+    if (!editingSection || !selectedUnit) return;
+
+    const sectionName = editSectionName.trim();
+
+    if (!sectionName) {
+      showError({
+        title: "Missing information",
+        message: "Please enter a section name",
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+      return;
+    }
+
+    const parsedOrderIndex = editSectionOrderIndex.trim()
+      ? Number(editSectionOrderIndex.trim())
+      : NaN;
+
+    const safeOrderIndex =
+      Number.isFinite(parsedOrderIndex) && parsedOrderIndex > 0
+        ? parsedOrderIndex
+        : editingSection.sectionNumber ?? editingSection.orderIndex ?? 1;
+
+    try {
+      setUpdatingSection(true);
+
+      const response = await adminApi.updateSection({
+        sectionId: editingSection.id,
+        data: {
+          unitId: selectedUnit.id,
+          name: sectionName,
+          sectionNumber: safeOrderIndex,
+          orderIndex: safeOrderIndex,
+          sectionType: editSectionType,
+        },
+      });
+
+      if (response.success && response.data) {
+        const updatedSection = response.data;
+
+        setSections((prev) =>
+          sortSections(
+            prev.map((section) =>
+              section.id === updatedSection.id ? updatedSection : section,
+            ),
+          ),
+        );
+
+        if (selectedSection?.id === updatedSection.id) {
+          setSelectedSection(updatedSection);
+        }
+
+        setIsEditSectionOpen(false);
+        setEditingSection(null);
+        setEditSectionName("");
+        setEditSectionOrderIndex("");
+        setEditSectionType("GETTING_STARTED");
+
+        success({
+          title: "Success",
+          message: "Section updated successfully",
+          autoClose: true,
+          showCancelButton: false,
+        });
+      } else {
+        showError({
+          title: "Failed to update section",
+          message: response.error?.message || "An error occurred",
+          showCancelButton: false,
+          confirmText: "Close",
+        });
+      }
+    } catch (err) {
+      console.error("Error updating section:", err);
+    } finally {
+      setUpdatingSection(false);
     }
   };
 
@@ -1006,20 +1295,32 @@ export function ContentManagement() {
                         </p>
                       </div>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteGrade(grade.id);
-                        }}
-                        disabled={deletingItem === `grade-${grade.id}`}
-                        className="p-1.5 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                      >
-                        {deletingItem === `grade-${grade.id}` ? (
-                          <Loader2 className="w-3.5 h-3.5 text-red-600 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                        )}
-                      </button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditGradeDialog(grade);
+                          }}
+                          className="p-1.5 hover:bg-blue-50 rounded transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteGrade(grade.id);
+                          }}
+                          disabled={deletingItem === `grade-${grade.id}`}
+                          className="p-1.5 hover:bg-red-50 rounded transition-colors"
+                        >
+                          {deletingItem === `grade-${grade.id}` ? (
+                            <Loader2 className="w-3.5 h-3.5 text-red-600 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1099,20 +1400,32 @@ export function ContentManagement() {
                             </div>
                           </div>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handleDeleteUnit(unit.id);
-                            }}
-                            disabled={deletingItem === `unit-${unit.id}`}
-                            className="p-1.5 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                          >
-                            {deletingItem === `unit-${unit.id}` ? (
-                              <Loader2 className="w-3.5 h-3.5 text-red-600 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                            )}
-                          </button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditUnitDialog(unit);
+                              }}
+                              className="p-1.5 hover:bg-blue-50 rounded transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteUnit(unit.id);
+                              }}
+                              disabled={deletingItem === `unit-${unit.id}`}
+                              className="p-1.5 hover:bg-red-50 rounded transition-colors"
+                            >
+                              {deletingItem === `unit-${unit.id}` ? (
+                                <Loader2 className="w-3.5 h-3.5 text-red-600 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -1177,20 +1490,32 @@ export function ContentManagement() {
                             </p>
                           </div>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handleDeleteSection(section.id);
-                            }}
-                            disabled={deletingItem === `section-${section.id}`}
-                            className="p-1.5 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                          >
-                            {deletingItem === `section-${section.id}` ? (
-                              <Loader2 className="w-3.5 h-3.5 text-red-600 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                            )}
-                          </button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditSectionDialog(section);
+                              }}
+                              className="p-1.5 hover:bg-blue-50 rounded transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteSection(section.id);
+                              }}
+                              disabled={deletingItem === `section-${section.id}`}
+                              className="p-1.5 hover:bg-red-50 rounded transition-colors"
+                            >
+                              {deletingItem === `section-${section.id}` ? (
+                                <Loader2 className="w-3.5 h-3.5 text-red-600 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -1436,6 +1761,61 @@ export function ContentManagement() {
       </Dialog>
 
       <Dialog
+        open={isEditGradeOpen}
+        onOpenChange={(open) => {
+          setIsEditGradeOpen(open);
+          if (!open) {
+            setEditingGrade(null);
+            setEditGradeName("");
+            setEditGradeDescription("");
+          }
+        }}
+      >
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Edit Grade</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Grade name</label>
+              <Input
+                value={editGradeName}
+                onChange={(e) => setEditGradeName(e.target.value)}
+                placeholder="Example: English Elementary (A1-A2)"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                value={editGradeDescription}
+                onChange={(e) => setEditGradeDescription(e.target.value)}
+                placeholder="Enter grade description"
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditGradeOpen(false)}
+              disabled={updatingGrade}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleUpdateGrade()}
+              disabled={updatingGrade}
+            >
+              {updatingGrade ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={isCreateSectionOpen}
         onOpenChange={(open) => {
           setIsCreateSectionOpen(open);
@@ -1485,17 +1865,11 @@ export function ContentManagement() {
                 onChange={(e) => setNewSectionType(e.target.value as SectionType)}
                 className="w-full h-10 rounded-md border border-slate-200 px-3 text-sm"
               >
-                <option value="GETTING_STARTED">GETTING_STARTED</option>
-                <option value="LANGUAGE">LANGUAGE</option>
-                <option value="READING">READING</option>
-                <option value="SPEAKING">SPEAKING</option>
-                <option value="LISTENING">LISTENING</option>
-                <option value="WRITING">WRITING</option>
-                <option value="COMMUNICATION_CULTURE_CLIL">
-                  COMMUNICATION_CULTURE_CLIL
-                </option>
-                <option value="LOOKING_BACK">LOOKING_BACK</option>
-                <option value="UNIT_REVISION">UNIT_REVISION</option>
+                {SECTION_TYPE_OPTIONS.map((sectionType) => (
+                  <option key={sectionType} value={sectionType}>
+                    {sectionType}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -1513,6 +1887,79 @@ export function ContentManagement() {
               disabled={creatingSection}
             >
               {creatingSection ? "Creating..." : "Create section"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isEditUnitOpen}
+        onOpenChange={(open) => {
+          setIsEditUnitOpen(open);
+          if (!open) {
+            setEditingUnit(null);
+            setEditUnitName("");
+            setEditUnitDescription("");
+            setEditUnitOrderIndex("");
+          }
+        }}
+      >
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Edit Unit</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">
+              <span className="text-slate-500">Selected grade: </span>
+              <span className="font-semibold text-slate-900">
+                {selectedGrade?.name || "Not selected"}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Unit name</label>
+              <Input
+                value={editUnitName}
+                onChange={(e) => setEditUnitName(e.target.value)}
+                placeholder="Example: Unit 1 - Greetings"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                value={editUnitDescription}
+                onChange={(e) => setEditUnitDescription(e.target.value)}
+                placeholder="Enter unit description"
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Unit number</label>
+              <Input
+                value={editUnitOrderIndex}
+                onChange={(e) => setEditUnitOrderIndex(e.target.value)}
+                placeholder="Example: 7"
+                type="number"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditUnitOpen(false)}
+              disabled={updatingUnit}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleUpdateUnit()}
+              disabled={updatingUnit}
+            >
+              {updatingUnit ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1571,12 +2018,11 @@ export function ContentManagement() {
                 onChange={(e) => setNewLessonSkillType(e.target.value as SkillType)}
                 className="w-full h-10 rounded-md border border-slate-200 px-3 text-sm"
               >
-                <option value="VOCABULARY">VOCABULARY</option>
-                <option value="GRAMMAR">GRAMMAR</option>
-                <option value="READING">READING</option>
-                <option value="LISTENING">LISTENING</option>
-                <option value="SPEAKING">SPEAKING</option>
-                <option value="WRITING">WRITING</option>
+                {SKILL_TYPE_OPTIONS.map((skillType) => (
+                  <option key={skillType} value={skillType}>
+                    {skillType}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -1622,6 +2068,84 @@ export function ContentManagement() {
               disabled={creatingLesson}
             >
               {creatingLesson ? "Creating..." : "Create lesson"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isEditSectionOpen}
+        onOpenChange={(open) => {
+          setIsEditSectionOpen(open);
+          if (!open) {
+            setEditingSection(null);
+            setEditSectionName("");
+            setEditSectionOrderIndex("");
+            setEditSectionType("GETTING_STARTED");
+          }
+        }}
+      >
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Edit Section</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">
+              <span className="text-slate-500">Selected unit: </span>
+              <span className="font-semibold text-slate-900">
+                {selectedUnit?.name || "Not selected"}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Section name</label>
+              <Input
+                value={editSectionName}
+                onChange={(e) => setEditSectionName(e.target.value)}
+                placeholder="Example: Reading: Introductions"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Section number</label>
+              <Input
+                value={editSectionOrderIndex}
+                onChange={(e) => setEditSectionOrderIndex(e.target.value)}
+                placeholder="Example: 1"
+                type="number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Section type</label>
+              <select
+                value={editSectionType}
+                onChange={(e) => setEditSectionType(e.target.value as SectionType)}
+                className="w-full h-10 rounded-md border border-slate-200 px-3 text-sm"
+              >
+                {SECTION_TYPE_OPTIONS.map((sectionType) => (
+                  <option key={sectionType} value={sectionType}>
+                    {sectionType}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditSectionOpen(false)}
+              disabled={updatingSection}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleUpdateSection()}
+              disabled={updatingSection}
+            >
+              {updatingSection ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1674,12 +2198,11 @@ export function ContentManagement() {
                 onChange={(e) => setEditLessonSkillType(e.target.value as SkillType)}
                 className="w-full h-10 rounded-md border border-slate-200 px-3 text-sm"
               >
-                <option value="VOCABULARY">VOCABULARY</option>
-                <option value="GRAMMAR">GRAMMAR</option>
-                <option value="READING">READING</option>
-                <option value="LISTENING">LISTENING</option>
-                <option value="SPEAKING">SPEAKING</option>
-                <option value="WRITING">WRITING</option>
+                {SKILL_TYPE_OPTIONS.map((skillType) => (
+                  <option key={skillType} value={skillType}>
+                    {skillType}
+                  </option>
+                ))}
               </select>
             </div>
 
