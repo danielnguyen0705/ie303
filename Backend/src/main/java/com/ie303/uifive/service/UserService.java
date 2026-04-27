@@ -340,7 +340,7 @@ public class UserService implements UserDetailsService {
 
             boolean isVip = savedUser.getVipExpiredAt() != null && savedUser.getVipExpiredAt().isAfter(LocalDateTime.now());
 
-            return new UserProfileResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail(), savedUser.getRole(), savedUser.getCoin(), savedUser.getExp(), savedUser.getScore(), savedUser.getStreak(), savedUser.getLastStudyDate(), savedUser.getVipExpiredAt(), isVip, savedUser.getCreatedAt(), studyingGrades);
+            return new UserProfileResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail(), savedUser.getRole(), savedUser.getCoin(), savedUser.getExp(), savedUser.getScore(), savedUser.getStreak(), savedUser.getLastStudyDate(), savedUser.getVipExpiredAt(), isVip, savedUser.getCreatedAt(), studyingGrades, savedUser.getStrongSkill(), savedUser.getWeakSkill(), savedUser.getTrendLabel());
     }
 
     public UserProfileResponse getMyProfile(String username) {
@@ -363,6 +363,6 @@ public class UserService implements UserDetailsService {
 
             boolean isVip = user.getVipExpiredAt() != null && user.getVipExpiredAt().isAfter(LocalDateTime.now());
 
-            return new UserProfileResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getCoin(), user.getExp(), user.getScore(), user.getStreak(), user.getLastStudyDate(), user.getVipExpiredAt(), isVip, user.getCreatedAt(), studyingGrades);
+            return new UserProfileResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getCoin(), user.getExp(), user.getScore(), user.getStreak(), user.getLastStudyDate(), user.getVipExpiredAt(), isVip, user.getCreatedAt(), studyingGrades, user.getStrongSkill(), user.getWeakSkill(), user.getTrendLabel());
     }
 }

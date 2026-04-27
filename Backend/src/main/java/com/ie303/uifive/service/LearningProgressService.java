@@ -34,6 +34,7 @@ public class LearningProgressService {
     private final LessonRepo lessonRepo;
     private final UserLessonProgressRepo userLessonProgressRepo;
     private final UserLessonProgressMapper userLessonProgressMapper;
+    private final MLPredictionService mlPredictionService;
 
     public UserLessonProgressResponse completeLesson(UserLessonProgressRequest request) {
         User currentUser = userService.getCurrentUser();
@@ -99,6 +100,9 @@ public class LearningProgressService {
             user.setExp(user.getExp() + expEarned);
             progress.setCoinsEarned(LESSON_COMPLETION_COIN_REWARD);
             userRepo.save(user);
+
+            // Call ML Prediction to update user strong/weak skills & trends
+            mlPredictionService.predictAndUpdateUserSkills(user.getId());
         }
 
         UserLessonProgress saved = userLessonProgressRepo.save(progress);
