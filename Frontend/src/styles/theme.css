@@ -2,6 +2,9 @@
 
 :root {
   --font-size: 16px;
+  --question-font-family: 'Nunito', sans-serif;
+  --question-font-size: 1.125rem;
+  --question-line-height: 1.6;
   --background: #f5f8fc;
   --foreground: #1e2e51;
   --card: #ffffff;
@@ -182,5 +185,14 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+@layer components {
+  .question-text-unified {
+    font-family: var(--question-font-family);
+    font-size: var(--question-font-size);
+    font-weight: 700;
+    line-height: var(--question-line-height);
   }
 }

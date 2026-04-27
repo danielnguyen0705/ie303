@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import * as XLSX from "xlsx";
 import {
   Plus,
@@ -11,6 +12,7 @@ import {
   ChevronDown,
   ChevronRight,
   Upload,
+  PlayCircle,
 } from "lucide-react";
 import { adminApi } from "@/api";
 import { Button } from "@/app/components/ui/button";
@@ -38,6 +40,7 @@ type QuestionItem = {
   questionType?: string;
   content?: string;
   instruction?: string;
+  hint?: string | null;
   audioUrl?: string | null;
   imageUrl?: string | null;
   questionData?: string | null;
@@ -93,6 +96,7 @@ type SingleFormState = {
   id?: number;
   content: string;
   instruction: string;
+  hint: string;
   audioFile: File | null;
   imageFile: File | null;
   existingAudioUrl?: string | null;
@@ -107,6 +111,7 @@ type GroupChildFormState = {
   id?: number;
   content: string;
   instruction: string;
+  hint: string;
   audioFile: File | null;
   imageFile: File | null;
   existingAudioUrl?: string | null;
@@ -134,6 +139,7 @@ type ExcelSingleRow = {
   questionType?: string;
   content?: string;
   instruction?: string;
+  hint?: string;
   questionData?: string;
   explanation?: string;
   correctAnswer?: string;
@@ -158,6 +164,7 @@ type ExcelGroupQuestionRow = {
   questionType?: string;
   content?: string;
   instruction?: string;
+  hint?: string;
   questionData?: string;
   explanation?: string;
   correctAnswer?: string;
@@ -279,6 +286,7 @@ function createEmptySingleForm(): SingleFormState {
   return {
     content: "",
     instruction: "",
+    hint: "",
     audioFile: null,
     imageFile: null,
     existingAudioUrl: "",
@@ -294,6 +302,7 @@ function createEmptyGroupChild(): GroupChildFormState {
   return {
     content: "",
     instruction: "",
+    hint: "",
     audioFile: null,
     imageFile: null,
     existingAudioUrl: "",
@@ -766,6 +775,7 @@ function mapQuestionToSingleForm(question: QuestionItem): SingleFormState {
     id: question.id,
     content: question.content || "",
     instruction: question.instruction || "",
+    hint: question.hint || "",
     audioFile: null,
     imageFile: null,
     existingAudioUrl: question.audioUrl || "",
@@ -796,6 +806,7 @@ function mapQuestionToGroupChildForm(question: QuestionItem): GroupChildFormStat
     id: question.id,
     content: question.content || "",
     instruction: question.instruction || "",
+    hint: question.hint || "",
     audioFile: null,
     imageFile: null,
     existingAudioUrl: question.audioUrl || "",
@@ -963,6 +974,7 @@ export default function QuestionPanel({
     field:
       | "content"
       | "instruction"
+      | "hint"
       | "questionData"
       | "explanation"
       | "correctAnswer",
@@ -1221,6 +1233,7 @@ export default function QuestionPanel({
           questionType: questionType as never,
           content,
           instruction: String(row.instruction || "").trim() || undefined,
+          hint: String(row.hint || "").trim() || undefined,
           questionData: String(row.questionData || "").trim() || undefined,
           explanation: String(row.explanation || "").trim() || undefined,
           correctAnswer: shouldImportCorrectAnswer(questionType)
@@ -1283,6 +1296,7 @@ export default function QuestionPanel({
             questionType: resolvedChildType as never,
             content,
             instruction: String(child.instruction || "").trim() || undefined,
+            hint: String(child.hint || "").trim() || undefined,
             questionData: String(child.questionData || "").trim() || undefined,
             explanation: String(child.explanation || "").trim() || undefined,
             correctAnswer: shouldImportCorrectAnswer(resolvedChildType)
@@ -1359,6 +1373,7 @@ export default function QuestionPanel({
         questionType: selectedSingleType as never,
         content: singleForm.content.trim(),
         instruction: singleForm.instruction.trim() || undefined,
+        hint: singleForm.hint.trim() || undefined,
         audioUrl: supportsSingleAudio(selectedSingleType)
           ? singleForm.audioFile || singleForm.existingAudioUrl?.trim() || undefined
           : undefined,
@@ -1526,6 +1541,7 @@ export default function QuestionPanel({
           content: q.content.trim(),
           instruction:
             q.instruction.trim() || groupForm.instruction.trim() || undefined,
+          hint: q.hint.trim() || undefined,
           audioUrl: undefined,
           imageUrl: undefined,
           questionData: shouldShowQuestionData(childType)
@@ -1700,6 +1716,17 @@ export default function QuestionPanel({
               Import Excel
             </Button>
 
+            <Button variant="outline" asChild>
+              <Link
+                to={`/lessons/${selectedLesson.id}?preview=admin`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <PlayCircle className="w-4 h-4 mr-2" />
+                Preview Lesson
+              </Link>
+            </Button>
+
             <div className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-right">
               <p className="text-xs text-slate-500">Total</p>
               <p className="text-lg font-bold text-slate-900">
@@ -1798,13 +1825,19 @@ export default function QuestionPanel({
                         </div>
 
                         <div className="max-h-[140px] overflow-y-auto pr-1">
-                          <p className="text-sm font-semibold text-slate-900 whitespace-pre-wrap break-words">
+                          <p className="question-text-unified text-slate-900 whitespace-pre-wrap break-words">
                             {question.content}
                           </p>
 
                           {question.instruction && (
                             <p className="text-xs text-slate-500 mt-2 whitespace-pre-wrap break-words">
                               Instruction: {question.instruction}
+                            </p>
+                          )}
+
+                          {question.hint && (
+                            <p className="text-xs text-amber-700 mt-2 whitespace-pre-wrap break-words">
+                              Hint: {question.hint}
                             </p>
                           )}
 
@@ -1996,13 +2029,19 @@ export default function QuestionPanel({
                                 </div>
 
                                 <div className="max-h-[140px] overflow-y-auto pr-1">
-                                  <p className="text-sm font-semibold text-slate-900 whitespace-pre-wrap break-words">
+                                  <p className="question-text-unified text-slate-900 whitespace-pre-wrap break-words">
                                     {question.content}
                                   </p>
 
                                   {question.instruction && (
                                     <p className="text-xs text-slate-500 mt-2 whitespace-pre-wrap break-words">
                                       Instruction: {question.instruction}
+                                    </p>
+                                  )}
+
+                                  {question.hint && (
+                                    <p className="text-xs text-amber-700 mt-2 whitespace-pre-wrap break-words">
+                                      Hint: {question.hint}
                                     </p>
                                   )}
 
@@ -2211,6 +2250,21 @@ export default function QuestionPanel({
                         }))
                       }
                       placeholder="Ví dụ: Choose the correct answer"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Hint / Gợi ý</label>
+                    <Textarea
+                      rows={3}
+                      value={singleForm.hint}
+                      onChange={(e) =>
+                        setSingleForm((prev) => ({
+                          ...prev,
+                          hint: e.target.value,
+                        }))
+                      }
+                      placeholder="Nhập gợi ý hiển thị cho học sinh, ví dụ các ý cần có hoặc cách làm bài"
                     />
                   </div>
 
@@ -2653,6 +2707,18 @@ export default function QuestionPanel({
                                 )
                               }
                               placeholder="Instruction riêng cho câu này nếu có"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Hint / Gợi ý</label>
+                            <Textarea
+                              rows={3}
+                              value={question.hint}
+                              onChange={(e) =>
+                                updateGroupQuestion(qIndex, "hint", e.target.value)
+                              }
+                              placeholder="Nhập gợi ý riêng cho câu này"
                             />
                           </div>
 

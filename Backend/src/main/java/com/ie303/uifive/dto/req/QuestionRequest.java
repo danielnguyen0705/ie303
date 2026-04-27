@@ -10,6 +10,7 @@ public record QuestionRequest(
 
         String content,
         String instruction,
+        String hint,
         String audioUrl,
         String imageUrl,
         MultipartFile audioFile,

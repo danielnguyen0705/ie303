@@ -13,6 +13,7 @@ type LessonProgressItem = {
   lessonId: number;
   lessonTitle: string;
   lessonNumber: number;
+  reviewLesson: boolean;
   completed: boolean;
   unlocked: boolean;
   current: boolean;
@@ -51,6 +52,23 @@ function getLessonStyle(lesson: LessonProgressItem) {
       dot: "#e5e7eb",
       icon: faLock,
       statusText: "Locked",
+    };
+  }
+
+  if (lesson.reviewLesson) {
+    return {
+      outerRing: "from-[#7dd3fc] to-[#0284c7]",
+      outerBorder: "border-sky-100",
+      middleBg: "bg-sky-50",
+      innerBg: "bg-gradient-to-br from-[#38bdf8] to-[#0284c7]",
+      iconColor: "text-white",
+      badge: "bg-sky-50 text-[#0369a1] border-sky-200",
+      title: "text-[#1e2e51]",
+      glow: "shadow-[0_0_35px_rgba(14,165,233,0.2)]",
+      connector: "#38bdf8",
+      dot: "#38bdf8",
+      icon: faSeedling,
+      statusText: isCompleted ? "Review Done" : isCurrent ? "Review Ready" : "Review",
     };
   }
 
@@ -367,7 +385,9 @@ export function LessonSelection() {
                         <div
                           className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
                         >
-                          Lesson {lesson.lessonNumber}
+                          {lesson.reviewLesson
+                            ? `Review ${lesson.lessonNumber}`
+                            : `Lesson ${lesson.lessonNumber}`}
                         </div>
 
                         <h3

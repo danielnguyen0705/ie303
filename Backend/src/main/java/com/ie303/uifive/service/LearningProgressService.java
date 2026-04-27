@@ -182,7 +182,15 @@ public class LearningProgressService {
             boolean completed = completedLessonIds.contains(lesson.getId());
             boolean current = currentLessonId != null && currentLessonId.equals(lesson.getId());
             boolean unlocked = completed || current;
-            return new LessonProgressResponse(lesson.getId(), lesson.getTitle(), lesson.getLessonNumber(), completed, unlocked, current);
+            return new LessonProgressResponse(
+                    lesson.getId(),
+                    lesson.getTitle(),
+                    lesson.getLessonNumber(),
+                    lesson.isReviewLesson(),
+                    completed,
+                    unlocked,
+                    current
+            );
         }).toList();
     }
 

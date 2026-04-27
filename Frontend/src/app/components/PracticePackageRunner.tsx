@@ -50,6 +50,7 @@ type PracticePackageRunnerProps<TItem extends { id: number; title: string }> = {
   loadPackage: (item: TItem) => Promise<LoadedPracticePackage<TItem>>;
   getItemMeta: (item: TItem) => string;
   getResultMeta?: (item: TItem) => string | null;
+  preferredItemId?: number | null;
 };
 
 function getQuestionTypeLabel(type: QuestionType) {
@@ -251,6 +252,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
   loadPackage,
   getItemMeta,
   getResultMeta,
+  preferredItemId,
 }: PracticePackageRunnerProps<TItem>) {
   const [items, setItems] = useState<TItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<TItem | null>(null);
@@ -278,14 +280,29 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         setSelectedItem(null);
       } else {
         setItems(response.items);
-        setSelectedItem(response.items[0] ?? null);
+        const preferredItem =
+          preferredItemId != null
+            ? response.items.find((item) => item.id === preferredItemId) ?? null
+            : null;
+        setSelectedItem(preferredItem ?? response.items[0] ?? null);
       }
 
       setLoading(false);
     };
 
     void run();
-  }, [loadItems]);
+  }, [loadItems, preferredItemId]);
+
+  useEffect(() => {
+    if (preferredItemId == null || items.length === 0) {
+      return;
+    }
+
+    const matched = items.find((item) => item.id === preferredItemId);
+    if (matched && matched.id !== selectedItem?.id) {
+      setSelectedItem(matched);
+    }
+  }, [items, preferredItemId, selectedItem?.id]);
 
   useEffect(() => {
     const run = async () => {
@@ -1271,13 +1288,20 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
 
                     {currentQuestion.instruction && (
                       <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                        <span className="font-black">Instruction:</span>{" "}
-                        {currentQuestion.instruction}
+                        <div className="font-black">Instruction</div>
+                        <div className="mt-2">{renderTextWithBreaks(currentQuestion.instruction)}</div>
+                      </div>
+                    )}
+
+                    {currentQuestion.hint && (
+                      <div className="rounded-[1.5rem] border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900">
+                        <div className="font-black">Gợi ý</div>
+                        <div className="mt-2">{renderTextWithBreaks(currentQuestion.hint)}</div>
                       </div>
                     )}
 
                     <div className="text-[2rem] font-black leading-tight text-[#1e2e51]">
-                      {formatQuestionLabel(currentQuestion)}
+                      {renderTextWithBreaks(formatQuestionLabel(currentQuestion))}
                     </div>
                   </div>
 

@@ -112,7 +112,7 @@ export function RevisionTest() {
                     <span className="font-mono font-black text-[#155ca5] text-xl">
                       {q.id.toString().padStart(2, '0')}
                     </span>
-                    <p className="text-[#1e2e51] font-medium leading-snug">{q.text}</p>
+                    <p className="question-text-unified text-[#1e2e51]">{q.text}</p>
                   </div>
                   <div className="mt-6 flex flex-wrap gap-2">
                     {['TRUE', 'FALSE', 'NOT GIVEN'].map((option) => (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
   ChevronLeft,
   CheckCircle2,
@@ -46,6 +46,12 @@ type AnswerState = Record<
     correct: boolean | null;
     feedback?: string | null;
     score?: number | null;
+    attemptCount?: number;
+    maxAttempts?: number;
+    expectedAnswer?: string | null;
+    recognizedText?: string | null;
+    similarity?: number | null;
+    issueSummary?: string | null;
   }
 >;
 
@@ -60,6 +66,7 @@ type SectionLessonProgressItem = {
   lessonId: number;
   lessonTitle: string;
   lessonNumber: number;
+  reviewLesson: boolean;
   completed: boolean;
   unlocked: boolean;
   current: boolean;
@@ -139,6 +146,10 @@ function isManualType(type: QuestionType) {
   return ["SENTENCE_REWRITE", "ESSAY_WRITING"].includes(type);
 }
 
+function isSpeechType(type: QuestionType) {
+  return ["PRONUNCIATION", "TOPIC_SPEAKING"].includes(type);
+}
+
 function isAutoGradedType(type: QuestionType) {
   return !isManualType(type);
 }
@@ -147,8 +158,88 @@ function normalizeText(value: string) {
   return value
     .trim()
     .replace(/[_-]+/g, " ")
+    .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
     .toLowerCase();
+}
+
+function levenshteinDistance(left: string, right: string) {
+  const rows = left.length + 1;
+  const cols = right.length + 1;
+  const matrix = Array.from({ length: rows }, () => Array<number>(cols).fill(0));
+
+  for (let row = 0; row < rows; row += 1) matrix[row][0] = row;
+  for (let col = 0; col < cols; col += 1) matrix[0][col] = col;
+
+  for (let row = 1; row < rows; row += 1) {
+    for (let col = 1; col < cols; col += 1) {
+      const cost = left[row - 1] === right[col - 1] ? 0 : 1;
+      matrix[row][col] = Math.min(
+        matrix[row - 1][col] + 1,
+        matrix[row][col - 1] + 1,
+        matrix[row - 1][col - 1] + cost,
+      );
+    }
+  }
+
+  return matrix[left.length][right.length];
+}
+
+function calculateTextSimilarity(left: string, right: string) {
+  const normalizedLeft = normalizeText(left);
+  const normalizedRight = normalizeText(right);
+
+  if (!normalizedLeft || !normalizedRight) return 0;
+  if (normalizedLeft === normalizedRight) return 1;
+  if (
+    normalizedLeft.includes(normalizedRight) ||
+    normalizedRight.includes(normalizedLeft)
+  ) {
+    return 0.92;
+  }
+
+  const leftTokens = normalizedLeft.split(" ").filter(Boolean);
+  const rightTokens = normalizedRight.split(" ").filter(Boolean);
+  const sharedTokens = leftTokens.filter((token) => rightTokens.includes(token)).length;
+  const tokenScore =
+    Math.max(leftTokens.length, rightTokens.length) > 0
+      ? sharedTokens / Math.max(leftTokens.length, rightTokens.length)
+      : 0;
+
+  const distance = levenshteinDistance(normalizedLeft, normalizedRight);
+  const charScore =
+    1 - distance / Math.max(normalizedLeft.length, normalizedRight.length, 1);
+
+  return Math.max(tokenScore, charScore);
+}
+
+function getPronunciationExpectedAnswer(question: QuestionDto) {
+  const mcqCorrectOption = question.options.find((option) => option.isCorrect)?.content;
+  return (
+    question.correctAnswer?.trim() ||
+    mcqCorrectOption?.trim() ||
+    question.content?.trim() ||
+    ""
+  );
+}
+
+function evaluatePronunciationAttempt(question: QuestionDto, transcript: string) {
+  const expected = getPronunciationExpectedAnswer(question);
+  const similarity = calculateTextSimilarity(transcript, expected);
+  const correct = similarity >= 0.72;
+
+  return {
+    correct,
+    similarity,
+    expectedAnswer: expected,
+    recognizedText: transcript.trim(),
+    feedback: correct
+      ? `Hệ thống nhận diện khá khớp với câu mẫu (${Math.round(similarity * 100)}%).`
+      : `Hệ thống nghe được "${transcript.trim() || "..."}", chưa đủ gần với câu mẫu (${Math.round(similarity * 100)}%).`,
+    issueSummary: correct
+      ? "Phát âm/đọc đã đủ gần câu mẫu."
+      : "Transcript hệ thống nghe được chưa khớp đủ với câu mẫu.",
+  };
 }
 
 function getTrueFalseExpected(question: QuestionDto) {
@@ -163,6 +254,16 @@ function parseJsonSafe<T>(value?: string | null): T | null {
   } catch {
     return null;
   }
+}
+
+function renderTextWithBreaks(value?: string | null) {
+  if (!value?.trim()) return null;
+
+  return value.replace(/\r\n/g, "\n").split("\n").map((line, index) => (
+    <p key={`${line}-${index}`} className={index > 0 ? "mt-2" : undefined}>
+      {line || "\u00A0"}
+    </p>
+  ));
 }
 
 function normalizeMatchingPayload(value?: string | null) {
@@ -218,6 +319,21 @@ function normalizeMatchingPayload(value?: string | null) {
     right: Array.from(new Set(Object.values(answers))),
     answers,
   };
+}
+
+function isFillBlankToken(value: string) {
+  return /^_{2,}$/.test(value) || /^\(\s*\.\.\.\s*\)$/.test(value) || /^\[\s*\.\.\.\s*\]$/.test(value);
+}
+
+function splitFillSentence(content?: string | null) {
+  if (!content?.trim()) return null;
+
+  const pattern = /(_{2,}|\(\s*\.\.\.\s*\)|\[\s*\.\.\.\s*\])/g;
+  const parts = content.split(pattern);
+  const hasBlank = parts.some((part) => isFillBlankToken(part));
+
+  if (!hasBlank) return null;
+  return parts;
 }
 
 function resolveMediaUrl(value?: string | null): string | null {
@@ -399,9 +515,9 @@ function GroupSharedContent({
           )}
 
           {group.instruction && (
-            <p className="text-sm md:text-base font-medium text-[#155ca5]">
-              {group.instruction}
-            </p>
+            <div className="text-sm md:text-base font-medium text-[#155ca5]">
+              {renderTextWithBreaks(group.instruction)}
+            </div>
           )}
         </div>
 
@@ -413,8 +529,8 @@ function GroupSharedContent({
       </div>
 
       {group.sharedContent && (
-        <div className="text-base text-gray-700 leading-7 whitespace-pre-wrap rounded-2xl bg-white/70 border border-[#e5eefc] p-5">
-          {group.sharedContent}
+        <div className="text-base text-gray-700 leading-7 rounded-2xl bg-white/70 border border-[#e5eefc] p-5">
+          {renderTextWithBreaks(group.sharedContent)}
         </div>
       )}
 
@@ -440,7 +556,9 @@ function isCompactPassageGroup(group: QuestionGroupDto | null) {
 function LessonRunner() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const lessonIdNumber = useMemo(() => Number(lessonId), [lessonId]);
+  const isAdminPreview = searchParams.get("preview") === "admin";
 
   const [data, setData] = useState<LessonQuestionResponse | null>(null);
   const [items, setItems] = useState<RunnerItem[]>([]);
@@ -448,6 +566,9 @@ function LessonRunner() {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentGroupQuestionIndex, setCurrentGroupQuestionIndex] = useState(0);
+  const [pendingGroupQuestionIndex, setPendingGroupQuestionIndex] = useState<
+    number | null
+  >(null);
   const [answers, setAnswers] = useState<AnswerState>({});
   const [finished, setFinished] = useState(false);
   const [submittingCurrent, setSubmittingCurrent] = useState(false);
@@ -464,6 +585,7 @@ function LessonRunner() {
   const [speechSessionQuestionId, setSpeechSessionQuestionId] = useState<
     number | null
   >(null);
+  const answersRef = useRef<AnswerState>({});
   const speechRecognitionRef = useRef<{
     stop: () => void;
     start: () => void;
@@ -474,6 +596,10 @@ function LessonRunner() {
     onerror: ((event: { error?: string }) => void) | null;
     onend: (() => void) | null;
   } | null>(null);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 
   useEffect(() => {
     stopSpeechCapture();
@@ -589,6 +715,26 @@ function LessonRunner() {
     );
   }, [items]);
 
+  const questionById = useMemo(() => {
+    return new Map(
+      items.flatMap((item) =>
+        item.questions.map((question) => [question.id, question] as const),
+      ),
+    );
+  }, [items]);
+
+  const questionNavigatorItems = useMemo(() => {
+    let label = 1;
+    return items.flatMap((item, itemIndex) =>
+      item.questions.map((question, questionIndex) => ({
+        questionId: question.id,
+        label: label++,
+        itemIndex,
+        questionIndex,
+      })),
+    );
+  }, [items]);
+
   const autoGradedSubmitted = useMemo(() => {
     return Object.entries(answers).filter(([questionId, state]) => {
       if (!state.submitted) return false;
@@ -631,14 +777,157 @@ function LessonRunner() {
     return sectionLessons[currentLessonIndex + 1] ?? null;
   }, [lessonIdNumber, sectionLessons]);
 
+  const nextLessonLabel = nextLesson?.reviewLesson ? "Next Review" : "Next Lesson";
+
+  const buildLessonPath = (targetLessonId: number) =>
+    isAdminPreview
+      ? `/lessons/${targetLessonId}?preview=admin`
+      : `/lessons/${targetLessonId}`;
+
+  const evaluatePreviewState = (
+    question: QuestionDto,
+    answer: UserAnswer,
+  ): { submitted: boolean; correct: boolean | null } => {
+    const hasAnswer =
+      typeof answer === "string"
+        ? answer.trim().length > 0
+        : Array.isArray(answer)
+        ? answer.length > 0
+        : answer && typeof answer === "object"
+        ? Object.keys(answer).length > 0
+        : false;
+
+    if (!hasAnswer) {
+      return { submitted: false, correct: null };
+    }
+
+    if (isMCQ(question.questionType)) {
+      const selected = normalizeText(String(answer));
+      const correctOption = question.options.find((option) => option.isCorrect);
+      const isCorrect = correctOption
+        ? normalizeText(correctOption.optionKey) === selected ||
+          normalizeText(correctOption.content) === selected
+        : false;
+      return { submitted: true, correct: isCorrect };
+    }
+
+    if (question.questionType === "TRUE_FALSE_NG") {
+      const expected = getTrueFalseExpected(question);
+      return {
+        submitted: true,
+        correct: normalizeText(String(answer)) === expected,
+      };
+    }
+
+    if (isFillType(question.questionType)) {
+      return {
+        submitted: true,
+        correct:
+          normalizeText(String(answer)) ===
+          normalizeText(String(question.correctAnswer ?? "")),
+      };
+    }
+
+    if (question.questionType === "SENTENCE_REORDER") {
+      const selected = Array.isArray(answer) ? answer : [];
+      const builtSentence = selected
+        .map((item) => item.split("|||")[1] ?? "")
+        .join(" ")
+        .trim();
+      return {
+        submitted: selected.length > 0,
+        correct:
+          normalizeText(builtSentence) ===
+          normalizeText(String(question.correctAnswer ?? "")),
+      };
+    }
+
+    if (question.questionType === "MATCHING") {
+      const answerMap =
+        answer && typeof answer === "object" && !Array.isArray(answer)
+          ? answer
+          : {};
+      const expectedMap =
+        parseJsonSafe<Record<string, string>>(question.correctAnswer || "") ||
+        getMatchingData(question)?.answers ||
+        null;
+
+      if (!expectedMap) {
+        return {
+          submitted: Object.keys(answerMap).length > 0,
+          correct: null,
+        };
+      }
+
+      const leftItems = Object.keys(expectedMap);
+      const isComplete = leftItems.every(
+        (left) => String(answerMap[left] || "").trim().length > 0,
+      );
+
+      if (!isComplete) {
+        return { submitted: false, correct: null };
+      }
+
+      return {
+        submitted: true,
+        correct: leftItems.every(
+          (left) =>
+            normalizeText(String(answerMap[left] || "")) ===
+            normalizeText(String(expectedMap[left] || "")),
+        ),
+      };
+    }
+
+    if (
+      question.questionType === "PRONUNCIATION" ||
+      question.questionType === "TOPIC_SPEAKING"
+    ) {
+      const transcript = typeof answer === "string" ? answer.trim() : "";
+      if (!transcript) {
+        return { submitted: false, correct: null };
+      }
+
+      return evaluatePronunciationAttempt(question, transcript);
+    }
+
+    return { submitted: true, correct: null };
+  };
+
   const setAnswer = (questionId: number, answer: UserAnswer) => {
     setSubmitApiError(null);
+    const question = questionById.get(questionId);
+
+    if (isAdminPreview && question) {
+      const preview = evaluatePreviewState(question, answer);
+      setAnswers((prev) => ({
+        ...prev,
+        [questionId]: {
+          answer,
+          submitted: preview.submitted,
+          correct: preview.correct,
+          feedback: null,
+          score: null,
+        },
+      }));
+      return;
+    }
+
     setAnswers((prev) => ({
       ...prev,
       [questionId]: {
+        ...prev[questionId],
         answer,
         submitted: false,
         correct: null,
+        feedback: null,
+        score: prev[questionId]?.score ?? null,
+        attemptCount: prev[questionId]?.attemptCount ?? 0,
+        maxAttempts: prev[questionId]?.maxAttempts ?? 3,
+        expectedAnswer: prev[questionId]?.expectedAnswer ?? null,
+        recognizedText:
+          typeof answer === "string" ? answer.trim() : prev[questionId]?.recognizedText ?? null,
+        similarity: null,
+        issueSummary: null,
       },
     }));
   };
@@ -658,6 +947,72 @@ function LessonRunner() {
   const getWordBank = (group: QuestionGroupDto | null) => {
     const words = getGroupData(group)?.wordBank;
     return Array.isArray(words) ? words : [];
+  };
+
+  const getFillChoices = (question: QuestionDto, group: QuestionGroupDto | null) => {
+    const optionChoices = (question.options || [])
+      .map((option) => option.content?.trim())
+      .filter((value): value is string => Boolean(value));
+
+    const questionData = getQuestionData(question);
+    const dataChoices = Array.isArray(questionData?.options)
+      ? questionData.options
+        .map((value) => String(value).trim())
+        .filter(Boolean)
+      : [];
+
+    const wordBankChoices = getWordBank(group)
+      .map((value: unknown) => String(value).trim())
+      .filter(Boolean);
+
+    const merged = [...optionChoices, ...dataChoices, ...wordBankChoices];
+    return Array.from(new Set(merged)).slice(0, 8);
+  };
+
+  const renderInlineFillSentence = (
+    question: QuestionDto,
+    currentAnswer: AnswerState[number] | undefined,
+    choices: string[],
+    isAnswerLocked: boolean,
+  ) => {
+    const parts = splitFillSentence(question.content);
+    if (!parts || choices.length === 0) return null;
+
+    const selectedValue = typeof currentAnswer?.answer === "string" ? currentAnswer.answer : "";
+
+    return (
+      <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
+        <p className="mb-3 text-sm font-bold text-[#155ca5]">Chọn đáp án để điền vào chỗ trống</p>
+        <div className="question-text-unified text-[#1e2e51] leading-relaxed">
+          {parts.map((part, index) => {
+            if (!isFillBlankToken(part)) {
+              return (
+                <span key={`fill-text-${index}`} className="whitespace-pre-wrap">
+                  {part}
+                </span>
+              );
+            }
+
+            return (
+              <select
+                key={`fill-select-${index}`}
+                disabled={isAnswerLocked}
+                value={selectedValue}
+                onChange={(event) => setAnswer(question.id, event.target.value)}
+                className="mx-1 inline-block min-w-[180px] rounded-xl border border-[#bfd8ff] bg-white px-3 py-2 text-base font-bold text-[#155ca5] outline-none focus:border-[#155ca5]"
+              >
+                <option value="">Chọn đáp án</option>
+                {choices.map((choice) => (
+                  <option key={`${question.id}-${choice}`} value={choice}>
+                    {choice}
+                  </option>
+                ))}
+              </select>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const getReorderWords = (question: QuestionDto) => {
@@ -699,13 +1054,17 @@ function LessonRunner() {
     return normalizeMatchingPayload(currentGroup?.groupData);
   };
 
-  const getQuestionHint = (question: QuestionDto, group: QuestionGroupDto | null) => {
+  const getQuestionHint = (question: QuestionDto) => {
     if (question.instruction?.trim()) {
       return question.instruction.trim();
     }
 
-    if (group?.instruction?.trim()) {
-      return group.instruction.trim();
+    if (question.hint?.trim()) {
+      return question.hint.trim();
+    }
+
+    if (currentGroup?.instruction?.trim()) {
+      return currentGroup.instruction.trim();
     }
 
     switch (question.questionType) {
@@ -723,7 +1082,7 @@ function LessonRunner() {
         return "Trả lời đủ ý, rõ ràng, ưu tiên câu đơn giản nhưng đúng.";
       case "PRONUNCIATION":
       case "TOPIC_SPEAKING":
-        return "Bạn có thể bấm ghi âm để lấy transcript rồi chỉnh sửa lại trước khi nộp.";
+        return "Bấm ghi âm để hệ thống nghe và đối chiếu transcript với câu mẫu. Mỗi câu có tối đa 3 lượt thử.";
       default:
         return "Đọc kỹ yêu cầu và chọn đáp án đúng nhất trước khi nộp.";
     }
@@ -764,6 +1123,43 @@ function LessonRunner() {
     setIsListening(false);
     setSpeechPreview("");
     setSpeechSessionQuestionId(null);
+  };
+
+  const finalizeSpeechAttempt = async (question: QuestionDto) => {
+    const latestAnswer = answersRef.current[question.id];
+    const transcript =
+      typeof latestAnswer?.answer === "string" ? latestAnswer.answer.trim() : "";
+
+    if (!transcript || latestAnswer?.submitted) {
+      return;
+    }
+
+    await submitQuestion(question);
+  };
+
+  const handleSpeechCheck = async (question: QuestionDto) => {
+    if (isListening && speechSessionQuestionId === question.id) {
+      stopSpeechCapture();
+      return;
+    }
+
+    await finalizeSpeechAttempt(question);
+  };
+
+  const getSpeechErrorMessage = (error?: string) => {
+    switch (error) {
+      case "network":
+        return "Kết nối nhận diện giọng nói bị gián đoạn. Nếu hệ thống đã nghe được transcript thì mình vẫn tự chấm tiếp.";
+      case "not-allowed":
+      case "service-not-allowed":
+        return "Trình duyệt đang chặn quyền micro. Hãy bật quyền micro rồi thử lại.";
+      case "no-speech":
+        return "Không nghe thấy giọng nói rõ ràng. Hãy thử nói lại gần micro hơn.";
+      case "audio-capture":
+        return "Không lấy được âm thanh từ micro. Hãy kiểm tra thiết bị mic.";
+      default:
+        return error || "Không thể nhận diện giọng nói.";
+    }
   };
 
   const startSpeechCapture = (question: QuestionDto) => {
@@ -841,9 +1237,11 @@ function LessonRunner() {
     };
 
     recognition.onerror = (event) => {
-      setSpeechError(event.error || "Không thể nhận diện giọng nói.");
+      setSpeechError(getSpeechErrorMessage(event.error));
       setIsListening(false);
       setSpeechSessionQuestionId(null);
+      speechRecognitionRef.current = null;
+      void finalizeSpeechAttempt(question);
     };
 
     recognition.onend = () => {
@@ -851,6 +1249,7 @@ function LessonRunner() {
       setSpeechPreview("");
       setSpeechSessionQuestionId(null);
       speechRecognitionRef.current = null;
+      void finalizeSpeechAttempt(question);
     };
 
     recognition.start();
@@ -873,8 +1272,19 @@ function LessonRunner() {
   }, [currentQuestions, isListening, speechSessionQuestionId]);
 
   useEffect(() => {
+    if (pendingGroupQuestionIndex != null) {
+      setCurrentGroupQuestionIndex(pendingGroupQuestionIndex);
+      setPendingGroupQuestionIndex(null);
+      return;
+    }
+
     setCurrentGroupQuestionIndex(0);
-  }, [currentIndex]);
+  }, [currentIndex, pendingGroupQuestionIndex]);
+
+  const jumpToQuestion = (itemIndex: number, questionIndex: number) => {
+    setPendingGroupQuestionIndex(questionIndex);
+    setCurrentIndex(itemIndex);
+  };
 
   const updateMatchingAnswer = (
     questionId: number,
@@ -979,6 +1389,10 @@ function LessonRunner() {
     let feedback: string | null = null;
     let score: number | null = null;
     let submitted = false;
+    let expectedAnswer: string | null = null;
+    let recognizedText: string | null = null;
+    let similarity: number | null = null;
+    let issueSummary: string | null = null;
 
     if (isMCQ(question.questionType)) {
       const selected = normalizeText(String(saved.answer));
@@ -1022,6 +1436,18 @@ function LessonRunner() {
             normalizeText(expectedMap[left] || ""),
         );
       }
+    } else if (
+      question.questionType === "PRONUNCIATION" ||
+      question.questionType === "TOPIC_SPEAKING"
+    ) {
+      const transcript = typeof saved.answer === "string" ? saved.answer.trim() : "";
+      const pronunciationResult = evaluatePronunciationAttempt(question, transcript);
+      correct = pronunciationResult.correct;
+      feedback = pronunciationResult.feedback;
+      expectedAnswer = pronunciationResult.expectedAnswer;
+      recognizedText = pronunciationResult.recognizedText;
+      similarity = pronunciationResult.similarity;
+      issueSummary = pronunciationResult.issueSummary;
     } else if (isManualType(question.questionType)) {
       correct = null;
     }
@@ -1044,6 +1470,11 @@ function LessonRunner() {
           res.error?.message || "KhÃƒÂ´ng gÃ¡Â»Â­i Ã„â€˜Ã†Â°Ã¡Â»Â£c bÃƒ i essay lÃƒÂªn hÃ¡Â»â€¡ thÃ¡Â»â€˜ng.",
         );
       }
+    } else if (
+      question.questionType === "PRONUNCIATION" ||
+      question.questionType === "TOPIC_SPEAKING"
+    ) {
+      submitted = true;
     } else {
       const res = await submitQuestionHistory({
         questionId: question.id,
@@ -1060,7 +1491,16 @@ function LessonRunner() {
       }
     }
 
-    return { submitted, correct, feedback, score };
+    return {
+      submitted,
+      correct,
+      feedback,
+      score,
+      expectedAnswer,
+      recognizedText,
+      similarity,
+      issueSummary,
+    };
   };
 
   const submitQuestion = async (question: QuestionDto) => {
@@ -1071,10 +1511,31 @@ function LessonRunner() {
     setSubmitApiError(null);
 
     try {
+      if (isAdminPreview) {
+        const preview = evaluatePreviewState(question, saved.answer);
+        setAnswers((prev) => ({
+          ...prev,
+          [question.id]: {
+            ...prev[question.id],
+            submitted: preview.submitted,
+            correct: preview.correct,
+            feedback: null,
+            score: null,
+          },
+        }));
+        return;
+      }
+
       let correct: boolean | null = null;
       let feedback: string | null = null;
       let score: number | null = null;
       let submitted = false;
+      let expectedAnswer: string | null = null;
+      let recognizedText: string | null = null;
+      let similarity: number | null = null;
+      let issueSummary: string | null = null;
+      const previousAttempts = saved.attemptCount ?? 0;
+      const maxAttempts = saved.maxAttempts ?? 3;
 
       if (isMCQ(question.questionType)) {
         const selected = normalizeText(String(saved.answer));
@@ -1118,6 +1579,30 @@ function LessonRunner() {
               normalizeText(expectedMap[left] || ""),
           );
         }
+      } else if (
+        question.questionType === "PRONUNCIATION" ||
+        question.questionType === "TOPIC_SPEAKING"
+      ) {
+        const transcript = typeof saved.answer === "string" ? saved.answer.trim() : "";
+        const pronunciationResult = evaluatePronunciationAttempt(question, transcript);
+        const nextAttempts = previousAttempts + 1;
+
+        correct = pronunciationResult.correct;
+        feedback = pronunciationResult.feedback;
+        expectedAnswer = pronunciationResult.expectedAnswer;
+        recognizedText = pronunciationResult.recognizedText;
+        similarity = pronunciationResult.similarity;
+        issueSummary = pronunciationResult.issueSummary;
+
+        if (correct) {
+          submitted = true;
+        } else if (nextAttempts >= maxAttempts) {
+          submitted = true;
+          feedback = `${pronunciationResult.feedback} Bạn đã dùng hết ${maxAttempts} lượt thử.`;
+        } else {
+          submitted = false;
+          feedback = `${pronunciationResult.feedback} Còn ${maxAttempts - nextAttempts} lượt thử nữa.`;
+        }
       } else if (isManualType(question.questionType)) {
         correct = null;
       }
@@ -1140,6 +1625,11 @@ function LessonRunner() {
             res.error?.message || "KhÃ´ng gá»­i Ä‘Æ°á»£c bÃ i essay lÃªn há»‡ thá»‘ng.",
           );
         }
+      } else if (
+        question.questionType === "PRONUNCIATION" ||
+        question.questionType === "TOPIC_SPEAKING"
+      ) {
+        // Pronunciation is evaluated locally from the recognized transcript.
       } else {
 
       const res = await submitQuestionHistory({
@@ -1166,6 +1656,20 @@ function LessonRunner() {
           correct,
           feedback,
           score,
+          attemptCount:
+            question.questionType === "PRONUNCIATION" ||
+            question.questionType === "TOPIC_SPEAKING"
+              ? previousAttempts + 1
+              : prev[question.id]?.attemptCount ?? 0,
+          maxAttempts:
+            question.questionType === "PRONUNCIATION" ||
+            question.questionType === "TOPIC_SPEAKING"
+              ? maxAttempts
+              : prev[question.id]?.maxAttempts,
+          expectedAnswer,
+          recognizedText,
+          similarity,
+          issueSummary,
         },
       }));
     } finally {
@@ -1183,6 +1687,13 @@ function LessonRunner() {
 
   const goNext = async () => {
     if (currentIndex >= items.length - 1) {
+      if (isAdminPreview) {
+        setCompleteApiError(null);
+        setLessonReward(null);
+        setFinished(true);
+        return;
+      }
+
       if (!lessonIdNumber || Number.isNaN(lessonIdNumber)) {
         setCompleteApiError("Không thể lưu lesson vì lessonId không hợp lệ.");
         setFinished(true);
@@ -1228,8 +1739,8 @@ function LessonRunner() {
     setCurrentIndex((prev) => prev + 1);
   };
 
-  const renderQuestionHint = (question: QuestionDto, group: QuestionGroupDto | null) => {
-    const hint = getQuestionHint(question, group);
+  const renderQuestionHint = (question: QuestionDto) => {
+    const hint = getQuestionHint(question);
     const showQuestionData =
       !!question.questionData &&
       question.questionType !== "MATCHING" &&
@@ -1240,9 +1751,10 @@ function LessonRunner() {
     return (
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-2">
         {hint && (
-          <p>
-            <span className="font-bold">Gợi ý:</span> {hint}
-          </p>
+          <div>
+            <span className="font-bold">Gợi ý:</span>
+            <div className="mt-2">{renderTextWithBreaks(hint)}</div>
+          </div>
         )}
         {showQuestionData && (
           <p>
@@ -1259,9 +1771,17 @@ function LessonRunner() {
     compact = false,
   ) => {
     const currentAnswer = getQuestionAnswer(question.id);
+    const isAnswerLocked = currentAnswer?.submitted && !isAdminPreview;
     const wordBank = getWordBank(group);
     const reorderWords = getReorderWords(question);
     const matchingData = getMatchingData(question);
+    const fillChoices = getFillChoices(question, group);
+    const inlineFillSentence = renderInlineFillSentence(
+      question,
+      currentAnswer,
+      fillChoices,
+      isAnswerLocked,
+    );
 
     if (isMCQ(question.questionType)) {
       return (
@@ -1287,7 +1807,7 @@ function LessonRunner() {
             return (
               <button
                 key={`${option.id}-${option.optionKey}-${option.content}`}
-                disabled={submitted}
+                disabled={isAnswerLocked}
                 onClick={() => setAnswer(question.id, option.optionKey)}
                 className={`text-left rounded-2xl border-2 transition-all ${compact ? "p-3.5" : "p-5"} ${extraClass}`}
               >
@@ -1332,7 +1852,7 @@ function LessonRunner() {
             return (
               <button
                 key={value}
-                disabled={submitted}
+                disabled={isAnswerLocked}
                 onClick={() => setAnswer(question.id, value)}
                 className={`rounded-2xl border-2 font-bold uppercase transition-all ${compact ? "p-3.5 text-sm" : "p-5"} ${extraClass}`}
               >
@@ -1349,11 +1869,15 @@ function LessonRunner() {
       question.questionType === "WORD_FORM" ||
       question.questionType === "VERB_FORM"
     ) {
+      if (inlineFillSentence) {
+        return inlineFillSentence;
+      }
+
       return (
         <div className="space-y-3">
           <input
             type="text"
-            disabled={currentAnswer?.submitted}
+            disabled={isAnswerLocked}
             value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
             onChange={(e) => setAnswer(question.id, e.target.value)}
             placeholder="Nhập câu trả lời..."
@@ -1364,6 +1888,10 @@ function LessonRunner() {
     }
 
     if (question.questionType === "WORD_BANK_FILL") {
+      if (inlineFillSentence) {
+        return inlineFillSentence;
+      }
+
       return (
         <div className="space-y-4">
           {wordBank.length > 0 && (
@@ -1374,7 +1902,7 @@ function LessonRunner() {
                   <button
                     key={word}
                     type="button"
-                    disabled={currentAnswer?.submitted}
+                    disabled={isAnswerLocked}
                     onClick={() => appendWordBankWord(question.id, word)}
                     className="px-4 py-2 rounded-full border border-[#bfd8ff] bg-white text-[#155ca5] font-semibold hover:bg-[#eef6ff] disabled:opacity-60"
                   >
@@ -1387,7 +1915,7 @@ function LessonRunner() {
 
           <input
             type="text"
-            disabled={currentAnswer?.submitted}
+            disabled={isAnswerLocked}
             value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
             onChange={(e) => setAnswer(question.id, e.target.value)}
             placeholder="Điền từ hoặc bấm từ trong Word Bank..."
@@ -1413,7 +1941,7 @@ function LessonRunner() {
             <div className="flex items-center gap-3 mt-4">
               <button
                 type="button"
-                disabled={currentAnswer?.submitted || selectedTokens.length === 0}
+                disabled={isAnswerLocked || selectedTokens.length === 0}
                 onClick={() => removeLastReorderWord(question.id)}
                 className="px-4 py-2 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50 disabled:opacity-50"
               >
@@ -1421,7 +1949,7 @@ function LessonRunner() {
               </button>
               <button
                 type="button"
-                disabled={currentAnswer?.submitted || selectedTokens.length === 0}
+                disabled={isAnswerLocked || selectedTokens.length === 0}
                 onClick={() => resetReorderAnswer(question.id)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50 disabled:opacity-50"
               >
@@ -1442,7 +1970,7 @@ function LessonRunner() {
                   <button
                     key={token}
                     type="button"
-                    disabled={currentAnswer?.submitted || selected}
+                    disabled={isAnswerLocked || selected}
                     onClick={() => appendReorderWord(question.id, word, index)}
                     className={`px-4 py-2 rounded-xl border font-semibold transition-all ${
                       selected
@@ -1518,8 +2046,8 @@ function LessonRunner() {
                       <button
                         key={`matching-card-${rightItem}`}
                         type="button"
-                        draggable={!currentAnswer?.submitted}
-                        disabled={currentAnswer?.submitted}
+                        draggable={!isAnswerLocked}
+                        disabled={isAnswerLocked}
                         onDragStart={(event) => {
                           event.dataTransfer.setData("text/plain", rightItem);
                           event.dataTransfer.effectAllowed = "move";
@@ -1548,12 +2076,12 @@ function LessonRunner() {
 
                       <div
                         onDragOver={(event) => {
-                          if (currentAnswer?.submitted) return;
+                          if (isAnswerLocked) return;
                           event.preventDefault();
                           event.dataTransfer.dropEffect = "move";
                         }}
                         onDrop={(event) => {
-                          if (currentAnswer?.submitted) return;
+                          if (isAnswerLocked) return;
                           event.preventDefault();
                           const dropped = event.dataTransfer.getData("text/plain");
                           if (!dropped) return;
@@ -1572,7 +2100,7 @@ function LessonRunner() {
                           <span className="text-gray-400 text-sm">Chọn hoặc kéo đáp án vào đây</span>
                         )}
 
-                        {selectedValue && !currentAnswer?.submitted && (
+                        {selectedValue && !isAnswerLocked && (
                           <button
                             type="button"
                             onClick={() => removeMatchingAnswer(question.id, leftItem)}
@@ -1607,7 +2135,7 @@ function LessonRunner() {
       return (
         <textarea
           rows={4}
-          disabled={currentAnswer?.submitted}
+          disabled={isAnswerLocked}
           value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
           onChange={(e) => setAnswer(question.id, e.target.value)}
           placeholder="Viết lại câu ở đây..."
@@ -1620,7 +2148,7 @@ function LessonRunner() {
       return (
         <textarea
           rows={8}
-          disabled={currentAnswer?.submitted}
+          disabled={isAnswerLocked}
           value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
           onChange={(e) => setAnswer(question.id, e.target.value)}
           placeholder="Write your essay here..."
@@ -1635,21 +2163,31 @@ function LessonRunner() {
     ) {
       const speakingActive =
         isListening && speechSessionQuestionId === question.id;
+      const transcript =
+        typeof currentAnswer?.answer === "string" ? currentAnswer.answer.trim() : "";
+      const attemptCount = currentAnswer?.attemptCount ?? 0;
+      const maxAttempts = currentAnswer?.maxAttempts ?? 3;
+      const canCheckTranscript =
+        Boolean(transcript) && !currentAnswer?.submitted && attemptCount < maxAttempts;
 
       return (
-        <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 space-y-4">
-          <p className="font-bold text-[#1e2e51]">
-            Dạng {getQuestionTypeLabel(question.questionType)}
-          </p>
-          <p className="text-sm text-gray-600">
-            Nhấn "Bắt đầu nói" để hệ thống nghe và tự hiện chữ vào ô transcript.
-          </p>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="rounded-full bg-[#155ca5]/10 px-3 py-1.5 font-semibold text-[#155ca5]">
+              Lượt thử: {attemptCount}/{maxAttempts}
+            </span>
+            {question.correctAnswer && (
+              <span className="font-medium text-slate-600">
+                Câu mẫu: <span className="font-semibold text-[#1e2e51]">{question.correctAnswer}</span>
+              </span>
+            )}
+          </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {!speakingActive ? (
               <button
                 type="button"
-                disabled={currentAnswer?.submitted || !speechSupported}
+                disabled={isAnswerLocked || !speechSupported || attemptCount >= maxAttempts}
                 onClick={() => startSpeechCapture(question)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#bfd8ff] bg-white text-[#155ca5] font-semibold hover:bg-[#eef6ff] disabled:opacity-50"
               >
@@ -1659,7 +2197,7 @@ function LessonRunner() {
             ) : (
               <button
                 type="button"
-                disabled={currentAnswer?.submitted}
+                disabled={isAnswerLocked}
                 onClick={stopSpeechCapture}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 font-semibold hover:bg-red-100 disabled:opacity-50"
               >
@@ -1669,9 +2207,20 @@ function LessonRunner() {
             )}
 
             {speakingActive && (
-              <span className="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200 rounded-full px-3 py-1">
-                Đang nghe... nói để hiện chữ
+              <span className="text-xs font-bold uppercase tracking-wider text-red-600">
+                Đang nghe...
               </span>
+            )}
+
+            {canCheckTranscript && (
+              <button
+                type="button"
+                onClick={() => void handleSpeechCheck(question)}
+                disabled={submittingCurrent}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#155ca5] bg-[#155ca5] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#0f4c88] disabled:opacity-50"
+              >
+                {submittingCurrent ? "Đang kiểm tra..." : "Kiểm tra"}
+              </button>
             )}
           </div>
 
@@ -1685,14 +2234,14 @@ function LessonRunner() {
             <p className="text-sm text-red-600">Lỗi voice: {speechError}</p>
           )}
 
-          <textarea
-            rows={4}
-            disabled={currentAnswer?.submitted}
-            value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
-            onChange={(e) => setAnswer(question.id, e.target.value)}
-            placeholder="Transcript se hien tai day khi ban noi..."
-            className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-none bg-white"
-          />
+          {(transcript || currentAnswer?.recognizedText) && (
+            <p className="text-sm text-slate-600">
+              Hệ thống nghe được:{" "}
+              <span className="font-semibold text-[#1e2e51]">
+                {currentAnswer?.recognizedText || transcript}
+              </span>
+            </p>
+          )}
         </div>
       );
     }
@@ -1706,9 +2255,33 @@ function LessonRunner() {
     );
   };
 
-  const renderFeedback = (question: QuestionDto) => {
+  const renderFeedbackLegacy = (question: QuestionDto) => {
     const currentAnswer = getQuestionAnswer(question.id);
     if (!currentAnswer?.submitted) return null;
+
+    if (isAdminPreview) {
+      if (currentAnswer.correct === true) {
+        return (
+          <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-700">
+            Đúng rồi.
+          </div>
+        );
+      }
+
+      if (currentAnswer.correct === false) {
+        return (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+            Sai rồi.
+          </div>
+        );
+      }
+
+      return (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-600">
+          Câu này chưa tự chấm được ngay.
+        </div>
+      );
+    }
 
     const isUngraded = currentAnswer.correct === null;
     const isManualQuestion = isManualType(question.questionType);
@@ -1798,9 +2371,243 @@ function LessonRunner() {
     );
   };
 
+  const renderFeedback = (question: QuestionDto) => {
+    const currentAnswer = getQuestionAnswer(question.id);
+    if (!currentAnswer) return null;
+
+    const isPronunciationQuestion =
+      question.questionType === "PRONUNCIATION" ||
+      question.questionType === "TOPIC_SPEAKING";
+
+    if (!currentAnswer.submitted) {
+      if (
+        isPronunciationQuestion &&
+        (currentAnswer.attemptCount ?? 0) > 0 &&
+        currentAnswer.feedback
+      ) {
+        return (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 h-6 w-6 rounded-full bg-amber-400" />
+              <div className="space-y-2 text-sm text-amber-900">
+                <p className="font-black">Chưa đạt, hãy thử lại</p>
+                <p>{currentAnswer.feedback}</p>
+                {currentAnswer.recognizedText && (
+                  <p>
+                    <span className="font-semibold">Hệ thống nghe được:</span>{" "}
+                    {currentAnswer.recognizedText}
+                  </p>
+                )}
+                {currentAnswer.expectedAnswer && (
+                  <p>
+                    <span className="font-semibold">Câu mẫu:</span>{" "}
+                    {currentAnswer.expectedAnswer}
+                  </p>
+                )}
+                {typeof currentAnswer.similarity === "number" && (
+                  <p>
+                    <span className="font-semibold">Độ khớp:</span>{" "}
+                    {Math.round(currentAnswer.similarity * 100)}%
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    if (isAdminPreview) {
+      return (
+        <div
+          className={`rounded-2xl border p-4 text-sm font-bold ${
+            currentAnswer.correct === true
+              ? "border-green-200 bg-green-50 text-green-700"
+              : currentAnswer.correct === false
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-slate-200 bg-slate-50 text-slate-600"
+          }`}
+        >
+          {currentAnswer.correct === true
+            ? "Đúng rồi."
+            : currentAnswer.correct === false
+              ? "Sai rồi."
+              : "Câu này chưa tự chấm được ngay."}
+        </div>
+      );
+    }
+
+    const isUngraded = currentAnswer.correct === null;
+    const isManualQuestion = isManualType(question.questionType);
+    const selectedOption =
+      isMCQ(question.questionType) && typeof currentAnswer.answer === "string"
+        ? question.options.find(
+            (option) =>
+              normalizeText(option.optionKey) === normalizeText(currentAnswer.answer as string) ||
+              normalizeText(option.content) === normalizeText(currentAnswer.answer as string),
+          )
+        : null;
+    const correctOption = isMCQ(question.questionType)
+      ? question.options.find((option) => option.isCorrect)
+      : null;
+    const userAnswerText =
+      question.questionType === "SENTENCE_REORDER"
+        ? getDisplayedReorderSentence(question.id)
+        : toAnswerText(currentAnswer.answer, question);
+
+    return (
+      <div
+        className={`rounded-2xl border p-5 ${
+          isUngraded
+            ? "border-amber-200 bg-amber-50"
+            : currentAnswer.correct
+              ? "border-green-200 bg-green-50"
+              : "border-red-200 bg-red-50"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          {isUngraded ? (
+            <div className="mt-0.5 h-6 w-6 rounded-full bg-amber-400" />
+          ) : currentAnswer.correct ? (
+            <CheckCircle2 className="mt-0.5 h-6 w-6 text-green-600" />
+          ) : (
+            <XCircle className="mt-0.5 h-6 w-6 text-red-600" />
+          )}
+
+          <div className="space-y-2">
+            <p
+              className={`font-black ${
+                isUngraded
+                  ? "text-amber-800"
+                  : currentAnswer.correct
+                    ? "text-green-700"
+                    : "text-red-700"
+              }`}
+            >
+              {isUngraded
+                ? isManualQuestion
+                  ? "Đã nộp, chờ đánh giá"
+                  : question.questionType === "MATCHING"
+                    ? "Đã nộp, chưa có đáp án chuẩn để tự chấm"
+                    : "Đã nộp"
+                : currentAnswer.correct
+                  ? "Chính xác!"
+                  : "Chưa đúng"}
+            </p>
+
+            {currentAnswer.issueSummary && (
+              <p className="text-sm font-medium text-gray-700">
+                {currentAnswer.issueSummary}
+              </p>
+            )}
+
+            {!isManualQuestion && !isPronunciationQuestion && userAnswerText && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Bạn trả lời:</span> {userAnswerText}
+              </p>
+            )}
+
+            {isMCQ(question.questionType) && selectedOption && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Bạn chọn:</span> {selectedOption.optionKey}. {selectedOption.content}
+              </p>
+            )}
+
+            {question.questionType === "TRUE_FALSE_NG" &&
+              typeof currentAnswer.answer === "string" && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Bạn chọn:</span> {currentAnswer.answer.toUpperCase()}
+                </p>
+              )}
+
+            {question.questionType === "MATCHING" &&
+              currentAnswer.answer &&
+              typeof currentAnswer.answer === "object" &&
+              !Array.isArray(currentAnswer.answer) && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Ghép của bạn:</span>{" "}
+                  {Object.entries(currentAnswer.answer)
+                    .map(([left, right]) => `${left} -> ${right}`)
+                    .join(" | ")}
+                </p>
+              )}
+
+            {isPronunciationQuestion && currentAnswer.recognizedText && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Hệ thống nghe được:</span> {currentAnswer.recognizedText}
+              </p>
+            )}
+
+            {isPronunciationQuestion && currentAnswer.expectedAnswer && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Câu mẫu:</span> {currentAnswer.expectedAnswer}
+              </p>
+            )}
+
+            {isPronunciationQuestion && typeof currentAnswer.similarity === "number" && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Độ khớp:</span> {Math.round(currentAnswer.similarity * 100)}%
+              </p>
+            )}
+
+            {typeof currentAnswer.score === "number" && (
+              <p className="text-sm font-semibold text-[#155ca5]">
+                Essay score: {currentAnswer.score}
+              </p>
+            )}
+
+            {currentAnswer.feedback && (
+              <p className="text-sm text-gray-700">
+                Nhận xét: {currentAnswer.feedback}
+              </p>
+            )}
+
+            {!currentAnswer.correct && correctOption && (
+              <p className="text-sm font-semibold text-gray-700">
+                Đáp án đúng: {correctOption.optionKey}. {correctOption.content}
+              </p>
+            )}
+
+            {!currentAnswer.correct &&
+              !correctOption &&
+              question.correctAnswer &&
+              !isManualQuestion && (
+                <p className="text-sm font-semibold text-gray-700">
+                  Đáp án đúng: {question.correctAnswer}
+                </p>
+              )}
+
+            {question.questionType === "MATCHING" &&
+              currentAnswer.correct === null && (
+                <p className="text-sm text-gray-600">
+                  Matching chỉ tự chấm khi backend trả về `correctAnswer` hoặc mapping đáp án đầy đủ.
+                </p>
+              )}
+
+            {isManualQuestion && (
+              <p className="text-sm text-gray-600">
+                Dạng này đã được gửi đi, hệ thống sẽ dùng nội dung bạn nộp để đánh giá thay vì chấm đúng/sai ngay.
+              </p>
+            )}
+
+            {!isManualQuestion && question.explanation && (
+              <div className="rounded-xl border border-white/70 bg-white/70 p-3 text-sm text-gray-700">
+                <span className="font-semibold">Giải thích:</span> {question.explanation}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const isCurrentItemComplete = currentQuestions.every(
     (question) => answers[question.id]?.submitted,
   );
+
+  const canGoNext = isAdminPreview ? true : isCurrentItemComplete;
 
   if (loading) {
     return (
@@ -1917,14 +2724,14 @@ function LessonRunner() {
               <button
                 onClick={() => {
                   if (nextLesson) {
-                    navigate(`/lessons/${nextLesson.lessonId}`);
+                    navigate(buildLessonPath(nextLesson.lessonId));
                     return;
                   }
-                  navigate(`/sections/${sectionId}/lessons`);
+                  navigate(isAdminPreview ? "/admin/content" : `/sections/${sectionId}/lessons`);
                 }}
                 className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d]"
               >
-                {nextLesson ? "Next Lesson" : "Ve lesson list"}
+                {nextLesson ? nextLessonLabel : "Về lesson list"}
               </button>
             )}
           </div>
@@ -1938,8 +2745,14 @@ function LessonRunner() {
   return (
     <main className={`${isListeningItem ? "max-w-7xl" : "max-w-6xl"} mx-auto px-4 md:px-6 py-6 md:py-8 pb-24`}>
       <section className="mb-6">
+        {isAdminPreview && (
+          <div className="mb-4 rounded-2xl border border-[#cfe3ff] bg-[#f4f8ff] px-4 py-3 text-sm text-[#155ca5]">
+            <span className="font-bold">Admin Preview:</span> Làm thử lesson như học sinh, không lưu tiến độ và không chấm điểm.
+          </div>
+        )}
+
         <Link
-          to="/"
+          to={isAdminPreview ? "/admin/content" : "/"}
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -1956,11 +2769,39 @@ function LessonRunner() {
             </span>
           </div>
 
-          <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#155ca5] rounded-full transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap gap-2">
+              {questionNavigatorItems.map((item) => {
+                const state = answers[item.questionId];
+                const isActive =
+                  item.itemIndex === currentIndex &&
+                  item.questionIndex === activeQuestionIndex;
+                const canJumpFromBoard = isAdminPreview;
+
+                const statusClass = !state?.submitted
+                  ? "border-slate-300 bg-white text-slate-600"
+                  : state.correct === true
+                    ? "border-green-300 bg-green-50 text-green-700"
+                    : state.correct === false
+                      ? "border-red-300 bg-red-50 text-red-700"
+                      : "border-amber-300 bg-amber-50 text-amber-700";
+
+                return (
+                  <button
+                    key={`nav-question-${item.questionId}-${item.label}`}
+                    type="button"
+                    onClick={() => {
+                      if (!canJumpFromBoard) return;
+                      jumpToQuestion(item.itemIndex, item.questionIndex);
+                    }}
+                    disabled={!canJumpFromBoard}
+                    className={`flex h-9 min-w-9 items-center justify-center rounded-full border text-sm font-black transition ${statusClass} ${isActive ? "ring-2 ring-[#155ca5]/40" : ""} ${canJumpFromBoard ? "cursor-pointer" : "cursor-default"}`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -2058,19 +2899,19 @@ function LessonRunner() {
                   </div>
 
                   {question.instruction && (
-                    <p className={`${isCompactPassageItem ? "text-xs" : "text-sm"} font-medium text-gray-500`}>
-                      {question.instruction}
-                    </p>
+                    <div className={`${isCompactPassageItem ? "text-xs" : "text-sm"} font-medium text-gray-500`}>
+                      {renderTextWithBreaks(question.instruction)}
+                    </div>
                   )}
 
-                  <h2 className={`${isCompactPassageItem ? "text-base md:text-lg" : "text-xl md:text-2xl"} font-black text-[#1e2e51] leading-tight`}>
-                    {question.content}
-                  </h2>
+                  <div className="question-text-unified text-[#1e2e51]">
+                    {renderTextWithBreaks(question.content)}
+                  </div>
                 </div>
 
                 <MediaBlock imageUrl={mediaImageUrl} audioUrl={mediaAudioUrl} />
 
-                {renderQuestionHint(question, currentGroup)}
+                {renderQuestionHint(question)}
 
                 {renderAnswerArea(question, currentGroup, isCompactPassageItem)}
 
@@ -2105,7 +2946,9 @@ function LessonRunner() {
                       <div />
                     )}
 
-                    {!questionAnswer?.submitted && (
+                    {!isAdminPreview &&
+                      !questionAnswer?.submitted &&
+                      !isSpeechType(question.questionType) && (
                       <button
                         onClick={() => void submitQuestion(question)}
                         disabled={!canSubmitQuestion(question) || submittingCurrent}
@@ -2142,7 +2985,10 @@ function LessonRunner() {
         </div>
 
         <div className="flex items-center gap-3">
-          {isCompactPassageItem && !isCurrentItemComplete && (
+          {!isAdminPreview &&
+            isCompactPassageItem &&
+            !isCurrentItemComplete &&
+            currentQuestions.some((question) => !isSpeechType(question.questionType)) && (
             <button
               onClick={() => void submitCurrentItem()}
               disabled={
@@ -2172,7 +3018,7 @@ function LessonRunner() {
           )}
           <button
             onClick={goNext}
-            disabled={!isCurrentItemComplete || (currentIndex === items.length - 1 && completingLesson)}
+            disabled={!canGoNext || (currentIndex === items.length - 1 && completingLesson)}
             className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d] disabled:opacity-60"
           >
             {currentIndex === items.length - 1

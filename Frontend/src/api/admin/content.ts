@@ -611,6 +611,7 @@ export async function createQuestion(
   appendStringIfPresent(formData, "questionType", payload.questionType);
   appendStringIfPresent(formData, "content", payload.content);
   appendStringIfPresent(formData, "instruction", payload.instruction);
+  appendStringIfPresent(formData, "hint", payload.hint);
   appendStringIfPresent(formData, "questionData", payload.questionData);
   appendStringIfPresent(formData, "explanation", payload.explanation);
   appendStringIfPresent(formData, "correctAnswer", payload.correctAnswer);
@@ -640,6 +641,7 @@ export async function updateQuestion(params: {
   appendStringIfPresent(formData, "questionType", params.data.questionType);
   appendStringIfPresent(formData, "content", params.data.content);
   appendStringIfPresent(formData, "instruction", params.data.instruction);
+  appendStringIfPresent(formData, "hint", params.data.hint);
   appendStringIfPresent(formData, "questionData", params.data.questionData);
   appendStringIfPresent(formData, "explanation", params.data.explanation);
   appendStringIfPresent(formData, "correctAnswer", params.data.correctAnswer);

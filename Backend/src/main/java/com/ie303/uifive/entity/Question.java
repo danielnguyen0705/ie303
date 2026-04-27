@@ -24,6 +24,9 @@ public class Question {
     @Column(name = "instruction", columnDefinition = "TEXT")
     private String instruction;
 
+    @Column(name = "hint", columnDefinition = "TEXT")
+    private String hint;
+
     @Column(name = "audio_url", columnDefinition = "TEXT")
     private String audioUrl;
 

@@ -39,6 +39,7 @@ export interface QuestionDto {
   questionType: QuestionType;
   content: string;
   instruction: string | null;
+  hint: string | null;
   audioUrl: string | null;
   imageUrl: string | null;
   questionData: string | null;

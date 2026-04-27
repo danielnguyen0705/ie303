@@ -9,6 +9,7 @@ public record QuestionResponse(
         QuestionType questionType,
         String content,
         String instruction,
+        String hint,
         String audioUrl,
         String imageUrl,
         String questionData,

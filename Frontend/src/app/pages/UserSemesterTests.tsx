@@ -3,6 +3,7 @@ import { PracticePackageRunner } from "@/app/components/PracticePackageRunner";
 import type { SemesterTestResponse } from "@/api/types";
 import { useAuth } from "@/context/AuthContext";
 import { hasVipAccess, loadQuestionBundle } from "./practicePackageData";
+import { useSearchParams } from "react-router";
 
 async function loadSemesterTestItems() {
   const response = await getSemesterTests();
@@ -43,7 +44,9 @@ async function loadSemesterTestPackage(
 
 export function UserSemesterTests() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const includeVipLessons = hasVipAccess(user);
+  const preferredItemId = Number(searchParams.get("testId"));
 
   return (
     <PracticePackageRunner<SemesterTestResponse>
@@ -63,6 +66,7 @@ export function UserSemesterTests() {
       getResultMeta={(item) =>
         `Question groups: ${item.questionGroupIds.length} - Single questions: ${item.questionIds.length}`
       }
+      preferredItemId={Number.isFinite(preferredItemId) && preferredItemId > 0 ? preferredItemId : null}
     />
   );
 }

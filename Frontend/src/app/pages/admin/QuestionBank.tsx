@@ -73,7 +73,12 @@ function getQuestionTypeLabel(type?: string) {
 }
 
 function getQuestionPreview(question: Question) {
-  return question.content?.trim() || question.instruction?.trim() || `Question #${question.id}`;
+  return (
+    question.content?.trim() ||
+    question.hint?.trim() ||
+    question.instruction?.trim() ||
+    `Question #${question.id}`
+  );
 }
 
 function getQuestionBankStats(payload?: LessonQuestionResponse | null) {
@@ -99,6 +104,7 @@ function questionMatchesSearch(question: Question, normalizedSearch: string) {
   return [
     question.content,
     question.instruction,
+    question.hint,
     question.questionType,
     question.correctAnswer,
     question.explanation,
@@ -669,7 +675,7 @@ export function QuestionBank() {
                                                                                             </span>
                                                                                             <span>{question.questionType}</span>
                                                                                           </div>
-                                                                                          <p className="mt-3 font-semibold text-slate-900">
+                                                                                          <p className="question-text-unified mt-3 text-slate-900">
                                                                                             {getQuestionPreview(question)}
                                                                                           </p>
                                                                                           {question.correctAnswer && (
@@ -756,9 +762,14 @@ export function QuestionBank() {
                                                                                                 {getQuestionTypeLabel(question.questionType)}
                                                                                               </span>
                                                                                             </div>
-                                                                                            <p className="mt-3 font-semibold text-slate-900">
+                                                                                            <p className="question-text-unified mt-3 text-slate-900">
                                                                                               {getQuestionPreview(question)}
                                                                                             </p>
+                                                                                            {question.hint && (
+                                                                                              <p className="mt-2 text-sm text-amber-700 whitespace-pre-wrap">
+                                                                                                Hint: {question.hint}
+                                                                                              </p>
+                                                                                            )}
                                                                                             {question.correctAnswer && (
                                                                                               <p className="mt-2 text-sm text-slate-500">
                                                                                                 Correct answer: {question.correctAnswer}

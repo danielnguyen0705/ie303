@@ -79,7 +79,7 @@ export function TestReview() {
               <span className="font-mono font-medium text-[#155ca5] bg-[#73aaf9]/20 px-3 py-1 rounded-md text-sm mb-4 inline-block">
                 QUESTION 2 • ADVANCED TENSES
               </span>
-              <h1 className="font-['Nunito'] text-2xl font-bold text-[#1e2e51] leading-snug">
+              <h1 className="question-text-unified text-[#1e2e51]">
                 By the time the professor arrived, the students{' '}
                 <span className="text-[#155ca5] underline decoration-2 underline-offset-4 font-black">__________</span>{' '}
                 the experimental setup for twenty minutes.

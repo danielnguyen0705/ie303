@@ -2,17 +2,21 @@
 
 Tai lieu nay dung de nhap question trong khu admin cho dung format va khong bi du field.
 
+- `Hint` co the dung cho tat ca question types.
+- `Hint` la goi y hien cho hoc sinh o man lam bai, tach rieng khoi `content`.
+- `Question Data` chi nen dung cho metadata ky thuat nhu word bank, matching, sentence reorder, min/max words...
+
 ## 1. Single Question
 
 ### `QUALITATIVE_MC`, `READING_MC`, `CLOZE_MC`
 - Can nhap: `Content`
-- Co the nhap them: `Instruction`, `Explanation`
+- Co the nhap them: `Instruction`, `Hint`, `Explanation`
 - Nhap `Options` A-D va chon 1 dap an dung
 - `Image` chi hien voi cac dang duoc ho tro
 
 ### `TRUE_FALSE_NG`
 - Can nhap: `Content`
-- Co the nhap them: `Instruction`, `Explanation`, `Image`
+- Co the nhap them: `Instruction`, `Hint`, `Explanation`, `Image`
 - Khong can tao option tay
 - He thong tu sinh 3 lua chon `TRUE`, `FALSE`, `NOT GIVEN`
 - Chi can chon dap an dung
@@ -28,7 +32,7 @@ Tai lieu nay dung de nhap question trong khu admin cho dung format va khong bi d
 
 ### `LIMITED_FILL`, `WORD_FORM`, `VERB_FORM`, `SENTENCE_REWRITE`
 - Can nhap: `Content`, `Correct Answer`
-- Co the nhap them: `Instruction`, `Explanation`
+- Co the nhap them: `Instruction`, `Hint`, `Explanation`
 
 ### `SENTENCE_REORDER`
 - Can nhap: `Content`, `Correct Answer`, `Question Data`
@@ -45,7 +49,9 @@ Tai lieu nay dung de nhap question trong khu admin cho dung format va khong bi d
 
 ### `ESSAY_WRITING`
 - Can nhap: `Content`, `Correct Answer`
-- Co the nhap them: `Instruction`, `Explanation`, `Question Data`
+- Co the nhap them: `Instruction`, `Hint`, `Explanation`, `Question Data`
+- `Hint` dung de hien goi y cho hoc sinh, vi du cac y can co trong bai
+- `Explanation` nen dung cho sample answer / reference de cham AI
 - `Question Data` co the luu rubric:
 ```json
 {

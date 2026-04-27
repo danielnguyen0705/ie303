@@ -4,6 +4,7 @@ public record LessonProgressResponse(
         Long lessonId,
         String lessonTitle,
         int lessonNumber,
+        boolean reviewLesson,
         boolean completed,
         boolean unlocked,
         boolean current

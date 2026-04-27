@@ -7,7 +7,8 @@ import {
   faLock,
   faFire,
 } from "@fortawesome/free-solid-svg-icons";
-import { getSectionsByUnitProgress } from "@/api";
+import { getSectionsByUnitProgress, getUnitReviews } from "@/api";
+import type { UnitReviewResponse } from "@/api/types";
 
 type SectionProgressItem = {
   sectionId: number;
@@ -162,6 +163,7 @@ function buildSectionPath(
 export function SectionSelection() {
   const { unitId } = useParams();
   const [sections, setSections] = useState<SectionProgressItem[]>([]);
+  const [unitReviews, setUnitReviews] = useState<UnitReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -199,6 +201,25 @@ export function SectionSelection() {
     };
 
     loadSections();
+  }, [unitIdNumber]);
+
+  useEffect(() => {
+    const loadUnitReviews = async () => {
+      if (!unitIdNumber || Number.isNaN(unitIdNumber)) {
+        setUnitReviews([]);
+        return;
+      }
+
+      const response = await getUnitReviews();
+      if (!response.success || !response.data) {
+        setUnitReviews([]);
+        return;
+      }
+
+      setUnitReviews(response.data.filter((review) => review.unitId === unitIdNumber));
+    };
+
+    void loadUnitReviews();
   }, [unitIdNumber]);
 
   const layout = useMemo(() => {
@@ -257,6 +278,8 @@ export function SectionSelection() {
   }, [sections]);
 
   const { positionedSections, mapWidth, containerHeight } = layout;
+  const isUnitCompleted =
+    sections.length > 0 && sections.every((section) => clampProgress(section.progressPercent) >= 100);
 
   if (loading) {
     return (
@@ -317,102 +340,134 @@ export function SectionSelection() {
           </p>
         </div>
       ) : (
-        <section className="overflow-x-auto">
-          <div className="min-w-max pl-0 pr-4 py-4">
-            <div
-              className="relative"
-              style={{
-                width: `${mapWidth}px`,
-                height: `${containerHeight}px`,
-              }}
-            >
-              <svg
-                className="absolute inset-0 pointer-events-none"
-                width={mapWidth}
-                height={containerHeight}
-                viewBox={`0 0 ${mapWidth} ${containerHeight}`}
+        <section className="space-y-6">
+          <div className="overflow-x-auto">
+            <div className="min-w-max pl-0 pr-4 py-4">
+              <div
+                className="relative"
+                style={{
+                  width: `${mapWidth}px`,
+                  height: `${containerHeight}px`,
+                }}
               >
-                {positionedSections.slice(0, -1).map((section, index) => {
-                  const next = positionedSections[index + 1];
-                  const nextStyle = getSectionStyle(next, index + 1, positionedSections);
+                <svg
+                  className="absolute inset-0 pointer-events-none"
+                  width={mapWidth}
+                  height={containerHeight}
+                  viewBox={`0 0 ${mapWidth} ${containerHeight}`}
+                >
+                  {positionedSections.slice(0, -1).map((section, index) => {
+                    const next = positionedSections[index + 1];
+                    const nextStyle = getSectionStyle(next, index + 1, positionedSections);
 
-                  return buildSectionPath(
-                    section,
-                    next,
-                    nextStyle.connector,
-                    nextStyle.dot,
-                    index,
-                  );
-                })}
-              </svg>
+                    return buildSectionPath(
+                      section,
+                      next,
+                      nextStyle.connector,
+                      nextStyle.dot,
+                      index,
+                    );
+                  })}
+                </svg>
 
-              {positionedSections.map((section, index) => {
-                const style = getSectionStyle(section, index, positionedSections);
-                const progress = clampProgress(section.progressPercent);
+                {positionedSections.map((section, index) => {
+                  const style = getSectionStyle(section, index, positionedSections);
+                  const progress = clampProgress(section.progressPercent);
 
-                return (
-                  <div
-                    key={section.sectionId}
-                    className="absolute"
-                    style={{
-                      left: `${section.cx - NODE_WIDTH / 2}px`,
-                      top: `${section.cy - NODE_RADIUS}px`,
-                      width: `${NODE_WIDTH}px`,
-                    }}
-                  >
-                    <Link
-                      to={style.locked ? "#" : `/sections/${section.sectionId}/lessons`}
-                      onClick={(e) => {
-                        if (style.locked) e.preventDefault();
+                  return (
+                    <div
+                      key={section.sectionId}
+                      className="absolute"
+                      style={{
+                        left: `${section.cx - NODE_WIDTH / 2}px`,
+                        top: `${section.cy - NODE_RADIUS}px`,
+                        width: `${NODE_WIDTH}px`,
                       }}
-                      className={`group block text-center ${style.locked ? "cursor-not-allowed" : ""}`}
                     >
-                      <div className="relative mx-auto w-32 h-32">
-                        <div
-                          className={`absolute inset-0 rounded-full bg-gradient-to-br ${style.outerRing} p-[6px] ${style.glow} transition-all duration-300 group-hover:scale-105`}
-                        >
+                      <Link
+                        to={style.locked ? "#" : `/sections/${section.sectionId}/lessons`}
+                        onClick={(e) => {
+                          if (style.locked) e.preventDefault();
+                        }}
+                        className={`group block text-center ${style.locked ? "cursor-not-allowed" : ""}`}
+                      >
+                        <div className="relative mx-auto w-32 h-32">
                           <div
-                            className={`w-full h-full rounded-full border ${style.outerBorder} ${style.middleBg} flex items-center justify-center`}
+                            className={`absolute inset-0 rounded-full bg-gradient-to-br ${style.outerRing} p-[6px] ${style.glow} transition-all duration-300 group-hover:scale-105`}
                           >
                             <div
-                              className={`w-[84px] h-[84px] rounded-full ${style.innerBg} flex items-center justify-center shadow-inner`}
+                              className={`w-full h-full rounded-full border ${style.outerBorder} ${style.middleBg} flex items-center justify-center`}
                             >
-                              <FontAwesomeIcon
-                                icon={style.icon}
-                                className={`text-[28px] ${style.iconColor}`}
-                              />
+                              <div
+                                className={`w-[84px] h-[84px] rounded-full ${style.innerBg} flex items-center justify-center shadow-inner`}
+                              >
+                                <FontAwesomeIcon
+                                  icon={style.icon}
+                                  className={`text-[28px] ${style.iconColor}`}
+                                />
+                              </div>
                             </div>
+                          </div>
+
+                          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white border border-[#dbe7f7] shadow-sm text-xs font-black text-[#1e2e51]">
+                            {progress}%
                           </div>
                         </div>
 
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white border border-[#dbe7f7] shadow-sm text-xs font-black text-[#1e2e51]">
-                          {progress}%
+                        <div className="mt-5">
+                          <div
+                            className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
+                          >
+                            Section {section.sectionNumber}
+                          </div>
+
+                          <h3
+                            className={`mt-3 text-base font-black leading-tight px-3 ${style.title}`}
+                          >
+                            {section.sectionTitle}
+                          </h3>
+
+                          <p className="mt-2 text-xs font-semibold text-gray-500">
+                            {style.statusText}
+                          </p>
                         </div>
-                      </div>
-
-                      <div className="mt-5">
-                        <div
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
-                        >
-                          Section {section.sectionNumber}
-                        </div>
-
-                        <h3
-                          className={`mt-3 text-base font-black leading-tight px-3 ${style.title}`}
-                        >
-                          {section.sectionTitle}
-                        </h3>
-
-                        <p className="mt-2 text-xs font-semibold text-gray-500">
-                          {style.statusText}
-                        </p>
-                      </div>
-                    </Link>
-                  </div>
-                );
-              })}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
+
+          {isUnitCompleted && unitReviews.length > 0 && (
+            <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-[#155ca5]">
+                    Unit Review
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
+                    Unit này đã xong, vào review tiếp luôn được
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                    Review của unit được gắn thẳng vào hành trình học để mình chuyển từ học sang ôn ngay, không phải quay ra dashboard tìm nữa.
+                  </p>
+                </div>
+                <Link
+                  to={`/reviews/unit?reviewId=${unitReviews[0].id}`}
+                  className="inline-flex items-center rounded-full bg-[#155ca5] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0f4c88]"
+                >
+                  Mở Unit Review
+                </Link>
+              </div>
+
+              {unitReviews.length > 1 && (
+                <p className="mt-4 text-sm text-slate-500">
+                  Có {unitReviews.length} gói review cho unit này. Nút trên sẽ mở gói đầu tiên, còn trong màn hình review mình vẫn đổi gói được.
+                </p>
+              )}
+            </div>
+          )}
         </section>
       )}
     </main>
