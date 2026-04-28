@@ -19,6 +19,17 @@ export function Root() {
   const canAdminAccessLearnerPath = adminAllowedLearnerPaths.some((path) =>
     location.pathname.startsWith(path),
   );
+  const focusRoutes = [
+    "/lessons/",
+    "/reviews/",
+    "/tests/semester",
+    "/test/review",
+    "/test/revision",
+    "/exercise/",
+  ];
+  const isFocusRoute = focusRoutes.some((path) =>
+    location.pathname.startsWith(path),
+  );
 
   if (!isReady) {
     return (
@@ -44,7 +55,7 @@ export function Root() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <Footer />
+      {!isFocusRoute && <Footer />}
     </div>
   );
 }

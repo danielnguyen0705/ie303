@@ -159,6 +159,24 @@ function formatQuestionLabel(question: QuestionDto): string {
   );
 }
 
+function getMeaningfulHint(
+  hint?: string | null,
+  instruction?: string | null,
+  groupInstruction?: string | null,
+) {
+  const normalizedHint = hint?.trim();
+  if (!normalizedHint) return null;
+
+  if (
+    normalizeText(normalizedHint) === normalizeText(instruction || "") ||
+    normalizeText(normalizedHint) === normalizeText(groupInstruction || "")
+  ) {
+    return null;
+  }
+
+  return normalizedHint;
+}
+
 function getDisplayAnswer(answer: UserAnswer | undefined): string {
   if (typeof answer === "string") {
     return answer.trim();
@@ -339,6 +357,11 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
     currentQuestion?.questionGroupId != null
       ? questionGroups[currentQuestion.questionGroupId] ?? null
       : null;
+  const currentHint = getMeaningfulHint(
+    currentQuestion?.hint,
+    currentQuestion?.instruction,
+    currentGroup?.instruction,
+  );
   const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
   const groupData = useMemo(
     () => parseJsonSafe<Record<string, unknown>>(currentGroup?.groupData),
@@ -1089,41 +1112,61 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
   }
 
   return (
-    <main className="mx-auto max-w-7xl space-y-8 px-6 py-10 pb-24 md:pb-12">
-      <section className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
-          <BookOpenCheck className="h-4 w-4" />
-          {badgeLabel}
-        </div>
-        <h1 className="text-4xl font-black tracking-tight text-[#155ca5] md:text-5xl">
-          {pageTitle}
-        </h1>
-        <p className="max-w-3xl text-slate-600">{pageDescription}</p>
-      </section>
+    <main
+      className={`mx-auto px-4 py-6 md:px-6 ${
+        hasStarted
+          ? "max-w-6xl space-y-4 pb-10"
+          : "max-w-7xl space-y-8 pb-24 md:pb-12"
+      }`}
+    >
+      {!hasStarted && (
+        <section className="space-y-3">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
+            <BookOpenCheck className="h-4 w-4" />
+            {badgeLabel}
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-[#155ca5] md:text-5xl">
+            {pageTitle}
+          </h1>
+          <p className="max-w-3xl text-slate-600">{pageDescription}</p>
+        </section>
+      )}
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[340px_1fr]">
-        <aside className="space-y-3">
-          {items.map((item) => {
-            const isActive = item.id === selectedItem?.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSelectedItem(item)}
-                className={`w-full rounded-[2rem] border p-5 text-left transition-all ${
-                  isActive
-                    ? "border-[#155ca5] bg-[#f8fbff] shadow-sm"
-                    : "border-slate-200 bg-white hover:border-[#155ca5]/30"
-                }`}
-              >
-                <div className="font-black text-[#1e2e51]">{item.title}</div>
-                <div className="mt-2 text-sm text-slate-500">{getItemMeta(item)}</div>
-              </button>
-            );
-          })}
-        </aside>
+      <section
+        className={`grid grid-cols-1 gap-6 ${
+          hasStarted ? "" : "xl:grid-cols-[340px_1fr]"
+        }`}
+      >
+        {!hasStarted && (
+          <aside className="space-y-3">
+            {items.map((item) => {
+              const isActive = item.id === selectedItem?.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedItem(item)}
+                  className={`w-full rounded-[2rem] border p-5 text-left transition-all ${
+                    isActive
+                      ? "border-[#155ca5] bg-[#f8fbff] shadow-sm"
+                      : "border-slate-200 bg-white hover:border-[#155ca5]/30"
+                  }`}
+                >
+                  <div className="font-black text-[#1e2e51]">{item.title}</div>
+                  <div className="mt-2 text-sm text-slate-500">{getItemMeta(item)}</div>
+                </button>
+              );
+            })}
+          </aside>
+        )}
 
-        <section className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm">
+        <section
+          className={`bg-white ${
+            hasStarted
+              ? "rounded-[1.75rem] border border-slate-200 p-4 shadow-sm md:p-5"
+              : "rounded-[2rem] border border-slate-100 p-6 shadow-sm"
+          }`}
+        >
           {selectedItem ? (
             loadingQuestions ? (
               <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
@@ -1224,17 +1267,28 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                   </div>
                 )}
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-[0.25em] text-[#155ca5]">
-                      Question {currentQuestionIndex + 1} / {questions.length}
+                <div className="rounded-[2rem] border border-slate-200 bg-gradient-to-r from-[#f8fbff] via-white to-[#f5f7fb] p-4 md:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-[0.25em] text-[#155ca5]">
+                        Question {currentQuestionIndex + 1} / {questions.length}
+                      </div>
+                      <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
+                        {selectedItem.title}
+                      </h2>
                     </div>
-                    <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
-                      {selectedItem.title}
-                    </h2>
-                  </div>
-                  <div className="rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
-                    Answered {answeredCount}/{questions.length}
+                    <div className="min-w-[220px]">
+                      <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                        <span>Progress</span>
+                        <span>{Math.round((answeredCount / Math.max(questions.length, 1)) * 100)}%</span>
+                      </div>
+                      <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className="h-full rounded-full bg-[#155ca5] transition-all"
+                          style={{ width: `${Math.round((answeredCount / Math.max(questions.length, 1)) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1293,10 +1347,10 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       </div>
                     )}
 
-                    {currentQuestion.hint && (
+                    {currentHint && (
                       <div className="rounded-[1.5rem] border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900">
                         <div className="font-black">Gợi ý</div>
-                        <div className="mt-2">{renderTextWithBreaks(currentQuestion.hint)}</div>
+                        <div className="mt-2">{renderTextWithBreaks(currentHint)}</div>
                       </div>
                     )}
 
