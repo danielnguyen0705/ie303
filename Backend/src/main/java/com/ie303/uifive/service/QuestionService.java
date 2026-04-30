@@ -156,6 +156,7 @@ public class QuestionService {
                 question.getQuestionType(),
                 question.getContent(),
                 question.getInstruction(),
+                question.getHint(),
                 question.getAudioUrl(),
                 question.getImageUrl(),
                 question.getQuestionData(),

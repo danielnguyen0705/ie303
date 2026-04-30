@@ -224,6 +224,7 @@ export interface Question {
   questionType: string;
   content?: string;
   instruction?: string;
+  hint?: string | null;
   audioUrl?: string | null;
   imageUrl?: string | null;
   questionData?: string | null;
@@ -240,6 +241,7 @@ export interface CreateQuestionRequest {
   questionType: string;
   content?: string;
   instruction?: string;
+  hint?: string | null;
   audioUrl?: string | File | null;
   imageUrl?: string | File | null;
   questionData?: string | null;
@@ -253,6 +255,7 @@ export interface UpdateQuestionRequest {
   questionType?: string;
   content?: string;
   instruction?: string;
+  hint?: string | null;
   audioUrl?: string | File | null;
   imageUrl?: string | File | null;
   questionData?: string | null;

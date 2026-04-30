@@ -1,169 +1,138 @@
-import { ArrowLeft, Save, ArrowRight, Lightbulb } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookmarkCheck, CheckCircle2, XCircle } from "lucide-react";
+
+const reviewQuestions = Array.from({ length: 24 }, (_, index) => ({
+  id: index + 1,
+  correct: ![2, 6, 9, 14, 19, 22].includes(index + 1),
+}));
 
 export function TestReview() {
-  const questions = Array.from({ length: 50 }, (_, i) => ({
-    id: i + 1,
-    correct: ![2, 6, 12, 18, 24, 33, 41, 47].includes(i + 1),
-  }));
-
   return (
-    <div className="min-h-screen bg-[#f6f6ff] pb-20">
-      <main className="pt-8 pb-12 px-6 max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
-        {/* Left Column: Navigation Grid */}
-        <aside className="w-full md:w-80 shrink-0 space-y-6">
-          <div className="bg-[#eef0ff] p-6 rounded-lg shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-['Nunito'] font-bold text-xl text-[#155ca5]">Quest Review</h2>
-              <span className="bg-[#75f39c] text-[#00592b] px-3 py-1 rounded-full text-xs font-bold">84% Score</span>
-            </div>
-            
-            <div className="flex items-center justify-between mb-4 px-1">
-              <label className="inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" />
-                <div className="relative w-11 h-6 bg-[#d1dcff] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#155ca5]"></div>
-                <span className="ms-3 text-sm font-medium text-[#1e2e51]">Chỉ xem câu sai</span>
-              </label>
+    <main className="min-h-screen bg-[#f5f7fb] px-4 py-8 md:px-6">
+      <div className="mx-auto grid max-w-7xl gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="space-y-4">
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
+                  Review
+                </p>
+                <h1 className="mt-2 text-2xl font-black text-[#1e2e51]">Bài đã làm</h1>
+              </div>
+              <div className="rounded-full bg-green-50 px-3 py-1 text-sm font-bold text-green-700">
+                18/24
+              </div>
             </div>
 
-            {/* Question Grid */}
-            <div className="grid grid-cols-5 gap-3">
-              {questions.map((q) => (
+            <div className="mt-5 grid grid-cols-6 gap-2">
+              {reviewQuestions.map((question) => (
                 <button
-                  key={q.id}
-                  className={`w-full aspect-square flex items-center justify-center rounded-lg font-bold transition-all ${
-                    q.id === 2
-                      ? 'bg-[#b31b25] text-white ring-4 ring-[#b31b25]/20 scale-110'
-                      : q.correct
-                      ? 'bg-[#006a35] text-white hover:scale-105'
-                      : 'bg-[#b31b25] text-white hover:scale-105'
+                  key={question.id}
+                  type="button"
+                  className={`flex h-11 items-center justify-center rounded-2xl border text-sm font-black transition ${
+                    question.id === 2
+                      ? "border-[#155ca5] bg-[#155ca5] text-white"
+                      : question.correct
+                        ? "border-green-200 bg-green-50 text-green-700"
+                        : "border-red-200 bg-red-50 text-red-700"
                   }`}
                 >
-                  {q.id}
+                  {question.id}
                 </button>
               ))}
             </div>
-          </div>
+          </section>
 
-          {/* Performance Insights */}
-          <div className="bg-[#eef0ff] p-6 rounded-lg">
-            <h3 className="font-bold text-[#1e2e51] mb-4">Performance Insights</h3>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm opacity-70">Grammar Focus</span>
-                  <span className="text-sm font-bold text-[#006a35]">92%</span>
-                </div>
-                <div className="w-full h-2 bg-[#d1dcff] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#006a35] w-[92%]"></div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm opacity-70">Vocabulary Level</span>
-                <span className="text-sm font-bold text-[#6f5900]">B2+</span>
-              </div>
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+              Nhận xét nhanh
+            </p>
+            <div className="mt-4 space-y-3 text-sm text-slate-600">
+              <p>Phần đọc hiểu ổn hơn phần paraphrase câu hỏi.</p>
+              <p>Bạn sai nhiều ở nhóm câu cần suy luận theo đoạn hơn là tìm keyword.</p>
+              <p>Nên review lại các câu đã đánh dấu và các câu chọn sai sát đáp án đúng.</p>
             </div>
-          </div>
+          </section>
         </aside>
 
-        {/* Right Column: Question Details */}
-        <section className="flex-1 space-y-6">
-          {/* Main Question Card */}
-          <div className="bg-white p-8 rounded-lg shadow-[0_32px_32px_-12px_rgba(30,46,81,0.06)] relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4">
-              <span className="bg-[#fb5151] text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
-                ✕ Incorrect
-              </span>
-            </div>
-
-            <div className="mb-8">
-              <span className="font-mono font-medium text-[#155ca5] bg-[#73aaf9]/20 px-3 py-1 rounded-md text-sm mb-4 inline-block">
-                QUESTION 2 • ADVANCED TENSES
-              </span>
-              <h1 className="font-['Nunito'] text-2xl font-bold text-[#1e2e51] leading-snug">
-                By the time the professor arrived, the students{' '}
-                <span className="text-[#155ca5] underline decoration-2 underline-offset-4 font-black">__________</span>{' '}
-                the experimental setup for twenty minutes.
-              </h1>
-            </div>
-
-            {/* Answer Comparison */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-              <div className="bg-[#fb5151]/5 p-6 rounded-lg border-2 border-[#fb5151]/10 relative">
-                <span className="absolute -top-3 left-4 bg-[#b31b25] text-white text-xs font-bold px-2 py-0.5 rounded">
-                  YOUR ANSWER
-                </span>
-                <div className="flex items-center gap-3">
-                  <span className="text-[#b31b25]">✕</span>
-                  <span className="font-mono font-medium text-lg text-[#b31b25]">had been preparing</span>
+        <section className="space-y-4">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e2e51] text-lg font-black text-white">
+                  2
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
+                    Câu sai cần xem lại
+                  </p>
+                  <h2 className="mt-1 text-xl font-black text-[#1e2e51]">
+                    Which option best completes the sentence?
+                  </h2>
                 </div>
               </div>
-              <div className="bg-[#75f39c]/5 p-6 rounded-lg border-2 border-[#75f39c]/10 relative">
-                <span className="absolute -top-3 left-4 bg-[#006a35] text-white text-xs font-bold px-2 py-0.5 rounded">
-                  CORRECT ANSWER
-                </span>
-                <div className="flex items-center gap-3">
-                  <span className="text-[#006a35]">✓</span>
-                  <span className="font-mono font-medium text-lg text-[#006a35]">were preparing</span>
-                </div>
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-700">
+                <BookmarkCheck className="h-4 w-4" />
+                Đã đánh dấu
               </div>
             </div>
 
-            {/* Explanation */}
-            <div className="bg-[#eef0ff] p-8 rounded-lg border-l-4 border-[#155ca5]">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-[#155ca5]">✨</span>
-                <h3 className="font-['Nunito'] font-bold text-xl text-[#1e2e51]">Giải thích chi tiết</h3>
-              </div>
-              <div className="space-y-4 text-[#4c5b81] leading-relaxed">
-                <p>
-                  Mặc dù hành động chuẩn bị diễn ra trước khi giáo sư đến, câu này nhấn mạnh vào một hành động đang tiếp diễn tại một thời điểm xác định trong quá khứ.
+            <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 text-lg leading-8 text-[#1e2e51]">
+              Succession planning presents another critical aspect of family business dynamics.
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-5">
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-red-700">
+                  <XCircle className="h-4 w-4" />
+                  Bạn chọn
+                </div>
+                <p className="mt-3 text-base font-semibold text-red-800">
+                  A. Succession planning is only somewhat important for family businesses.
                 </p>
-                <div className="bg-white/50 p-4 rounded-lg font-mono text-sm border border-[#9eacd7]/20">
-                  <span className="font-bold text-[#155ca5]">Key Rule:</span> "By the time" + Simple Past can be used with Past Continuous if emphasizing ongoing action.
+              </div>
+
+              <div className="rounded-[1.5rem] border border-green-200 bg-green-50 p-5">
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em] text-green-700">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Đáp án đúng
                 </div>
+                <p className="mt-3 text-base font-semibold text-green-800">
+                  D. A crucial aspect of family business dynamics is planning for leadership succession.
+                </p>
               </div>
             </div>
 
-            {/* Navigation */}
-            <div className="mt-10 flex justify-between items-center pt-8 border-t border-[#dae2ff]">
-              <button className="flex items-center gap-2 font-bold text-[#155ca5] hover:-translate-x-1 transition-transform">
-                <ArrowLeft size={20} />
-                Previous Question
-              </button>
-              <div className="flex gap-4">
-                <button className="bg-[#dae2ff] px-6 py-3 rounded-md font-bold text-[#1e2e51] hover:bg-[#d1dcff] transition-colors flex items-center gap-2">
-                  <Save size={18} />
-                  Save to Review
-                </button>
-                <button className="bg-[#155ca5] text-white px-8 py-3 rounded-md font-bold shadow-lg shadow-[#155ca5]/20 hover:opacity-90 transition-opacity flex items-center gap-2">
-                  Next Incorrect
-                  <ArrowRight size={18} />
-                </button>
-              </div>
+            <div className="mt-6 rounded-[1.5rem] border border-[#dbeafe] bg-[#f8fbff] p-5">
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
+                Giải thích
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-700">
+                Câu gốc nhấn mạnh succession planning là một khía cạnh rất quan trọng. Vì vậy đáp án đúng
+                phải giữ được ý “critical aspect”, không được làm nhẹ đi mức độ quan trọng.
+              </p>
             </div>
           </div>
 
-          {/* Related Concepts */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-[#fed023]/10 p-6 rounded-lg flex items-center gap-6">
-              <div className="w-16 h-16 shrink-0 bg-[#fed023] rounded-lg flex items-center justify-center shadow-lg">
-                <Lightbulb className="text-[#594700]" size={32} />
-              </div>
-              <div>
-                <h4 className="font-bold text-[#594700]">Master the Past Continuous</h4>
-                <p className="text-sm opacity-80 mb-2">You missed 3 questions on this topic. Ready for a quick drill?</p>
-                <button className="text-[#6f5900] font-black text-xs uppercase tracking-wider">
-                  Start Focused Practice →
-                </button>
-              </div>
-            </div>
-            <div className="bg-[#eef0ff] p-6 rounded-lg text-center">
-              <div className="text-3xl font-black text-[#155ca5] mb-1">42</div>
-              <div className="text-xs font-bold opacity-50 uppercase">Global Rank</div>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-700"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Câu trước
+            </button>
+
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full bg-[#155ca5] px-5 py-3 text-sm font-black text-white"
+            >
+              Câu sai tiếp theo
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

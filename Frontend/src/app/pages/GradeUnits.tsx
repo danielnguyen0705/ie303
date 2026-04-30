@@ -7,7 +7,8 @@ import {
   faLock,
   faFire,
 } from "@fortawesome/free-solid-svg-icons";
-import { getUnitsByGradeProgress } from "@/api";
+import { getSemesterTests, getUnitsByGradeProgress } from "@/api";
+import type { SemesterTestResponse } from "@/api/types";
 
 type UnitProgressItem = {
   unitId: number;
@@ -158,6 +159,7 @@ function buildUnitPath(
 export function GradeUnits() {
   const { gradeId } = useParams();
   const [units, setUnits] = useState<UnitProgressItem[]>([]);
+  const [semesterTests, setSemesterTests] = useState<SemesterTestResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -194,6 +196,25 @@ export function GradeUnits() {
     };
 
     loadUnits();
+  }, [gradeIdNumber]);
+
+  useEffect(() => {
+    const loadSemesterTests = async () => {
+      if (!gradeIdNumber || Number.isNaN(gradeIdNumber)) {
+        setSemesterTests([]);
+        return;
+      }
+
+      const response = await getSemesterTests();
+      if (!response.success || !response.data) {
+        setSemesterTests([]);
+        return;
+      }
+
+      setSemesterTests(response.data.filter((test) => test.gradeId === gradeIdNumber));
+    };
+
+    void loadSemesterTests();
   }, [gradeIdNumber]);
 
   const layout = useMemo(() => {
@@ -250,6 +271,8 @@ export function GradeUnits() {
   }, [units]);
 
   const { positionedUnits, mapWidth, containerHeight } = layout;
+  const isGradeCompleted =
+    units.length > 0 && units.every((unit) => clampProgress(unit.progressPercent) >= 100);
 
   if (loading) {
     return (
@@ -310,100 +333,132 @@ export function GradeUnits() {
           </p>
         </div>
       ) : (
-        <section className="overflow-x-auto">
-          <div className="min-w-max px-4 py-8">
-            <div
-              className="relative"
-              style={{
-                width: `${mapWidth}px`,
-                height: `${containerHeight}px`,
-              }}
-            >
-              <svg
-                className="absolute inset-0 pointer-events-none"
-                width={mapWidth}
-                height={containerHeight}
-                viewBox={`0 0 ${mapWidth} ${containerHeight}`}
+        <section className="space-y-6">
+          <div className="overflow-x-auto">
+            <div className="min-w-max px-4 py-8">
+              <div
+                className="relative"
+                style={{
+                  width: `${mapWidth}px`,
+                  height: `${containerHeight}px`,
+                }}
               >
-                {positionedUnits.slice(0, -1).map((unit, index) => {
-                  const next = positionedUnits[index + 1];
-                  const nextStyle = getUnitStyle(next, index + 1, positionedUnits);
+                <svg
+                  className="absolute inset-0 pointer-events-none"
+                  width={mapWidth}
+                  height={containerHeight}
+                  viewBox={`0 0 ${mapWidth} ${containerHeight}`}
+                >
+                  {positionedUnits.slice(0, -1).map((unit, index) => {
+                    const next = positionedUnits[index + 1];
+                    const nextStyle = getUnitStyle(next, index + 1, positionedUnits);
 
-                  return buildUnitPath(
-                    unit,
-                    next,
-                    nextStyle.connector,
-                    nextStyle.dot,
-                    index,
-                  );
-                })}
-              </svg>
+                    return buildUnitPath(
+                      unit,
+                      next,
+                      nextStyle.connector,
+                      nextStyle.dot,
+                      index,
+                    );
+                  })}
+                </svg>
 
-              {positionedUnits.map((unit, index) => {
-                const style = getUnitStyle(unit, index, positionedUnits);
-                const progress = clampProgress(unit.progressPercent);
+                {positionedUnits.map((unit, index) => {
+                  const style = getUnitStyle(unit, index, positionedUnits);
+                  const progress = clampProgress(unit.progressPercent);
 
-                return (
-                  <div
-                    key={unit.unitId}
-                    className="absolute"
-                    style={{
-                      left: `${unit.cx - NODE_WIDTH / 2}px`,
-                      top: `${unit.cy - NODE_RADIUS}px`,
-                      width: `${NODE_WIDTH}px`,
-                    }}
-                  >
-                    <Link
-                      to={style.locked ? "#" : `/units/${unit.unitId}/sections`}
-                      onClick={(e) => {
-                        if (style.locked) e.preventDefault();
+                  return (
+                    <div
+                      key={unit.unitId}
+                      className="absolute"
+                      style={{
+                        left: `${unit.cx - NODE_WIDTH / 2}px`,
+                        top: `${unit.cy - NODE_RADIUS}px`,
+                        width: `${NODE_WIDTH}px`,
                       }}
-                      className={`group block text-center ${style.locked ? "cursor-not-allowed" : ""}`}
                     >
-                      <div className="relative mx-auto w-32 h-32">
-                        <div
-                          className={`absolute inset-0 rounded-full bg-gradient-to-br ${style.outerRing} p-[6px] ${style.glow} transition-all duration-300 group-hover:scale-105`}
-                        >
+                      <Link
+                        to={style.locked ? "#" : `/units/${unit.unitId}/sections`}
+                        onClick={(e) => {
+                          if (style.locked) e.preventDefault();
+                        }}
+                        className={`group block text-center ${style.locked ? "cursor-not-allowed" : ""}`}
+                      >
+                        <div className="relative mx-auto w-32 h-32">
                           <div
-                            className={`w-full h-full rounded-full border ${style.outerBorder} ${style.middleBg} flex items-center justify-center`}
+                            className={`absolute inset-0 rounded-full bg-gradient-to-br ${style.outerRing} p-[6px] ${style.glow} transition-all duration-300 group-hover:scale-105`}
                           >
                             <div
-                              className={`w-[84px] h-[84px] rounded-full ${style.innerBg} flex items-center justify-center shadow-inner`}
+                              className={`w-full h-full rounded-full border ${style.outerBorder} ${style.middleBg} flex items-center justify-center`}
                             >
-                              <FontAwesomeIcon
-                                icon={style.icon}
-                                className={`text-[28px] ${style.iconColor}`}
-                              />
+                              <div
+                                className={`w-[84px] h-[84px] rounded-full ${style.innerBg} flex items-center justify-center shadow-inner`}
+                              >
+                                <FontAwesomeIcon
+                                  icon={style.icon}
+                                  className={`text-[28px] ${style.iconColor}`}
+                                />
+                              </div>
                             </div>
+                          </div>
+
+                          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white border border-[#dbe7f7] shadow-sm text-xs font-black text-[#1e2e51]">
+                            {progress}%
                           </div>
                         </div>
 
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white border border-[#dbe7f7] shadow-sm text-xs font-black text-[#1e2e51]">
-                          {progress}%
+                        <div className="mt-5">
+                          <div
+                            className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
+                          >
+                            Unit {unit.unitNumber}
+                          </div>
+
+                          <h3 className={`mt-3 text-base font-black leading-tight px-3 ${style.title}`}>
+                            {unit.unitTitle}
+                          </h3>
+
+                          <p className="mt-2 text-xs font-semibold text-gray-500">
+                            {style.statusText}
+                          </p>
                         </div>
-                      </div>
-
-                      <div className="mt-5">
-                        <div
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
-                        >
-                          Unit {unit.unitNumber}
-                        </div>
-
-                        <h3 className={`mt-3 text-base font-black leading-tight px-3 ${style.title}`}>
-                          {unit.unitTitle}
-                        </h3>
-
-                        <p className="mt-2 text-xs font-semibold text-gray-500">
-                          {style.statusText}
-                        </p>
-                      </div>
-                    </Link>
-                  </div>
-                );
-              })}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
+
+          {isGradeCompleted && semesterTests.length > 0 && (
+            <div className="rounded-3xl border border-[#fde7b1] bg-[#fff9ea] p-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-[#c77d00]">
+                    Semester Test
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
+                    Xong cả grade rồi, có thể vào bài test tổng
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                    Đề test theo grade đã được móc thẳng vào lộ trình học để mình chuyển ngay từ hoàn thành unit sang kiểm tra tổng hợp.
+                  </p>
+                </div>
+                <Link
+                  to={`/tests/semester?testId=${semesterTests[0].id}`}
+                  className="inline-flex items-center rounded-full bg-[#f39c12] px-5 py-3 text-sm font-black text-white transition hover:bg-[#d68910]"
+                >
+                  Mở Semester Test
+                </Link>
+              </div>
+
+              {semesterTests.length > 1 && (
+                <p className="mt-4 text-sm text-slate-500">
+                  Có {semesterTests.length} đề cho grade này. Nút trên sẽ mở đề đầu tiên, còn trong màn hình test vẫn đổi đề được.
+                </p>
+              )}
+            </div>
+          )}
         </section>
       )}
     </main>

@@ -3,6 +3,7 @@ import { PracticePackageRunner } from "@/app/components/PracticePackageRunner";
 import type { UnitReviewResponse } from "@/api/types";
 import { useAuth } from "@/context/AuthContext";
 import { hasVipAccess, loadQuestionBundle } from "./practicePackageData";
+import { useSearchParams } from "react-router";
 
 async function loadUnitReviewItems() {
   const response = await getUnitReviews();
@@ -42,7 +43,9 @@ async function loadUnitReviewPackage(
 
 export function UserUnitReviews() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const includeVipLessons = hasVipAccess(user);
+  const preferredItemId = Number(searchParams.get("reviewId"));
 
   return (
     <PracticePackageRunner<UnitReviewResponse>
@@ -57,6 +60,7 @@ export function UserUnitReviews() {
       loadItems={loadUnitReviewItems}
       loadPackage={(item) => loadUnitReviewPackage(item, includeVipLessons)}
       getItemMeta={(item) => `Unit ID ${item.unitId} - ${item.questionIds.length} question(s)`}
+      preferredItemId={Number.isFinite(preferredItemId) && preferredItemId > 0 ? preferredItemId : null}
     />
   );
 }

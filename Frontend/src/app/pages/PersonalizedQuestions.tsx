@@ -428,7 +428,7 @@ export function PersonalizedQuestions() {
                     </span>
                   </div>
 
-                  <h3 className="text-xl font-black text-[#1e2e51]">
+                  <h3 className="question-text-unified text-[#1e2e51]">
                     {question.content}
                   </h3>
 

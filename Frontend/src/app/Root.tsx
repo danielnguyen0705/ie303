@@ -1,11 +1,35 @@
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { PublicLanding } from "./pages/PublicLanding";
 
 export function Root() {
+  const location = useLocation();
   const { isAuthenticated, isReady, user } = useAuth();
+
+  const adminAllowedLearnerPaths = [
+    "/lessons/",
+    "/reviews/",
+    "/tests/semester",
+    "/test/review",
+    "/test/revision",
+  ];
+
+  const canAdminAccessLearnerPath = adminAllowedLearnerPaths.some((path) =>
+    location.pathname.startsWith(path),
+  );
+  const focusRoutes = [
+    "/lessons/",
+    "/reviews/",
+    "/tests/semester",
+    "/test/review",
+    "/test/revision",
+    "/exercise/",
+  ];
+  const isFocusRoute = focusRoutes.some((path) =>
+    location.pathname.startsWith(path),
+  );
 
   if (!isReady) {
     return (
@@ -21,7 +45,7 @@ export function Root() {
     return <PublicLanding />;
   }
 
-  if (user?.role === "ADMIN") {
+  if (user?.role === "ADMIN" && !canAdminAccessLearnerPath) {
     return <Navigate to="/admin" replace />;
   }
 
@@ -31,7 +55,7 @@ export function Root() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <Footer />
+      {!isFocusRoute && <Footer />}
     </div>
   );
 }
