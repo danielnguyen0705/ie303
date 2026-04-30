@@ -154,7 +154,7 @@ public class ShopItemService {
         userItemRepo.save(userItem);
         userRepo.save(user);
 
-        return "Dùng SKIP thành công. Hoàn thành 1 lesson để bù streak";
+        return "Dùng SKIP thành công. Vật phẩm này sẽ bảo vệ 1 ngày streak bị bỏ lỡ";
     }
 
     public String equipAvatar(Long shopItemId) {

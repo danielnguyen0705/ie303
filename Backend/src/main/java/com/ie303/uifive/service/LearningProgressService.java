@@ -39,6 +39,7 @@ public class LearningProgressService {
         User currentUser = userService.getCurrentUser();
         User user = currentUser;
         int expEarned = 0;
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
 
         Lesson lesson = lessonRepo.findById(request.lessonId())
                 .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
@@ -50,7 +51,7 @@ public class LearningProgressService {
         boolean alreadyCompleted = completedLessonIds.contains(lesson.getId());
         Long currentLessonId = resolveCurrentLessonId(allLessonsInGrade, completedLessonIds);
 
-        if (!alreadyCompleted && currentLessonId != null && !currentLessonId.equals(lesson.getId())) {
+        if (!isAdmin && !alreadyCompleted && currentLessonId != null && !currentLessonId.equals(lesson.getId())) {
             throw new AppException(ErrorCode.LESSON_LOCKED);
         }
 
@@ -120,6 +121,7 @@ public class LearningProgressService {
 
     public List<UnitProgressResponse> getUnitsByGrade(Long gradeId) {
         User user = userService.getCurrentUser();
+        boolean isAdmin = user.getRole() == Role.ADMIN;
 
         List<Unit> units = unitRepo.findByGradeIdOrderByUnitNumberAsc(gradeId);
 
@@ -130,7 +132,9 @@ public class LearningProgressService {
                             .countCompletedLessonsByUserAndUnit(user, unit.getId());
 
                     double progressPercent = 0.0;
-                    if (totalLessons > 0) {
+                    if (isAdmin) {
+                        progressPercent = 100.0;
+                    } else if (totalLessons > 0) {
                         progressPercent = (completedLessons * 100.0) / totalLessons;
                     }
 
@@ -146,6 +150,7 @@ public class LearningProgressService {
 
     public List<SectionProgressResponse> getSectionsByUnit(Long unitId) {
         User user = userService.getCurrentUser();
+        boolean isAdmin = user.getRole() == Role.ADMIN;
 
         Unit unit = unitRepo.findById(unitId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
@@ -160,12 +165,17 @@ public class LearningProgressService {
                     ? 0
                     : (completedLessons * 100.0 / totalLessons);
 
+            if (isAdmin) {
+                progressPercent = 100.0;
+            }
+
             return new SectionProgressResponse(section.getId(), section.getTitle(), section.getSectionNumber(), progressPercent);
         }).toList();
     }
 
     public List<LessonProgressResponse> getLessonsBySection(Long sectionId) {
         User user = userService.getCurrentUser();
+        boolean isAdmin = user.getRole() == Role.ADMIN;
 
         Section section = sectionRepo.findById(sectionId)
                 .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
@@ -181,6 +191,7 @@ public class LearningProgressService {
         return lessonsInSection.stream().map(lesson -> {
             boolean completed = completedLessonIds.contains(lesson.getId());
             boolean current = currentLessonId != null && currentLessonId.equals(lesson.getId());
+<<<<<<< HEAD
             boolean unlocked = completed || current;
             return new LessonProgressResponse(
                     lesson.getId(),
@@ -191,6 +202,10 @@ public class LearningProgressService {
                     unlocked,
                     current
             );
+=======
+            boolean unlocked = isAdmin || completed || current;
+            return new LessonProgressResponse(lesson.getId(), lesson.getTitle(), lesson.getLessonNumber(), completed, unlocked, current);
+>>>>>>> b05e851 (feat(dev): Update api ai, config role admin full access of question)
         }).toList();
     }
 

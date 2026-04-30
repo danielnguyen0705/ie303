@@ -47,16 +47,12 @@ public class AIController {
     }
 
     @PostMapping("/personalized-questions")
-        public ApiResponse<List<QuestionResponse>> generatePersonalizedQuestions(
-            @RequestBody PersonalizedQuestionRequest request,
-            Authentication authentication
+    public ApiResponse<List<QuestionResponse>> generatePersonalizedQuestions(
+            @RequestBody PersonalizedQuestionRequest request
     ) {
-        String username = authentication.getName();
-        User user = userService.getByUsername(username);
+        List<QuestionResponse> result = personalizedPracticeService.generateFromWrongQuestions(request);
 
-                List<QuestionResponse> result = personalizedPracticeService.generateFromWrongQuestions(request);
-
-                return ApiResponse.<List<QuestionResponse>>builder()
+        return ApiResponse.<List<QuestionResponse>>builder()
                 .code(1000)
                 .message("Generated personalized questions successfully")
                 .result(result)

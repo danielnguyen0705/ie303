@@ -64,20 +64,6 @@ public interface UserQuestionHistoryRepo extends JpaRepository<UserQuestionHisto
         select distinct h.question.id
         from UserQuestionHistory h
         where h.user.id = :userId
-                    and h.correct = false
-          and (
-                (h.question.lesson is not null and h.question.lesson.section is not null and h.question.lesson.section.unit.id = :unitId)
-             or (h.question.questionGroup is not null and h.question.questionGroup.lesson is not null
-                 and h.question.questionGroup.lesson.section is not null
-                 and h.question.questionGroup.lesson.section.unit.id = :unitId)
-          )
-    """)
-    List<Long> findDistinctWrongQuestionIdsByUserAndUnit(Long userId, Long unitId);
-
-    @Query("""
-        select distinct h.question.id
-        from UserQuestionHistory h
-        where h.user.id = :userId
           and h.correct = false
           and (
                 (h.question.lesson is not null and h.question.lesson.section is not null
@@ -93,4 +79,23 @@ public interface UserQuestionHistoryRepo extends JpaRepository<UserQuestionHisto
                                                                        Long gradeId,
                                                                        int startUnit,
                                                                        int endUnit);
+
+    @Query("""
+        select distinct h.question.id
+        from UserQuestionHistory h
+        where h.user.id = :userId
+          and h.correct = false
+          and (
+                (h.question.lesson is not null and h.question.lesson.section is not null
+                 and h.question.lesson.section.unit.grade.id = :gradeId
+                 and h.question.lesson.section.unit.unitNumber = :unitNumber)
+             or (h.question.questionGroup is not null and h.question.questionGroup.lesson is not null
+                 and h.question.questionGroup.lesson.section is not null
+                 and h.question.questionGroup.lesson.section.unit.grade.id = :gradeId
+                 and h.question.questionGroup.lesson.section.unit.unitNumber = :unitNumber)
+          )
+    """)
+    List<Long> findDistinctWrongQuestionIdsByUserAndGradeAndUnit(Long userId,
+                                                                  Long gradeId,
+                                                                  int unitNumber);
 }

@@ -32,14 +32,11 @@ public enum ErrorCode {
     SAME_PASSWORD(1017, "New password must be different", HttpStatus.BAD_REQUEST),
 
     QUESTION_NOT_FOUND(1018, "Question not found", HttpStatus.NOT_FOUND),
-    GEMINI_NOT_RESPONSE(1019, "Gemini is temporarily unavailable", HttpStatus.BAD_GATEWAY),
 
     GRADE_NOT_FOUND(1020, "Grade not found", HttpStatus.NOT_FOUND),
     UNIT_NOT_FOUND(1021, "Unit not found", HttpStatus.NOT_FOUND),
     SECTION_NOT_FOUND(1022, "Section not found", HttpStatus.NOT_FOUND),
     LESSON_LOCKED(1023, "Lesson is locked. Complete the previous lesson first", HttpStatus.BAD_REQUEST),
-    GEMINI_INVALID_RESPONSE(1024, "Gemini returned invalid response", HttpStatus.BAD_GATEWAY),
-    GEMINI_NOT_CONFIGURED(1025, "Gemini is not configured", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_ESSAY_ANSWER(1026, "Essay answer must not be blank", HttpStatus.BAD_REQUEST),
     QUESTION_GROUP_NOT_FOUND(1027, "Question group not found", HttpStatus.NOT_FOUND),
     SHOP_ITEM_NOT_FOUND(1028, "Shop item not found", HttpStatus.NOT_FOUND),
@@ -64,7 +61,11 @@ public enum ErrorCode {
     PAYMENT_PROVIDER_NOT_SUPPORTED(1046, "Payment provider is not supported", HttpStatus.BAD_REQUEST),
     PAYMENT_SIGNATURE_INVALID(1047, "Payment signature is invalid", HttpStatus.UNAUTHORIZED),
     VIP_REQUIRED(1048, "This feature requires an active VIP subscription", HttpStatus.FORBIDDEN),
-    NO_WRONG_QUESTIONS_FOUND(1049, "No wrong questions found for personalized practice", HttpStatus.BAD_REQUEST);
+    NO_WRONG_QUESTIONS_FOUND(1049, "No wrong questions found for personalized practice", HttpStatus.BAD_REQUEST),
+
+    AI_NOT_RESPONSE(1050, "AI provider is temporarily unavailable", HttpStatus.BAD_GATEWAY),
+    AI_INVALID_RESPONSE(1051, "AI provider returned invalid response", HttpStatus.BAD_GATEWAY),
+    AI_NOT_CONFIGURED(1052, "No AI provider is configured", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final int code;
     private final String message;

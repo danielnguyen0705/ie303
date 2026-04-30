@@ -16,8 +16,6 @@ public record SemesterTestRequest(
 
         List<Long> questionGroupIds,
         List<Long> questionIds,
-        Boolean includeWrongQuestions,
-        Integer aiQuestionCount,
-        String aiQuestionTopic
+        Boolean includeWrongQuestions
 ) {
 }

@@ -24,7 +24,7 @@ public class EssayService {
     private final QuestionRepo questionRepo;
     private final UserQuestionHistoryRepo historyRepo;
     private final AIWritingEvalutionRepo evaluationRepo;
-    private final GeminiService geminiService;
+    private final AiGenerationService aiGenerationService;
 
     public WritingEvaluationResponse submitEssay(User user, SubmitEssayRequest request) {
         if (user.getVipExpiredAt() == null || !user.getVipExpiredAt().isAfter(LocalDateTime.now())) {
@@ -34,7 +34,7 @@ public class EssayService {
         Question question = questionRepo.findById(request.questionId())
                 .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
 
-        WritingEvaluationResponse aiResult = geminiService.evaluateEssay(
+        WritingEvaluationResponse aiResult = aiGenerationService.evaluateEssay(
                 question.getContent(),
                 question.getExplanation(),
                 request.answerText()

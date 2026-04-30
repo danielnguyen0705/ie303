@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -186,10 +187,27 @@ public class UserService implements UserDetailsService {
 
         if (user.getLastStudyDate() == null) {
             user.setStreak(1);
-        } else if (user.getLastStudyDate().plusDays(1).equals(today)) {
+            user.setLastStudyDate(today);
+            return;
+        }
+
+        long dayGap = ChronoUnit.DAYS.between(user.getLastStudyDate(), today);
+        if (dayGap <= 0) {
+            return;
+        }
+
+        if (dayGap == 1) {
             user.setStreak(user.getStreak() + 1);
-        } else if (!user.getLastStudyDate().equals(today)) {
-            user.setStreak(1);
+        } else {
+            int missedDays = (int) dayGap - 1;
+
+            if (user.getStreakItemPendingCount() >= missedDays) {
+                user.setStreakItemPendingCount(user.getStreakItemPendingCount() - missedDays);
+                user.setStreak(user.getStreak() + 1);
+            } else {
+                user.setStreak(1);
+                user.setStreakItemPendingCount(0);
+            }
         }
 
         user.setLastStudyDate(today);
