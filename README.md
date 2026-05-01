@@ -29,13 +29,12 @@ Hãy đảm bảo bạn đã có file `.env` nằm trong thư mục `Backend/`. 
 - Cloudinary, Gemini API keys...
 
 
-### Bước 2: Huấn luyện mô hình AI (Machine Learning)
-Trước khi khởi động AI Server, bạn cần huấn luyện mô hình để hệ thống có thể dự đoán (trong trường hợp chạy lại từ đầu).
-**Lưu ý:** Nếu trong thư mục `MLService/saved_models/` đã có sẵn các file `.pkl`, bạn hoàn toàn có thể **BỎ QUA** bước này và đi tới thẳng Bước 3.
+### Bước 2: Cài đặt môi trường và Huấn luyện mô hình AI
+Trước khi khởi động AI Server, bạn cần cài đặt các thư viện Python và huấn luyện mô hình dự đoán.
 Mở một cửa sổ Terminal (PowerShell) mới và chạy các lệnh sau:
 ```powershell
 cd d:\ie303\MLService
-# Khởi tạo môi trường ảo (tùy chọn nhưng khuyến khích)
+# Khởi tạo môi trường ảo (Bắt buộc cho lần chạy đầu tiên)
 python -m venv venv
 .\venv\Scripts\activate
 # Cài đặt các thư viện cần thiết
@@ -43,7 +42,7 @@ pip install -r requirements.txt
 # Chạy script huấn luyện
 python train.py
 ```
-> 🧠 *Sau khi chạy lệnh trên, các file mô hình `.pkl` sẽ được tạo và lưu vào thư mục `MLService/saved_models/`.*
+> 🧠 **Lưu ý:** Nếu trong thư mục `MLService/saved_models/` đã có sẵn các file `.pkl`, bạn **không cần chạy lệnh `python train.py`**, nhưng **vẫn phải chạy các lệnh cài tạo `venv` và `pip install`** ở trên cho lần đầu tiên cài đặt dự án. Khi chạy `train.py`, các file mô hình `.pkl` mới sẽ được tạo và lưu vào thư mục `MLService/saved_models/`.
 
 ### Bước 3: Khởi động hệ thống chính (Backend & Frontend)
 Mở Terminal tại thư mục gốc của dự án (`d:\ie303`) và chạy lệnh:
@@ -57,11 +56,9 @@ npm run dev
 Mở một cửa sổ Terminal (PowerShell) **MỚI**, di chuyển vào thư mục `MLService` và chạy file script khởi động:
 ```powershell
 cd d:\ie303\MLService
-.\venv\Scripts\activate # (Nếu bạn có dùng venv ở Bước 2)
 .\start.ps1
 ```
-> 🤖 *Máy chủ AI bằng FastAPI sẽ được khởi chạy tại **cổng 8000***.
-
+> 🤖 *Máy chủ AI bằng FastAPI sẽ được khởi chạy tại **cổng 8000***. (*Lưu ý: File `start.ps1` đã được cấu hình tự động sử dụng môi trường ảo venv, nên bạn không cần gọi lệnh activate nữa*).
 ---
 
 ## 🧠 Tích Hợp Machine Learning (AI Insights)
