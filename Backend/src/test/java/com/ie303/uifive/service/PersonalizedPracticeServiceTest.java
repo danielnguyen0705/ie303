@@ -2,6 +2,7 @@ package com.ie303.uifive.service;
 
 import com.ie303.uifive.dto.req.PersonalizedQuestionRequest;
 import com.ie303.uifive.dto.res.QuestionResponse;
+import com.ie303.uifive.dto.res.QuestionOptionResponse;
 import com.ie303.uifive.entity.Question;
 import com.ie303.uifive.entity.QuestionOption;
 import com.ie303.uifive.entity.QuestionType;
@@ -118,11 +119,12 @@ class PersonalizedPracticeServiceTest {
                 null,
                 null,
                 null,
+                null,
                 generatedDraft.explanation(),
                 "A",
                 null,
                 null,
-                List.of()
+                List.<QuestionOptionResponse>of()
         );
 
         PersonalizedQuestionRequest request = new PersonalizedQuestionRequest(1, 5L, 2);

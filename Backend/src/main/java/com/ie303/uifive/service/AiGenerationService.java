@@ -5,8 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentResponse;
+import com.ie303.uifive.dto.res.SpeakingEvaluationResponse;
 import com.ie303.uifive.dto.res.WritingEvaluationResponse;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
@@ -28,26 +27,17 @@ import java.util.List;
 @Slf4j
 public class AiGenerationService {
 
-    @Value("${ai.openai.api-key:}")
-    private String openAiApiKey;
+    @Value("${nvidia.api-key:}")
+    private String nvidiaApiKey;
 
-    @Value("${ai.openai.model:gpt-4o-mini}")
-    private String openAiModel;
+    @Value("${nvidia.base-url:https://integrate.api.nvidia.com/v1}")
+    private String nvidiaBaseUrl;
 
-    @Value("${ai.anthropic.api-key:}")
-    private String anthropicApiKey;
+    @Value("${nvidia.text-model:meta/llama-3.1-8b-instruct}")
+    private String nvidiaTextModel;
 
-    @Value("${ai.anthropic.model:claude-3-5-sonnet-latest}")
-    private String anthropicModel;
-
-    @Value("${ai.anthropic.version:2023-06-01}")
-    private String anthropicVersion;
-
-    @Value("${gemini.api-key:}")
-    private String geminiApiKey;
-
-    @Value("${gemini.model:gemini-2.5-flash}")
-    private String geminiModel;
+    @Value("${nvidia.vision-model:meta/llama-3.2-11b-vision-instruct}")
+    private String nvidiaVisionModel;
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -86,219 +76,162 @@ public class AiGenerationService {
                 : explanation.trim();
 
         String prompt = buildEssayEvaluationPrompt(topic, normalizedExplanation, answerText);
-        String raw = generateWithFallback("evaluateEssay", prompt);
+        String raw = callChatModel(nvidiaTextModel, prompt, 512);
         return normalize(readJsonObject(raw, WritingEvaluationResponse.class));
+    }
+
+    public WritingEvaluationResponse evaluateEssay(String topic, String explanation, String answerText, String imageUrl) {
+        validateConfiguration();
+        validateEssayAnswer(answerText);
+
+        String normalizedExplanation = (explanation == null || explanation.isBlank())
+                ? "Không có giải thích tham chiếu."
+                : explanation.trim();
+
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return evaluateEssay(topic, explanation, answerText);
+        }
+
+        String prompt = buildEssayEvaluationPrompt(topic, normalizedExplanation, answerText)
+                + """
+
+                Hình ảnh bài làm của học sinh đã được đính kèm trong request.
+                Hãy đọc cả hình ảnh và phần bài viết, rồi chấm điểm dựa trên toàn bộ nội dung.
+                Nếu chữ viết tay khó đọc, hãy ghi rõ trong feedback.
+                """;
+
+        String raw = callVisionModel(prompt, imageUrl, 512);
+        return normalize(readJsonObject(raw, WritingEvaluationResponse.class));
+    }
+
+    public SpeakingEvaluationResponse evaluateSpeaking(String topic, String explanation, String transcriptText) {
+        validateConfiguration();
+        if (transcriptText == null || transcriptText.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Transcript text is required");
+        }
+
+        String normalizedExplanation = (explanation == null || explanation.isBlank())
+                ? "Không có giải thích tham chiếu."
+                : explanation.trim();
+
+        String prompt = buildSpeakingEvaluationPrompt(topic, normalizedExplanation, transcriptText.trim());
+        String raw = callChatModel(nvidiaTextModel, prompt, 512);
+        WritingEvaluationResponse result = normalize(readJsonObject(raw, WritingEvaluationResponse.class));
+        return new SpeakingEvaluationResponse(result.score(), result.feedback(), transcriptText.trim(), null);
     }
 
     public List<GeneratedQuestionDraft> generateEssayQuestions(String context, int count, String topicHint) {
         validateConfiguration();
-
         int safeCount = normalizeCount(count);
         String prompt = buildEssayQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
-        return normalizeQuestionDrafts(readJsonArray(
-                generateWithFallback("generateEssayQuestions", prompt),
+        return normalizeQuestionDrafts(readJsonArray(callChatModel(nvidiaTextModel, prompt, 1024),
                 new TypeReference<List<GeneratedQuestionDraft>>() {
-                }
-        ), safeCount);
+                }), safeCount);
     }
 
     public List<GeneratedMcqDraft> generateMcqQuestions(String context, int count, String topicHint) {
         validateConfiguration();
-
         int safeCount = normalizeCount(count);
         String prompt = buildMcqQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
-        return normalizeMcqDrafts(readJsonArray(
-                generateWithFallback("generateMcqQuestions", prompt),
+        return normalizeMcqDrafts(readJsonArray(callChatModel(nvidiaTextModel, prompt, 1024),
                 new TypeReference<List<GeneratedMcqDraft>>() {
-                }
-        ), safeCount);
+                }), safeCount);
     }
 
     public List<GeneratedMcqDraft> generatePersonalizedMcqQuestions(String context, int count, String topicHint) {
         validateConfiguration();
-
         int safeCount = normalizeCount(count);
         String prompt = buildPersonalizedMcqQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
-        return normalizeMcqDrafts(readJsonArray(
-                generateWithFallback("generatePersonalizedMcqQuestions", prompt),
+        return normalizeMcqDrafts(readJsonArray(callChatModel(nvidiaTextModel, prompt, 1024),
                 new TypeReference<List<GeneratedMcqDraft>>() {
-                }
-        ), safeCount);
+                }), safeCount);
     }
 
     public List<GeneratedPersonalizedQuestionDraft> generatePersonalizedQuestions(String context, int count, String topicHint) {
         validateConfiguration();
-
         int safeCount = normalizeCount(count);
         String prompt = buildPersonalizedMixedQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
-        return normalizePersonalizedDrafts(readJsonArray(
-                generateWithFallback("generatePersonalizedQuestions", prompt),
+        return normalizePersonalizedDrafts(readJsonArray(callChatModel(nvidiaTextModel, prompt, 1024),
                 new TypeReference<List<GeneratedPersonalizedQuestionDraft>>() {
-                }
-        ), safeCount);
+                }), safeCount);
     }
 
-    private String generateWithFallback(String operation, String prompt) {
-        boolean sawAttempt = false;
-        boolean sawInvalidResponse = false;
-        StringBuilder failureSummary = new StringBuilder();
-
-        for (AiProvider provider : AiProvider.values()) {
-            if (!isConfigured(provider)) {
-                continue;
-            }
-
-            sawAttempt = true;
-            try {
-                String raw = switch (provider) {
-                    case OPENAI -> callOpenAi(prompt);
-                    case ANTHROPIC -> callAnthropic(prompt);
-                    case GEMINI -> callGemini(prompt);
-                };
-
-                if (raw == null || raw.isBlank()) {
-                    throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
-                }
-
-                return raw;
-            } catch (AppException e) {
-                log.warn("{} via {} failed: {}", operation, provider.displayName, e.getMessage());
-                appendFailure(failureSummary, provider.displayName, e.getMessage());
-                if (e.getErrorCode() == ErrorCode.AI_INVALID_RESPONSE) {
-                    sawInvalidResponse = true;
-                }
-            } catch (Exception e) {
-                log.warn("{} via {} failed: {}", operation, provider.displayName, e.getMessage());
-                appendFailure(failureSummary, provider.displayName, e.getMessage());
-            }
-        }
-
-        if (sawInvalidResponse) {
-            throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
-        }
-
-        if (sawAttempt) {
-            String message = failureSummary.length() == 0
-                    ? "AI providers are temporarily unavailable"
-                    : "AI providers failed: " + failureSummary;
-            throw new AppException(ErrorCode.AI_NOT_RESPONSE, message);
-        }
-
-        throw new AppException(ErrorCode.AI_NOT_CONFIGURED);
-    }
-
-    private String callOpenAi(String prompt) throws IOException, InterruptedException {
-        if (openAiApiKey == null || openAiApiKey.isBlank()) {
+    private String callChatModel(String model, String prompt, int maxTokens) {
+        if (nvidiaApiKey == null || nvidiaApiKey.isBlank()) {
             throw new AppException(ErrorCode.AI_NOT_CONFIGURED);
         }
 
         ObjectNode body = objectMapper.createObjectNode();
-        body.put("model", openAiModel);
+        body.put("model", model);
         body.put("temperature", 0.2);
+        body.put("max_tokens", maxTokens);
+
         ArrayNode messages = body.putArray("messages");
         ObjectNode message = messages.addObject();
         message.put("role", "user");
         message.put("content", prompt);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
-                .timeout(Duration.ofSeconds(45))
-                .header("Authorization", "Bearer " + openAiApiKey)
-                .header("Content-Type", "application/json")
-                .header("Accept", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new AppException(ErrorCode.AI_NOT_RESPONSE, "OpenAI HTTP " + response.statusCode() + ": " + truncate(response.body()));
-        }
-
-        JsonNode root = objectMapper.readTree(response.body());
-        String content = root.path("choices")
-                .path(0)
-                .path("message")
-                .path("content")
-                .asText(null);
-
-        if (content == null || content.isBlank()) {
-            throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
-        }
-
-        return content;
+        return sendChatRequest(body);
     }
 
-    private String callAnthropic(String prompt) throws IOException, InterruptedException {
-        if (anthropicApiKey == null || anthropicApiKey.isBlank()) {
+    private String callVisionModel(String prompt, String imageUrl, int maxTokens) {
+        if (nvidiaApiKey == null || nvidiaApiKey.isBlank()) {
             throw new AppException(ErrorCode.AI_NOT_CONFIGURED);
         }
 
         ObjectNode body = objectMapper.createObjectNode();
-        body.put("model", anthropicModel);
-        body.put("max_tokens", 4096);
+        body.put("model", nvidiaVisionModel);
         body.put("temperature", 0.2);
+        body.put("max_tokens", maxTokens);
+
         ArrayNode messages = body.putArray("messages");
         ObjectNode message = messages.addObject();
         message.put("role", "user");
+
         ArrayNode content = message.putArray("content");
-        ObjectNode textBlock = content.addObject();
-        textBlock.put("type", "text");
-        textBlock.put("text", prompt);
+        ObjectNode textPart = content.addObject();
+        textPart.put("type", "text");
+        textPart.put("text", prompt);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.anthropic.com/v1/messages"))
-                .timeout(Duration.ofSeconds(45))
-                .header("x-api-key", anthropicApiKey)
-                .header("anthropic-version", anthropicVersion)
-                .header("content-type", "application/json")
-                .header("accept", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
-                .build();
+        ObjectNode imagePart = content.addObject();
+        imagePart.put("type", "image_url");
+        ObjectNode imageObject = imagePart.putObject("image_url");
+        imageObject.put("url", imageUrl);
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new AppException(ErrorCode.AI_NOT_RESPONSE, "Anthropic HTTP " + response.statusCode() + ": " + truncate(response.body()));
-        }
-
-        JsonNode root = objectMapper.readTree(response.body());
-        JsonNode contentNodes = root.path("content");
-        StringBuilder builder = new StringBuilder();
-
-        if (contentNodes.isArray()) {
-            for (JsonNode node : contentNodes) {
-                if ("text".equalsIgnoreCase(node.path("type").asText())) {
-                    String text = node.path("text").asText("");
-                    if (!text.isBlank()) {
-                        builder.append(text);
-                    }
-                }
-            }
-        }
-
-        String contentText = builder.toString().trim();
-        if (contentText.isBlank()) {
-            throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
-        }
-
-        return contentText;
+        return sendChatRequest(body);
     }
 
-    private String callGemini(String prompt) {
-        if (geminiApiKey == null || geminiApiKey.isBlank()) {
-            throw new AppException(ErrorCode.AI_NOT_CONFIGURED);
+    private String sendChatRequest(ObjectNode body) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(trimTrailingSlash(nvidiaBaseUrl) + "/chat/completions"))
+                    .timeout(Duration.ofSeconds(90))
+                    .header("Authorization", "Bearer " + nvidiaApiKey)
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new AppException(ErrorCode.AI_NOT_RESPONSE, "NVIDIA HTTP " + response.statusCode() + ": " + truncate(response.body()));
+            }
+
+            JsonNode root = objectMapper.readTree(response.body());
+            String content = root.path("choices")
+                    .path(0)
+                    .path("message")
+                    .path("content")
+                    .asText(null);
+
+            if (content == null || content.isBlank()) {
+                throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
+            }
+
+            return content.trim();
+        } catch (IOException | InterruptedException e) {
+            throw new AppException(ErrorCode.AI_NOT_RESPONSE, e.getMessage());
         }
-
-        Client client = Client.builder()
-                .apiKey(geminiApiKey)
-                .build();
-
-        GenerateContentResponse response = client.models.generateContent(geminiModel, prompt, null);
-        String raw = response == null ? null : response.text();
-        if (raw == null || raw.isBlank()) {
-            throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
-        }
-
-        return raw;
     }
 
     private <T> T readJsonObject(String raw, Class<T> type) {
@@ -410,6 +343,46 @@ public class AiGenerationService {
                   "feedback": "string"
                 }
                 """.formatted(normalizedTopic, explanation, answerText);
+    }
+
+    private String buildSpeakingEvaluationPrompt(String topic, String explanation, String transcriptText) {
+        String normalizedTopic = normalizeTopic(topic);
+        return """
+                Bạn là giám khảo chấm bài speaking tiếng Anh.
+
+                Hãy chấm phần trả lời nói của học sinh theo thang điểm từ 0 đến 10.
+
+                Bạn sẽ dựa trên:
+                - Đề bài speaking
+                - Phần giải thích/gợi ý tham chiếu
+                - Transcript được tạo từ câu trả lời nói của học sinh
+
+                Tiêu chí:
+                - Mức độ trả lời đúng chủ đề
+                - Độ rõ ràng, logic và tự nhiên
+                - Độ chính xác ngữ pháp và từ vựng
+                - Feedback phải ngắn gọn, dễ hiểu, bằng tiếng Việt
+
+                Chỉ trả về DUY NHẤT JSON hợp lệ
+                Không markdown
+                Không dùng ```
+                Không viết thêm gì ngoài JSON
+
+                Đề bài:
+                %s
+
+                Giải thích tham chiếu:
+                %s
+
+                Transcript:
+                %s
+
+                Trả về đúng JSON theo format:
+                {
+                  "score": 0.0,
+                  "feedback": "string"
+                }
+                """.formatted(normalizedTopic, explanation, transcriptText);
     }
 
     private String buildEssayQuestionsPrompt(String context, int count, String topicHint) {
@@ -622,14 +595,6 @@ public class AiGenerationService {
         return cleaned.length() <= 400 ? cleaned : cleaned.substring(0, 400) + "...";
     }
 
-    private void appendFailure(StringBuilder failureSummary, String providerName, String message) {
-        if (failureSummary.length() > 0) {
-            failureSummary.append(" | ");
-        }
-
-        failureSummary.append(providerName).append(": ").append(truncate(message));
-    }
-
     private int normalizeCount(int count) {
         return Math.max(1, Math.min(20, count));
     }
@@ -643,11 +608,9 @@ public class AiGenerationService {
     }
 
     private void validateConfiguration() {
-        if (isConfigured(AiProvider.OPENAI) || isConfigured(AiProvider.ANTHROPIC) || isConfigured(AiProvider.GEMINI)) {
-            return;
+        if (nvidiaApiKey == null || nvidiaApiKey.isBlank()) {
+            throw new AppException(ErrorCode.AI_NOT_CONFIGURED, "NVIDIA API key is not configured");
         }
-
-        throw new AppException(ErrorCode.AI_NOT_CONFIGURED);
     }
 
     private void validateEssayAnswer(String answerText) {
@@ -656,23 +619,11 @@ public class AiGenerationService {
         }
     }
 
-    private boolean isConfigured(AiProvider provider) {
-        return switch (provider) {
-            case OPENAI -> openAiApiKey != null && !openAiApiKey.isBlank();
-            case ANTHROPIC -> anthropicApiKey != null && !anthropicApiKey.isBlank();
-            case GEMINI -> geminiApiKey != null && !geminiApiKey.isBlank();
-        };
-    }
-
-    private enum AiProvider {
-        OPENAI("ChatGPT"),
-        ANTHROPIC("Claude"),
-        GEMINI("Gemini");
-
-        private final String displayName;
-
-        AiProvider(String displayName) {
-            this.displayName = displayName;
+    private String trimTrailingSlash(String value) {
+        if (value == null || value.isBlank()) {
+            return "https://integrate.api.nvidia.com/v1";
         }
+
+        return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 }

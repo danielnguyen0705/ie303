@@ -21,6 +21,9 @@ public class AIWritingEvaluation {
     @Column(name = "ai_feedback", columnDefinition = "TEXT")
     private String aiFeedback;
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

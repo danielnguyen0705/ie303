@@ -191,8 +191,7 @@ public class LearningProgressService {
         return lessonsInSection.stream().map(lesson -> {
             boolean completed = completedLessonIds.contains(lesson.getId());
             boolean current = currentLessonId != null && currentLessonId.equals(lesson.getId());
-<<<<<<< HEAD
-            boolean unlocked = completed || current;
+            boolean unlocked = isAdmin || completed || current;
             return new LessonProgressResponse(
                     lesson.getId(),
                     lesson.getTitle(),
@@ -202,10 +201,6 @@ public class LearningProgressService {
                     unlocked,
                     current
             );
-=======
-            boolean unlocked = isAdmin || completed || current;
-            return new LessonProgressResponse(lesson.getId(), lesson.getTitle(), lesson.getLessonNumber(), completed, unlocked, current);
->>>>>>> b05e851 (feat(dev): Update api ai, config role admin full access of question)
         }).toList();
     }
 

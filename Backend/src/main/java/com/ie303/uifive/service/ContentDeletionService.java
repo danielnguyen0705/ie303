@@ -6,6 +6,7 @@ import com.ie303.uifive.entity.QuestionGroup;
 import com.ie303.uifive.entity.SemesterTest;
 import com.ie303.uifive.entity.UnitReview;
 import com.ie303.uifive.repo.AIWritingEvalutionRepo;
+import com.ie303.uifive.repo.AISpeakingEvaluationRepo;
 import com.ie303.uifive.repo.GroupReviewRepo;
 import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.QuestionGroupRepo;
@@ -34,6 +35,7 @@ public class ContentDeletionService {
     private final UserQuestionHistoryRepo userQuestionHistoryRepo;
     private final UserLessonProgressRepo userLessonProgressRepo;
     private final AIWritingEvalutionRepo aiWritingEvalutionRepo;
+    private final AISpeakingEvaluationRepo aiSpeakingEvaluationRepo;
     private final UnitReviewRepo unitReviewRepo;
     private final GroupReviewRepo groupReviewRepo;
     private final SemesterTestRepo semesterTestRepo;
@@ -45,6 +47,7 @@ public class ContentDeletionService {
     public void deleteQuestion(Long questionId) {
         userQuestionHistoryRepo.deleteByQuestionIdIn(List.of(questionId));
         aiWritingEvalutionRepo.deleteByQuestionId(questionId);
+        aiSpeakingEvaluationRepo.deleteByQuestionId(questionId);
         questionOptionRepo.deleteByQuestionId(questionId);
 
         detachQuestionFromUnitReviews(questionId);

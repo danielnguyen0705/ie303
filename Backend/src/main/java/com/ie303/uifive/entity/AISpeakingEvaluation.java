@@ -18,6 +18,9 @@ public class AISpeakingEvaluation {
     @Column(name = "audio_url", columnDefinition = "TEXT")
     private String audioUrl;
 
+    @Column(name = "transcript_text", columnDefinition = "TEXT")
+    private String transcriptText;
+
     @Column(name = "ai_score")
     private double aiScore;
 
@@ -32,5 +35,5 @@ public class AISpeakingEvaluation {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Lesson lesson;
+    private Question question;
 }

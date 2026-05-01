@@ -33,6 +33,7 @@ public class ShopItemService {
     private final UserItemRepo userItemRepo;
     private final UserRepo userRepo;
     private final UserService userService;
+    private final NotificationService notificationService;
     private final ShopItemMapper mapper;
     private final UserItemMapper userItemMapper;
     private final CloudinaryService cloudinaryService;
@@ -46,6 +47,7 @@ public class ShopItemService {
         normalizeByType(entity);
 
         entity = repo.save(entity);
+        notificationService.announceNewShopItem(entity);
         return mapper.toResponse(entity);
     }
 
