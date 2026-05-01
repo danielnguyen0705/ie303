@@ -28,6 +28,7 @@ Hãy đảm bảo bạn đã có file `.env` nằm trong thư mục `Backend/`. 
 - Chữ ký bảo mật JWT (`JWT_SECRET`)
 - Cloudinary, Gemini API keys...
 
+
 ### Bước 2: Huấn luyện mô hình AI (Machine Learning)
 Trước khi khởi động AI Server, bạn cần huấn luyện mô hình để hệ thống có thể dự đoán (trong trường hợp chạy lại từ đầu).
 **Lưu ý:** Nếu trong thư mục `MLService/saved_models/` đã có sẵn các file `.pkl`, bạn hoàn toàn có thể **BỎ QUA** bước này và đi tới thẳng Bước 3.
@@ -77,22 +78,22 @@ Luồng dữ liệu từ lúc học viên hoàn thành bài học đến khi nh�
 
 **Bước 1: Ghi nhận kết quả (Frontend)**
 Học viên hoàn thành bài tập (Lesson) trên trình duyệt. Frontend sẽ gọi API gửi điểm số, thời gian làm bài, số câu đúng/sai về Backend.
-  ⬇️
+
 **Bước 2: Tính toán & Chuẩn hóa dữ liệu (Spring Boot Backend)**
 File `LearningProgressService.java` tiếp nhận kết quả. Tại đây, hệ thống tính toán tiến độ (cộng dồn EXP, chuỗi ngày học) và chuẩn hóa các chỉ số thành định dạng đầu vào cho AI (tỷ lệ độ chính xác, tần suất học).
-  ⬇️
+
 **Bước 3: Gửi dữ liệu cho AI Server (Spring Boot Backend)**
 File `MLPredictionService.java` lấy dữ liệu đã chuẩn hóa, đóng gói thành chuỗi JSON và gửi một `HTTP POST Request` sang AI Server (endpoint `http://localhost:8000/predict`).
-  ⬇️
+  
 **Bước 4: Xử lý & Dự đoán (AI Server - FastAPI)**
 Tại thư mục `MLService`, file `app.py` tiếp nhận JSON. Dữ liệu được đưa vào mô hình học máy **Random Forest** (đã được nạp từ các file `.pkl` trong `saved_models/`). Mô hình sẽ trả ra 3 dự đoán:
   🔸 **Strong Skill**: Kỹ năng tốt nhất (*VD: Listening*)
   🔸 **Weak Skill**: Kỹ năng cần trau dồi (*VD: Grammar*)
   🔸 **Learning Trend**: Xu hướng học tập (*VD: IMPROVING*)
-  ⬇️
+  
 **Bước 5: Lưu trữ kết quả (Spring Boot Backend)**
 Kết quả trả về từ FastAPI được `MLPredictionService.java` đón nhận, cập nhật lại vào đối tượng `User` (hoặc Profile) và lưu xuống Database (PostgreSQL).
-  ⬇️
+  
 **Bước 6: Hiển thị giao diện (Frontend)**
 Khi người dùng mở trang Profile, Frontend sẽ tải dữ liệu mới nhất và đồng bộ vào khối **AI Learning Insights**, vẽ các biểu đồ/thẻ màu sắc báo cáo tình trạng học tập.
 
