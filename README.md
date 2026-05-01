@@ -28,7 +28,23 @@ Hãy đảm bảo bạn đã có file `.env` nằm trong thư mục `Backend/`. 
 - Chữ ký bảo mật JWT (`JWT_SECRET`)
 - Cloudinary, Gemini API keys...
 
-### Bước 2: Khởi động hệ thống chính (Backend & Frontend)
+### Bước 2: Huấn luyện mô hình AI (Machine Learning)
+Trước khi khởi động AI Server, bạn cần huấn luyện mô hình để hệ thống có thể dự đoán (trong trường hợp chạy lại từ đầu).
+**Lưu ý:** Nếu trong thư mục `MLService/saved_models/` đã có sẵn các file `.pkl`, bạn hoàn toàn có thể **BỎ QUA** bước này và đi tới thẳng Bước 3.
+Mở một cửa sổ Terminal (PowerShell) mới và chạy các lệnh sau:
+```powershell
+cd d:\ie303\MLService
+# Khởi tạo môi trường ảo (tùy chọn nhưng khuyến khích)
+python -m venv venv
+.\venv\Scripts\activate
+# Cài đặt các thư viện cần thiết
+pip install -r requirements.txt
+# Chạy script huấn luyện
+python train.py
+```
+> 🧠 *Sau khi chạy lệnh trên, các file mô hình `.pkl` sẽ được tạo và lưu vào thư mục `MLService/saved_models/`.*
+
+### Bước 3: Khởi động hệ thống chính (Backend & Frontend)
 Mở Terminal tại thư mục gốc của dự án (`d:\ie303`) và chạy lệnh:
 ```bash
 npm install   # (Chỉ cần chạy 1 lần duy nhất để cài package concurrently)
@@ -36,10 +52,11 @@ npm run dev
 ```
 > 🎉 *Lệnh này sẽ tự động bật **Backend (cổng 8080)** và **Frontend (cổng 5173)***.
 
-### Bước 3: Khởi động AI Server (Machine Learning)
+### Bước 4: Khởi động AI Server (Machine Learning)
 Mở một cửa sổ Terminal (PowerShell) **MỚI**, di chuyển vào thư mục `MLService` và chạy file script khởi động:
 ```powershell
 cd d:\ie303\MLService
+.\venv\Scripts\activate # (Nếu bạn có dùng venv ở Bước 2)
 .\start.ps1
 ```
 > 🤖 *Máy chủ AI bằng FastAPI sẽ được khởi chạy tại **cổng 8000***.
