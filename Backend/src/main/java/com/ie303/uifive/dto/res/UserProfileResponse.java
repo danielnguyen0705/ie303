@@ -20,6 +20,9 @@ public record UserProfileResponse(
         LocalDateTime vipExpiredAt,
         boolean isVip,
         LocalDateTime createdAt,
-        List<StudyingGradeResponse> studyingGrades
+        List<StudyingGradeResponse> studyingGrades,
+        String strongSkill,
+        String weakSkill,
+        String trendLabel
 ) {
 }

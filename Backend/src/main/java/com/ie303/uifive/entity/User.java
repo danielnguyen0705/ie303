@@ -59,6 +59,15 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "strong_skill")
+    private String strongSkill;
+
+    @Column(name = "weak_skill")
+    private String weakSkill;
+
+    @Column(name = "trend_label")
+    private String trendLabel;
+
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<UserLessonProgress> lessonProgresses;

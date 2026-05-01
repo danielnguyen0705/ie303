@@ -15,6 +15,12 @@ import {
   Lock,
   Palette,
   GraduationCap,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  BrainCircuit,
+  AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import {
   changePassword as changePasswordApi,
@@ -45,6 +51,9 @@ type CurrentUserProfile = {
     gradeName: string;
     progressPercent: number;
   }>;
+  strongSkill?: string;
+  weakSkill?: string;
+  trendLabel?: string;
 };
 
 type ProfileUser = {
@@ -61,6 +70,9 @@ type ProfileUser = {
   isVip: boolean;
   createdAt: string;
   studyProgress: number;
+  strongSkill: string | null;
+  weakSkill: string | null;
+  trendLabel: string | null;
 };
 
 type CosmeticOption = {
@@ -257,6 +269,9 @@ export function Profile() {
           isVip: Boolean(currentUser.isVip),
           createdAt: currentUser.createdAt,
           studyProgress,
+          strongSkill: currentUser.strongSkill ?? null,
+          weakSkill: currentUser.weakSkill ?? null,
+          trendLabel: currentUser.trendLabel ?? null,
         });
 
         setStats((prev) => ({
@@ -639,6 +654,55 @@ export function Profile() {
           </div>
           <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
             Longest Streak
+          </div>
+        </div>
+      </section>
+
+      {/* ML AI Predictions */}
+      <section className="bg-white rounded-lg shadow-sm p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <Sparkles className="w-7 h-7 text-[#155ca5]" />
+          <h2 className="text-2xl font-black">AI Learning Insights</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Strong Skill */}
+          <div className="bg-green-50 rounded-xl p-5 border border-green-100 flex flex-col justify-between hover:scale-105 transition-transform">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <BrainCircuit className="w-5 h-5 text-green-600" />
+              </div>
+              <span className="font-bold text-green-700 uppercase tracking-wider text-sm">Strongest Skill</span>
+            </div>
+            <div className="text-2xl font-black text-green-800 capitalize">
+              {user.strongSkill || "Not enough data"}
+            </div>
+          </div>
+
+          {/* Weak Skill */}
+          <div className="bg-red-50 rounded-xl p-5 border border-red-100 flex flex-col justify-between hover:scale-105 transition-transform">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <span className="font-bold text-red-700 uppercase tracking-wider text-sm">Needs Improvement</span>
+            </div>
+            <div className="text-2xl font-black text-red-800 capitalize">
+              {user.weakSkill || "Not enough data"}
+            </div>
+          </div>
+
+          {/* Learning Trend */}
+          <div className="bg-blue-50 rounded-xl p-5 border border-blue-100 flex flex-col justify-between hover:scale-105 transition-transform">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                {user.trendLabel === "IMPROVING" ? <TrendingUp className="w-5 h-5 text-blue-600" /> : user.trendLabel === "DECLINING" ? <TrendingDown className="w-5 h-5 text-red-600" /> : <Minus className="w-5 h-5 text-blue-600" />}
+              </div>
+              <span className="font-bold text-blue-700 uppercase tracking-wider text-sm">Learning Trend</span>
+            </div>
+            <div className="text-2xl font-black text-blue-800 capitalize">
+              {user.trendLabel ? user.trendLabel.toLowerCase() : "Not enough data"}
+            </div>
           </div>
         </div>
       </section>
