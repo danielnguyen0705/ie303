@@ -71,14 +71,30 @@ Trong phiên bản mới nhất, hệ thống đã được nâng cấp với kh
 - **Huấn luyện mô hình (Training)**: Dữ liệu (từ `student_skill_trend_dataset_2000.csv`) được tiền xử lý và huấn luyện thông qua `train.py`. Các mô hình sau khi học xong được trích xuất thành các file `.pkl` lưu tại `saved_models/`.
 - **Microservice độc lập**: AI được tách thành một service riêng bằng **FastAPI** (`app.py`), có nhiệm vụ load các models lên RAM và lắng nghe yêu cầu từ Backend.
 
-### 2. Luồng xử lý dữ liệu:
-1. Mỗi khi người dùng **hoàn thành 1 bài học (Lesson)** trên trang web.
-2. Spring Boot Backend lập tức thu thập các chỉ số học tập (exp, số ngày học, độ chính xác, tỷ lệ qua bài...) và gửi 1 request đến AI Server (`http://localhost:8000/predict`).
-3. Mô hình Random Forest sẽ phân tích dữ liệu đa chiều và trả về 3 nhãn (labels) quan trọng:
-   - **Strong Skill**: Kỹ năng mạnh nhất hiện tại (ví dụ: *Listening, Reading...*)
-   - **Weak Skill**: Kỹ năng cần trau dồi thêm (ví dụ: *Grammar, Writing...*)
-   - **Learning Trend**: Xu hướng học tập (ví dụ: *IMPROVING* - Đang tiến bộ, *DECLINING* - Đang đi lùi, *STABLE* - Ổn định).
-4. Backend nhận kết quả và lưu ngay vào bảng `users` trong Database PostgreSQL.
+### 2. Quy Trình Dự Đoán Bằng Machine Learning (Chi tiết):
+
+Luồng dữ liệu từ lúc học viên hoàn thành bài học đến khi nhận được đánh giá từ AI đi qua các file mã nguồn cụ thể như sau:
+
+**Bước 1: Ghi nhận kết quả (Frontend)**
+Học viên hoàn thành bài tập (Lesson) trên trình duyệt. Frontend sẽ gọi API gửi điểm số, thời gian làm bài, số câu đúng/sai về Backend.
+  ⬇️
+**Bước 2: Tính toán & Chuẩn hóa dữ liệu (Spring Boot Backend)**
+File `LearningProgressService.java` tiếp nhận kết quả. Tại đây, hệ thống tính toán tiến độ (cộng dồn EXP, chuỗi ngày học) và chuẩn hóa các chỉ số thành định dạng đầu vào cho AI (tỷ lệ độ chính xác, tần suất học).
+  ⬇️
+**Bước 3: Gửi dữ liệu cho AI Server (Spring Boot Backend)**
+File `MLPredictionService.java` lấy dữ liệu đã chuẩn hóa, đóng gói thành chuỗi JSON và gửi một `HTTP POST Request` sang AI Server (endpoint `http://localhost:8000/predict`).
+  ⬇️
+**Bước 4: Xử lý & Dự đoán (AI Server - FastAPI)**
+Tại thư mục `MLService`, file `app.py` tiếp nhận JSON. Dữ liệu được đưa vào mô hình học máy **Random Forest** (đã được nạp từ các file `.pkl` trong `saved_models/`). Mô hình sẽ trả ra 3 dự đoán:
+  🔸 **Strong Skill**: Kỹ năng tốt nhất (*VD: Listening*)
+  🔸 **Weak Skill**: Kỹ năng cần trau dồi (*VD: Grammar*)
+  🔸 **Learning Trend**: Xu hướng học tập (*VD: IMPROVING*)
+  ⬇️
+**Bước 5: Lưu trữ kết quả (Spring Boot Backend)**
+Kết quả trả về từ FastAPI được `MLPredictionService.java` đón nhận, cập nhật lại vào đối tượng `User` (hoặc Profile) và lưu xuống Database (PostgreSQL).
+  ⬇️
+**Bước 6: Hiển thị giao diện (Frontend)**
+Khi người dùng mở trang Profile, Frontend sẽ tải dữ liệu mới nhất và đồng bộ vào khối **AI Learning Insights**, vẽ các biểu đồ/thẻ màu sắc báo cáo tình trạng học tập.
 
 ### 3. Giao diện thân thiện (UI/UX):
 Dữ liệu AI sau đó được đồng bộ lên trang **Profile** của người dùng. Hệ thống sẽ hiển thị một khối **AI Learning Insights** bằng các thẻ (Cards) rực rỡ và trực quan. Từ đó, học viên có thể nhìn vào Profile của mình để biết được điểm yếu cần khắc phục, giúp cá nhân hóa quá trình tự học một cách hiệu quả nhất!
