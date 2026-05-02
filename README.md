@@ -45,9 +45,15 @@ python train.py
 > 🧠 **Lưu ý:** Nếu trong thư mục `MLService/saved_models/` đã có sẵn các file `.pkl`, bạn **không cần chạy lệnh `python train.py`**, nhưng **vẫn phải chạy các lệnh cài tạo `venv` và `pip install`** ở trên cho lần đầu tiên cài đặt dự án. Khi chạy `train.py`, các file mô hình `.pkl` mới sẽ được tạo và lưu vào thư mục `MLService/saved_models/`.
 
 ### Bước 3: Khởi động hệ thống chính (Backend & Frontend)
-Mở Terminal tại thư mục gốc của dự án (`d:\ie303`) và chạy lệnh:
+Đầu tiên, bạn cần cài đặt các gói phụ thuộc (chỉ cần thực hiện 1 lần duy nhất). Mở Terminal tại thư mục gốc của dự án (`d:\ie303`) và chạy:
 ```bash
-npm install   # (Chỉ cần chạy 1 lần duy nhất để cài package concurrently)
+npm install
+cd Frontend && npm install
+cd ..
+```
+
+Sau đó, khởi động toàn bộ dự án bằng lệnh:
+```bash
 npm run dev
 ```
 > 🎉 *Lệnh này sẽ tự động bật **Backend (cổng 8080)** và **Frontend (cổng 5173)***.
