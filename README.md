@@ -96,3 +96,40 @@ Khi người dùng mở trang Profile, Frontend sẽ tải dữ liệu mới nh�
 
 ### 3. Giao diện thân thiện (UI/UX):
 Dữ liệu AI sau đó được đồng bộ lên trang **Profile** của người dùng. Hệ thống sẽ hiển thị một khối **AI Learning Insights** bằng các thẻ (Cards) rực rỡ và trực quan. Từ đó, học viên có thể nhìn vào Profile của mình để biết được điểm yếu cần khắc phục, giúp cá nhân hóa quá trình tự học một cách hiệu quả nhất!
+
+### 4. TEST trên postman:
+
+**Bước 1:  Cấu hình Request trên Postman**
+
+1. Mở Postman lên.
+2. Đổi phương thức (Method) từ GET sang POST.
+3. Nhập URL của AI Server: `http://localhost:8000/predict`
+
+**Bước 2: Chuẩn bị dữ liệu mẫu (JSON)**
+
+1. Ngay bên dưới thanh URL, bạn chọn tab **Body**.
+2. Chọn tiếp mục **raw**.
+3. Ở góc phải của khung chọn (chỗ có chữ **Text**), bấm vào mũi tên xổ xuống và chọn **JSON**.
+4. Copy đoạn mã JSON giả lập dữ liệu học tập của một học viên dưới đây và dán vào ô trống:
+```json
+{
+    "role": "USER",
+    "score": 1500,
+    "streak": 5,
+    "days_since_last_study": 1,
+    "active_days_7d": 4,
+    "accuracy_7d": 85.5,
+    "listening_accuracy_30d": 75.0,
+    "speaking_accuracy_30d": 35.0,
+    "reading_accuracy_30d": 95.0,
+    "writing_accuracy_30d": 60.0,
+    "vocabulary_accuracy_30d": 80.0,
+    "grammar_accuracy_30d": 70.0
+}
+```
+
+**Bước 3: Gửi request**
+Nhấn nút Send màu xanh. Ở khung Response (kết quả trả về) phía bên dưới, bạn sẽ nhận được một JSON phản hồi từ AI.
+
+**Bước 4: Ảnh kết quả mô phỏng:**
+![image](MLService/ket_qua_postman.png)
