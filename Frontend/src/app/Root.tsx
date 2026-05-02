@@ -20,6 +20,9 @@ export function Root() {
     location.pathname.startsWith(path),
   );
   const focusRoutes = [
+    "/grades/",
+    "/units/",
+    "/sections/",
     "/lessons/",
     "/reviews/",
     "/tests/semester",

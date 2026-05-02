@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -22,16 +22,20 @@ type LessonProgressItem = {
 type PositionedLesson = LessonProgressItem & {
   cx: number;
   cy: number;
+  row: number;
+  col: number;
 };
 
 const NODE_WIDTH = 220;
 const NODE_RADIUS = 58;
-const BASE_Y = 135;
-const Y_PATTERN = [-28, 44, -14, 54, -8, 34, -18];
+const BASE_Y = 96;
+const COLUMN_Y_PATTERN = [0, 42, 0];
 const MIN_STEP_X = 220;
-const MAX_STEP_X = 280;
-const SIDE_PADDING = 40;
+const MAX_STEP_X = 520;
+const SIDE_PADDING = 72;
 const MIN_MAP_WIDTH = 720;
+const MAX_COLUMNS = 3;
+const ROW_STEP_Y = 360;
 
 function getLessonStyle(lesson: LessonProgressItem) {
   const isLocked = !lesson.unlocked;
@@ -127,27 +131,31 @@ function buildLessonPath(
   next: PositionedLesson,
   color: string,
   dot: string,
-  index: number,
 ) {
-  const startX = current.cx + NODE_RADIUS;
-  const startY = current.cy;
-  const endX = next.cx - NODE_RADIUS;
-  const endY = next.cy;
+  const sameRow = current.row === next.row;
+  const movingRight = next.cx >= current.cx;
 
-  const midX = (startX + endX) / 2;
-  const curvature =
-    index % 3 === 0 ? -90 : index % 3 === 1 ? 95 : current.cy > next.cy ? -70 : 70;
+  const startX = sameRow
+    ? current.cx + (movingRight ? NODE_RADIUS : -NODE_RADIUS)
+    : current.cx;
+  const startY = sameRow ? current.cy : current.cy + NODE_RADIUS;
+  const endX = sameRow
+    ? next.cx + (movingRight ? -NODE_RADIUS : NODE_RADIUS)
+    : next.cx;
+  const endY = sameRow ? next.cy : next.cy - NODE_RADIUS;
 
-  const controlY = (startY + endY) / 2 + curvature;
+  const path = sameRow
+    ? `M ${startX} ${startY} C ${(startX + endX) / 2} ${startY}, ${(startX + endX) / 2} ${endY}, ${endX} ${endY}`
+    : `M ${startX} ${startY} C ${startX} ${startY + 90}, ${endX} ${endY - 90}, ${endX} ${endY}`;
 
   return (
     <g key={`path-${current.lessonId}-${next.lessonId}`}>
       <path
-        d={`M ${startX} ${startY} Q ${midX} ${controlY} ${endX} ${endY}`}
+        d={path}
         fill="none"
         stroke={color}
         strokeWidth="5"
-        strokeDasharray="10 10"
+        strokeDasharray="11 11"
         strokeLinecap="round"
         opacity="0.95"
       />
@@ -157,8 +165,30 @@ function buildLessonPath(
   );
 }
 
+function getReviewLessonMeta(lessons: LessonProgressItem[], lessonId: number) {
+  let normalCount = 0;
+  let reviewIndex = 0;
+
+  for (const lesson of lessons) {
+    if (lesson.reviewLesson) {
+      reviewIndex += 1;
+      if (lesson.lessonId === lessonId) {
+        return {
+          reviewIndex,
+          coveredLessons: normalCount,
+        };
+      }
+    } else {
+      normalCount += 1;
+    }
+  }
+
+  return null;
+}
+
 export function LessonSelection() {
   const { sectionId } = useParams();
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState<LessonProgressItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,7 +198,7 @@ export function LessonSelection() {
   useEffect(() => {
     const loadLessons = async () => {
       if (!sectionIdNumber || Number.isNaN(sectionIdNumber)) {
-        setError("Section ID không hợp lệ");
+        setError("Section ID khong hop le");
         setLoading(false);
         return;
       }
@@ -185,17 +215,17 @@ export function LessonSelection() {
           );
           setLessons(sorted);
         } else {
-          setError(res.error?.message || "Không tải được danh sách lesson");
+          setError(res.error?.message || "Khong tai duoc danh sach lesson");
         }
       } catch (err) {
         console.error("Error loading lessons:", err);
-        setError("Có lỗi xảy ra khi tải danh sách lesson");
+        setError("Co loi xay ra khi tai danh sach lesson");
       } finally {
         setLoading(false);
       }
     };
 
-    loadLessons();
+    void loadLessons();
   }, [sectionIdNumber]);
 
   const layout = useMemo(() => {
@@ -212,37 +242,68 @@ export function LessonSelection() {
     const viewportWidth =
       typeof window !== "undefined" ? window.innerWidth : 1440;
 
-    const usableWidth = Math.max(760, viewportWidth - 160);
+    const usableWidth = Math.max(760, viewportWidth - 120);
 
-    let stepX =
-      count > 1
-        ? Math.floor((usableWidth - SIDE_PADDING * 2) / (count - 1))
-        : 0;
-
-    stepX = Math.max(MIN_STEP_X, Math.min(MAX_STEP_X, stepX));
+    const columns = Math.min(
+      count,
+      viewportWidth >= 1280 ? MAX_COLUMNS : viewportWidth >= 768 ? 2 : 1,
+    );
+    const rows = Math.ceil(count / columns);
+    const stepX =
+      columns <= 1
+        ? 0
+        : Math.max(
+            MIN_STEP_X,
+            Math.min(
+              MAX_STEP_X,
+              Math.floor((usableWidth - SIDE_PADDING * 2 - NODE_WIDTH) / (columns - 1)),
+            ),
+          );
 
     const contentWidth =
-      count === 1
+      columns === 1
         ? 2 * SIDE_PADDING + NODE_WIDTH
-        : 2 * SIDE_PADDING + (count - 1) * stepX + NODE_WIDTH;
+        : 2 * SIDE_PADDING + (columns - 1) * stepX + NODE_WIDTH;
 
-    const mapWidth = Math.max(MIN_MAP_WIDTH, contentWidth);
+    const mapWidth = Math.max(
+      Math.min(usableWidth + SIDE_PADDING * 2, Math.max(contentWidth, MIN_MAP_WIDTH)),
+      contentWidth,
+    );
 
     const startX =
-      count === 1
+      columns === 1
         ? mapWidth / 2
-        : Math.max(SIDE_PADDING, (mapWidth - (count - 1) * stepX) / 2);
+        : Math.max(
+            SIDE_PADDING + NODE_WIDTH / 2,
+            (mapWidth - ((columns - 1) * stepX + NODE_WIDTH)) / 2 + NODE_WIDTH / 2,
+          );
 
-    const positionedLessons: PositionedLesson[] = lessons.map((lesson, index) => ({
-      ...lesson,
-      cx: startX + index * stepX,
-      cy: BASE_Y + Y_PATTERN[index % Y_PATTERN.length],
-    }));
+    const positionedLessons: PositionedLesson[] = lessons.map((lesson, index) => {
+      const row = Math.floor(index / columns);
+      const columnInRow = index % columns;
+      const isReverseRow = row % 2 === 1;
+      const itemsInRow =
+        row === rows - 1 && count % columns !== 0 ? count % columns : columns;
+      const visualColumn = isReverseRow ? itemsInRow - 1 - columnInRow : columnInRow;
+      const rowWidth = NODE_WIDTH + Math.max(itemsInRow - 1, 0) * stepX;
+      const rowStartX =
+        itemsInRow === 1
+          ? mapWidth / 2
+          : (mapWidth - rowWidth) / 2 + NODE_WIDTH / 2;
+
+      return {
+        ...lesson,
+        cx: rowStartX + visualColumn * stepX,
+        cy: BASE_Y + row * ROW_STEP_Y + COLUMN_Y_PATTERN[visualColumn % COLUMN_Y_PATTERN.length],
+        row,
+        col: visualColumn,
+      };
+    });
 
     const minCy = Math.min(...positionedLessons.map((item) => item.cy));
     const maxCy = Math.max(...positionedLessons.map((item) => item.cy));
 
-    const containerHeight = Math.max(430, maxCy - minCy + 260);
+    const containerHeight = Math.max(430, maxCy - minCy + 300);
 
     return {
       positionedLessons,
@@ -252,13 +313,12 @@ export function LessonSelection() {
   }, [lessons]);
 
   const { positionedLessons, mapWidth, containerHeight } = layout;
-
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
+      <main className="w-full px-4 py-4 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Đang tải các lesson...</p>
+          <p className="text-gray-600 font-medium">Dang tai cac lesson...</p>
         </div>
       </main>
     );
@@ -266,7 +326,7 @@ export function LessonSelection() {
 
   if (error) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="w-full px-4 py-4">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
           <p className="text-red-600 font-bold">{error}</p>
           <Link
@@ -274,7 +334,7 @@ export function LessonSelection() {
             className="inline-flex items-center gap-2 mt-4 px-5 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
           >
             <ChevronLeft className="w-4 h-4" />
-            Quay lại
+            Quay lai
           </Link>
         </div>
       </main>
@@ -282,17 +342,18 @@ export function LessonSelection() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 pb-28">
-      <section className="mb-10">
-        <Link
-          to="/"
+    <main className="w-full px-4 py-4 pb-12">
+      <section className="mb-4">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
-          Quay lại Dashboard
-        </Link>
+          Quay lai
+        </button>
 
-        <div className="mt-4">
+        <div className="mt-3">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
             Section {sectionId}
           </span>
@@ -302,20 +363,23 @@ export function LessonSelection() {
           <p className="text-gray-600 mt-2 text-lg">
             Lesson đang học sẽ màu cam, hoàn thành sẽ màu xanh, chưa mở khóa sẽ màu xám.
           </p>
+          <p className="mt-2 text-sm font-semibold text-[#155ca5]">
+            Cứ 4 bài thường sẽ có 1 bài review.
+          </p>
         </div>
       </section>
 
       {lessons.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
           <p className="text-lg font-bold text-[#1e2e51]">
-            Section này chưa có lesson nào
+            Section nay chua co lesson nao
           </p>
         </div>
       ) : (
         <section className="overflow-x-auto">
           <div className="min-w-max px-4 py-8">
             <div
-              className="relative"
+              className="relative mx-auto"
               style={{
                 width: `${mapWidth}px`,
                 height: `${containerHeight}px`,
@@ -336,7 +400,6 @@ export function LessonSelection() {
                     next,
                     nextStyle.connector,
                     nextStyle.dot,
-                    index,
                   );
                 })}
               </svg>
@@ -344,6 +407,9 @@ export function LessonSelection() {
               {positionedLessons.map((lesson) => {
                 const style = getLessonStyle(lesson);
                 const isLocked = !lesson.unlocked;
+                const reviewMeta = lesson.reviewLesson
+                  ? getReviewLessonMeta(lessons, lesson.lessonId)
+                  : null;
 
                 return (
                   <div
@@ -386,7 +452,7 @@ export function LessonSelection() {
                           className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
                         >
                           {lesson.reviewLesson
-                            ? `Review ${lesson.lessonNumber}`
+                            ? `Review ${reviewMeta?.reviewIndex ?? lesson.lessonNumber}`
                             : `Lesson ${lesson.lessonNumber}`}
                         </div>
 
@@ -399,6 +465,12 @@ export function LessonSelection() {
                         <p className="mt-2 text-xs font-semibold text-gray-500">
                           {style.statusText}
                         </p>
+
+                        {lesson.reviewLesson && reviewMeta && (
+                          <p className="mt-1 text-xs font-semibold text-[#155ca5]">
+                            On lai sau {reviewMeta.coveredLessons} bai
+                          </p>
+                        )}
                       </div>
                     </Link>
                   </div>

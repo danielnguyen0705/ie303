@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Bookmark,
@@ -12,7 +12,6 @@ import {
   Pause,
   RotateCcw,
   SkipBack,
-  Volume2,
   XCircle,
 } from "lucide-react";
 import {
@@ -229,6 +228,21 @@ function calculateTokenCoverage(left: string, right: string) {
   return sharedTokens / Math.max(leftTokens.length, rightTokens.length);
 }
 
+function getSentenceReorderAnswerText(answer: UserAnswer) {
+  if (typeof answer === "string") {
+    return answer.trim();
+  }
+
+  if (Array.isArray(answer)) {
+    return answer
+      .map((item) => item.split("|||")[1] ?? item)
+      .join(" ")
+      .trim();
+  }
+
+  return "";
+}
+
 function getPronunciationExpectedAnswer(question: QuestionDto) {
   const mcqCorrectOption = question.options.find((option) => option.isCorrect)?.content;
   return (
@@ -291,12 +305,53 @@ function parseJsonSafe<T>(value?: string | null): T | null {
   }
 }
 
+function renderFormattedInlineText(value: string): ReactNode[] {
+  const segments = value.split(
+    /(<strong>.*?<\/strong>|<b>.*?<\/b>|\*\*.*?\*\*|<u>.*?<\/u>|__.*?__|\[\[.*?\]\])/gi,
+  );
+
+  return segments
+    .filter((segment) => segment.length > 0)
+    .map((segment, index) => {
+      const htmlStrong = segment.match(/^<strong>(.*?)<\/strong>$/i);
+      const htmlBold = segment.match(/^<b>(.*?)<\/b>$/i);
+      const markdownBold = segment.match(/^\*\*(.*?)\*\*$/);
+      const htmlUnderline = segment.match(/^<u>(.*?)<\/u>$/i);
+      const markdownUnderline = segment.match(/^__(.*?)__$/);
+      const bracketUnderline = segment.match(/^\[\[(.*?)\]\]$/);
+      const boldText = htmlStrong?.[1] ?? htmlBold?.[1] ?? markdownBold?.[1];
+      const underlinedText =
+        htmlUnderline?.[1] ?? markdownUnderline?.[1] ?? bracketUnderline?.[1];
+
+      if (boldText != null) {
+        return (
+          <strong key={`${boldText}-${index}`} className="font-black text-[#16315c]">
+            {boldText}
+          </strong>
+        );
+      }
+
+      if (underlinedText != null) {
+        return (
+          <u
+            key={`${underlinedText}-${index}`}
+            className="font-semibold decoration-2 underline-offset-2"
+          >
+            {underlinedText}
+          </u>
+        );
+      }
+
+      return <span key={`${segment}-${index}`}>{segment}</span>;
+    });
+}
+
 function renderTextWithBreaks(value?: string | null) {
   if (!value?.trim()) return null;
 
   return value.replace(/\r\n/g, "\n").split("\n").map((line, index) => (
     <p key={`${line}-${index}`} className={index > 0 ? "mt-2" : undefined}>
-      {line || "\u00A0"}
+      {line ? renderFormattedInlineText(line) : "\u00A0"}
     </p>
   ));
 }
@@ -437,9 +492,11 @@ function getQuestionAudioUrl(group: QuestionGroupDto | null, question: QuestionD
 function MediaBlock({
   imageUrl,
   audioUrl,
+  syncText,
 }: {
   imageUrl?: string | null;
   audioUrl?: string | null;
+  syncText?: string | null;
 }) {
   if (!imageUrl && !audioUrl) return null;
 
@@ -456,16 +513,28 @@ function MediaBlock({
       )}
 
       {audioUrl && (
-        <SmartAudioPlayer audioUrl={audioUrl} />
+        <SmartAudioPlayer audioUrl={audioUrl} syncText={syncText} />
       )}
     </div>
   );
 }
 
-function SmartAudioPlayer({ audioUrl }: { audioUrl: string }) {
+function SmartAudioPlayer({
+  audioUrl,
+  syncText,
+}: {
+  audioUrl: string;
+  syncText?: string | null;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [highlightIndex, setHighlightIndex] = useState(0);
+
+  const words = useMemo(() => {
+    if (!syncText) return [] as string[];
+    return syncText.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  }, [syncText]);
 
   const applyPlaybackRate = (rate: number) => {
     setPlaybackRate(rate);
@@ -476,14 +545,17 @@ function SmartAudioPlayer({ audioUrl }: { audioUrl: string }) {
 
   const togglePlayback = async () => {
     if (!audioRef.current) return;
-    if (audioRef.current.paused) {
-      await audioRef.current.play();
-      setIsPlaying(true);
-      return;
+    try {
+      if (audioRef.current.paused) {
+        await audioRef.current.play();
+        setIsPlaying(true);
+        return;
+      }
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } catch (err) {
+      console.error("Audio play error", err);
     }
-
-    audioRef.current.pause();
-    setIsPlaying(false);
   };
 
   const replayLastFiveSeconds = () => {
@@ -495,21 +567,42 @@ function SmartAudioPlayer({ audioUrl }: { audioUrl: string }) {
     }
   };
 
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
-      <div className="flex items-center gap-2 text-sm font-semibold text-[#155ca5]">
-        <Volume2 className="w-4 h-4" />
-        Audio
-      </div>
+  const handleTimeUpdate = () => {
+    if (!audioRef.current || words.length === 0) return;
+    const dur = audioRef.current.duration || 1;
+    const progress = Math.min(1, Math.max(0, audioRef.current.currentTime / dur));
+    const idx = Math.floor(progress * words.length);
+    setHighlightIndex(idx);
+  };
 
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setHighlightIndex(words.length);
+  };
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.playbackRate = playbackRate;
+  }, [playbackRate]);
+
+  useEffect(() => {
+    setHighlightIndex(0);
+    setIsPlaying(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, [audioUrl, syncText]);
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4">
       <audio
         ref={audioRef}
-        controls
         preload="metadata"
-        className="w-full"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
+        onEnded={handleEnded}
+        onTimeUpdate={handleTimeUpdate}
       >
         <source src={audioUrl} />
         Your browser does not support the audio element.
@@ -523,7 +616,7 @@ function SmartAudioPlayer({ audioUrl }: { audioUrl: string }) {
             className="inline-flex items-center gap-2 rounded-full border border-[#bfd8ff] bg-[#f8fbff] px-4 py-2 text-sm font-bold text-[#155ca5] hover:bg-[#eef6ff]"
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {isPlaying ? "Pause" : "Play"}
+            {isPlaying ? "Tạm dừng" : "Phát audio"}
           </button>
           <button
             type="button"
@@ -531,7 +624,7 @@ function SmartAudioPlayer({ audioUrl }: { audioUrl: string }) {
             className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             <SkipBack className="h-4 w-4" />
-            Replay 5s
+            Lùi 5 giây
           </button>
         </div>
 
@@ -556,6 +649,20 @@ function SmartAudioPlayer({ audioUrl }: { audioUrl: string }) {
           ))}
         </div>
       </div>
+
+      {words.length > 0 && (
+        <div className="mt-4 text-sm leading-relaxed">
+          {words.map((w, i) => (
+            <span
+              key={i}
+              className={i < highlightIndex ? "text-amber-500 font-semibold" : "text-gray-700"}
+            >
+              {w}
+              {i < words.length - 1 ? " " : ""}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -582,16 +689,10 @@ function GroupSharedContent({
 
   if (compact) {
     return (
-      <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] px-5 py-4">
+      <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] px-5 py-4 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           {group.title && (
             <h3 className="text-lg font-black text-[#1e2e51]">{group.title}</h3>
-          )}
-
-          {group.instruction && (
-            <p className="text-sm font-medium text-[#155ca5]">
-              {group.instruction.replace(/\r?\n/g, " ")}
-            </p>
           )}
 
           {group.groupType && (
@@ -600,6 +701,20 @@ function GroupSharedContent({
             </span>
           )}
         </div>
+
+        {group.instruction && (
+          <div className="text-sm font-medium text-[#155ca5]">
+            {renderTextWithBreaks(group.instruction)}
+          </div>
+        )}
+
+        {group.sharedContent && !hideSharedContent && (
+          <div className="rounded-2xl border border-[#e5eefc] bg-white/80 p-4 text-base leading-7 text-[#1e2e51] [&_strong]:font-black">
+            {renderTextWithBreaks(group.sharedContent)}
+          </div>
+        )}
+
+        <MediaBlock imageUrl={group.imageUrl} audioUrl={group.audioUrl} syncText={group.sharedContent} />
       </div>
     );
   }
@@ -629,12 +744,12 @@ function GroupSharedContent({
       </div>
 
       {group.sharedContent && !hideSharedContent && (
-        <div className="text-base text-gray-700 leading-7 rounded-2xl bg-white/70 border border-[#e5eefc] p-5">
+        <div className="text-base text-gray-700 leading-7 rounded-2xl bg-white/70 border border-[#e5eefc] p-5 [&_strong]:font-black">
           {renderTextWithBreaks(group.sharedContent)}
         </div>
       )}
 
-      <MediaBlock imageUrl={group.imageUrl} audioUrl={group.audioUrl} />
+      <MediaBlock imageUrl={group.imageUrl} audioUrl={group.audioUrl} syncText={group.sharedContent} />
     </div>
   );
 }
@@ -698,6 +813,9 @@ function LessonRunner() {
     onerror: ((event: { error?: string }) => void) | null;
     onend: (() => void) | null;
   } | null>(null);
+  const speechRestartAttemptsRef = useRef(0);
+  const speechManualStopRef = useRef(false);
+  const speechTranscriptRef = useRef("");
 
   useEffect(() => {
     answersRef.current = answers;
@@ -791,6 +909,7 @@ function LessonRunner() {
   const currentGroup = currentItem?.group ?? null;
   const currentQuestions = currentItem?.questions ?? [];
   const isListeningItem = isListeningPassageGroup(currentGroup);
+  const isReadingPassageItem = currentGroup?.groupType === "READING_PASSAGE";
   const isCompactPassageItem = isCompactPassageGroup(currentGroup);
   const activeQuestionIndex =
     currentQuestions.length === 0
@@ -970,13 +1089,9 @@ function LessonRunner() {
     }
 
     if (question.questionType === "SENTENCE_REORDER") {
-      const selected = Array.isArray(answer) ? answer : [];
-      const builtSentence = selected
-        .map((item) => item.split("|||")[1] ?? "")
-        .join(" ")
-        .trim();
+      const builtSentence = getSentenceReorderAnswerText(answer);
       return {
-        submitted: selected.length > 0,
+        submitted: builtSentence.length > 0,
         correct:
           normalizeText(builtSentence) ===
           normalizeText(String(question.correctAnswer ?? "")),
@@ -1155,7 +1270,7 @@ function LessonRunner() {
             if (!isFillBlankToken(part)) {
               return (
                 <span key={`fill-text-${index}`} className="whitespace-pre-wrap">
-                  {part}
+                  {renderFormattedInlineText(part)}
                 </span>
               );
             }
@@ -1281,11 +1396,43 @@ function LessonRunner() {
   };
 
   const stopSpeechCapture = () => {
-    speechRecognitionRef.current?.stop();
+    speechManualStopRef.current = true;
+    try {
+      speechRecognitionRef.current?.stop();
+    } catch {
+      /* ignore */
+    }
     speechRecognitionRef.current = null;
+    speechRestartAttemptsRef.current = 0;
+    speechTranscriptRef.current = "";
     setIsListening(false);
     setSpeechPreview("");
     setSpeechSessionQuestionId(null);
+  };
+
+  const resetSpeechAnswerState = (questionId: number) => {
+    setAnswers((prev) => {
+      const current = prev[questionId];
+      if (!current) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [questionId]: {
+          ...current,
+          answer: "",
+          submitted: false,
+          correct: null,
+          feedback: null,
+          score: current.score ?? null,
+          expectedAnswer: null,
+          recognizedText: null,
+          similarity: null,
+          issueSummary: null,
+        },
+      };
+    });
   };
 
   const finalizeSpeechAttempt = async (question: QuestionDto) => {
@@ -1325,7 +1472,10 @@ function LessonRunner() {
     }
   };
 
-  const startSpeechCapture = (question: QuestionDto) => {
+  const startSpeechCapture = (
+    question: QuestionDto,
+    options?: { preserveExistingTranscript?: boolean },
+  ) => {
     if (getQuestionAnswer(question.id)?.submitted) return;
 
     const speechWindow = window as Window & {
@@ -1362,7 +1512,22 @@ function LessonRunner() {
 
     setSpeechSupported(true);
     setSpeechError(null);
-    stopSpeechCapture();
+    speechManualStopRef.current = false;
+    speechRestartAttemptsRef.current = 0;
+    if (!options?.preserveExistingTranscript) {
+      speechTranscriptRef.current = "";
+    }
+    // clear any existing recognition quietly (do not mark manual stop)
+    try {
+      speechRecognitionRef.current?.stop();
+    } catch {}
+    speechRecognitionRef.current = null;
+    setIsListening(false);
+    setSpeechPreview("");
+    setSpeechSessionQuestionId(null);
+    if (!options?.preserveExistingTranscript) {
+      resetSpeechAnswerState(question.id);
+    }
 
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = "en-US";
@@ -1373,13 +1538,13 @@ function LessonRunner() {
       let finalText = "";
       let interimText = "";
 
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      for (let i = 0; i < event.results.length; i += 1) {
         const transcript = event.results[i][0]?.transcript ?? "";
 
         if (event.results[i].isFinal) {
-          finalText += transcript;
+          finalText += `${transcript} `;
         } else {
-          interimText += transcript;
+          interimText += `${transcript} `;
         }
       }
 
@@ -1387,20 +1552,31 @@ function LessonRunner() {
         setSpeechPreview(interimText.trim());
       }
 
-      if (finalText.trim()) {
-        const previous =
-          typeof answers[question.id]?.answer === "string"
-            ? answers[question.id].answer
-            : "";
-
-        const nextText = `${previous} ${finalText}`.replace(/\s+/g, " ").trim();
-        setAnswer(question.id, nextText);
+      const normalizedFinalText = finalText.replace(/\s+/g, " ").trim();
+      if (normalizedFinalText) {
+        speechTranscriptRef.current = normalizedFinalText;
+        setAnswer(question.id, normalizedFinalText);
         setSpeechPreview("");
       }
     };
 
     recognition.onerror = (event) => {
-      setSpeechError(getSpeechErrorMessage(event.error));
+      const err = event?.error;
+      if (err === "aborted") {
+        if (!speechManualStopRef.current) {
+          return;
+        }
+        setSpeechError(null);
+        return;
+      }
+
+      // let onend handle quiet restart for temporary no-speech interruptions
+      if (!speechManualStopRef.current && err === "no-speech") {
+        return;
+      }
+
+      setSpeechError(getSpeechErrorMessage(err));
+
       setIsListening(false);
       setSpeechSessionQuestionId(null);
       speechRecognitionRef.current = null;
@@ -1408,6 +1584,22 @@ function LessonRunner() {
     };
 
     recognition.onend = () => {
+      // If user didn't manually stop and we haven't retried too many times, try restart
+      const shouldRestart = !speechManualStopRef.current && speechRestartAttemptsRef.current < 2;
+      if (shouldRestart) {
+        speechRestartAttemptsRef.current += 1;
+        setTimeout(() => {
+          try {
+            // create a fresh recognition instance via recursive start
+            startSpeechCapture(question, { preserveExistingTranscript: true });
+          } catch {
+            speechRecognitionRef.current = null;
+            void finalizeSpeechAttempt(question);
+          }
+        }, 300);
+        return;
+      }
+
       setIsListening(false);
       setSpeechPreview("");
       setSpeechSessionQuestionId(null);
@@ -1510,11 +1702,7 @@ function LessonRunner() {
 
   const getDisplayedReorderSentence = (questionId: number) => {
     const current = answers[questionId]?.answer;
-    const selected = Array.isArray(current) ? current : [];
-    return selected
-      .map((item) => item.split("|||")[1] ?? "")
-      .join(" ")
-      .trim();
+    return getSentenceReorderAnswerText(current ?? "");
   };
 
   const canSubmitQuestion = (question: QuestionDto) => {
@@ -1582,7 +1770,7 @@ function LessonRunner() {
       const expected = normalizeText(String(question.correctAnswer ?? ""));
       correct = typed === expected;
     } else if (question.questionType === "SENTENCE_REORDER") {
-      const builtSentence = getDisplayedReorderSentence(question.id);
+      const builtSentence = getSentenceReorderAnswerText(saved.answer);
       const expected = normalizeText(String(question.correctAnswer ?? ""));
       correct = normalizeText(builtSentence) === expected;
     } else if (question.questionType === "MATCHING") {
@@ -1725,7 +1913,7 @@ function LessonRunner() {
         const expected = normalizeText(String(question.correctAnswer ?? ""));
         correct = typed === expected;
       } else if (question.questionType === "SENTENCE_REORDER") {
-        const builtSentence = getDisplayedReorderSentence(question.id);
+        const builtSentence = getSentenceReorderAnswerText(saved.answer);
         const expected = normalizeText(String(question.correctAnswer ?? ""));
         correct = normalizeText(builtSentence) === expected;
       } else if (question.questionType === "MATCHING") {
@@ -2116,7 +2304,30 @@ function LessonRunner() {
 
       return (
         <div className="space-y-5">
-          <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-5">
+          {isAdminPreview && reorderWords.length === 0 && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              Dạng này chưa có danh sách từ để sắp xếp. Admin cần nhập `questionData`
+              cho `SENTENCE_REORDER`.
+            </div>
+          )}
+
+          {isAdminPreview && reorderWords.length > 0 && (
+            <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-sm text-[#155ca5]">
+              Admin preview: câu này đang có dữ liệu tách từ trong `questionData`, nhưng
+              phía user sẽ làm theo kiểu viết lại câu.
+            </div>
+          )}
+
+          <textarea
+            rows={4}
+            disabled={isAnswerLocked}
+            value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
+            onChange={(e) => setAnswer(question.id, e.target.value)}
+            placeholder="Viết lại câu đúng ở đây..."
+            className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-none"
+          />
+
+          <div className="hidden rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-5">
             <p className="text-sm font-bold text-[#155ca5] mb-3">Your sentence</p>
             <div className="min-h-[60px] rounded-2xl border border-dashed border-[#9bc2ff] bg-white p-4 text-lg font-semibold text-[#1e2e51]">
               {getDisplayedReorderSentence(question.id) || "Chưa chọn từ nào"}
@@ -2375,27 +2586,41 @@ function LessonRunner() {
           </div>
 
           <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-            {!speakingActive ? (
+            <div className="flex items-center gap-3">
+              {!speakingActive ? (
+                <button
+                  type="button"
+                  disabled={isAnswerLocked || !speechSupported || attemptCount >= maxAttempts}
+                  onClick={() => startSpeechCapture(question)}
+                  className="flex-1 inline-flex items-center justify-center gap-3 rounded-[1.25rem] border border-[#bfd8ff] bg-white px-4 py-4 text-base font-black text-[#155ca5] hover:bg-[#eef6ff] disabled:opacity-50"
+                >
+                  <Mic className="w-4 h-4" />
+                  Bắt đầu nói
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isAnswerLocked}
+                  onClick={stopSpeechCapture}
+                  className="flex-1 inline-flex items-center justify-center gap-3 rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-4 text-base font-black text-red-600 hover:bg-red-100 disabled:opacity-50"
+                >
+                  <MicOff className="w-4 h-4" />
+                  Dừng nghe
+                </button>
+              )}
+
               <button
                 type="button"
-                disabled={isAnswerLocked || !speechSupported || attemptCount >= maxAttempts}
-                onClick={() => startSpeechCapture(question)}
-                className="flex w-full items-center justify-center gap-3 rounded-[1.25rem] border border-[#bfd8ff] bg-white px-4 py-4 text-base font-black text-[#155ca5] hover:bg-[#eef6ff] disabled:opacity-50"
+                onClick={() => void handleSpeechCheck(question)}
+                disabled={isAnswerLocked || submittingCurrent || (!speechPreview && !(currentAnswer?.recognizedText || transcript))}
+                title="Kiểm tra transcript"
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition ${
+                  submittingCurrent ? "bg-gray-200 text-gray-700" : "border border-[#155ca5] bg-white text-[#155ca5] hover:bg-[#eef6ff]"
+                } disabled:opacity-50`}
               >
-                <Mic className="w-4 h-4" />
-                Bắt đầu nói
+                Kiểm tra
               </button>
-            ) : (
-              <button
-                type="button"
-                disabled={isAnswerLocked}
-                onClick={stopSpeechCapture}
-                className="flex w-full items-center justify-center gap-3 rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-4 text-base font-black text-red-600 hover:bg-red-100 disabled:opacity-50"
-              >
-                <MicOff className="w-4 h-4" />
-                Dừng nghe
-              </button>
-            )}
+            </div>
 
             {speakingActive && (
               <span className="text-xs font-bold uppercase tracking-wider text-red-600">
@@ -2694,7 +2919,10 @@ function LessonRunner() {
               </p>
             )}
 
-            {!isManualQuestion && !isPronunciationQuestion && userAnswerText && (
+            {!isManualQuestion &&
+              !isPronunciationQuestion &&
+              question.questionType !== "MATCHING" &&
+              userAnswerText && (
               <p className="text-sm text-gray-700">
                 <span className="font-semibold">Bạn trả lời:</span> {userAnswerText}
               </p>
@@ -2942,15 +3170,22 @@ function LessonRunner() {
           </div>
         )}
 
-        <Link
-          to={isAdminPreview ? "/admin/content" : "/"}
+        <button
+          type="button"
+          onClick={() => {
+            if (isAdminPreview) {
+              navigate("/admin/content");
+              return;
+            }
+            navigate(-1);
+          }}
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
           Quay lại
-        </Link>
+        </button>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
               Lesson {lessonId}
@@ -2960,7 +3195,21 @@ function LessonRunner() {
             </span>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="sticky top-4 z-30 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#155ca5]">
+                  Question Navigator
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Thanh này sẽ bám theo màn hình để luôn thấy câu hiện tại.
+                </p>
+              </div>
+              <div className="rounded-full bg-[#155ca5]/10 px-3 py-1.5 text-sm font-bold text-[#155ca5] shadow-sm">
+                Câu {questionNavigatorItems.findIndex((item) => item.itemIndex === currentIndex && item.questionIndex === activeQuestionIndex) + 1}/{totalQuestions}
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               {questionNavigatorItems.map((item, itemOrderIndex) => {
                 const state = answers[item.questionId];
@@ -3000,15 +3249,22 @@ function LessonRunner() {
         </div>
       </section>
 
-      <section className={usesInlineCompactPassage ? "space-y-4" : isCompactPassageItem ? "grid gap-4 xl:grid-cols-[minmax(420px,1.08fr)_minmax(0,0.92fr)] xl:items-start" : "space-y-4"}>
+      <section
+        className={
+          isCompactPassageItem
+            ? "grid gap-4 lg:grid-cols-[minmax(420px,1.02fr)_minmax(0,0.98fr)] lg:items-start"
+            : "space-y-4"
+        }
+      >
         {usesInlineCompactPassage ? (
-          <GroupSharedContent
-            group={currentGroup}
-            hideSharedContent
-            compact
-          />
+          <div className="lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pr-2">
+            <GroupSharedContent
+              group={currentGroup}
+              compact
+            />
+          </div>
         ) : isCompactPassageItem ? (
-          <div className="xl:sticky xl:top-6">
+          <div className="lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pr-2">
             <GroupSharedContent
               group={currentGroup}
               hideSharedContent={usesInlineCompactPassage}
@@ -3018,7 +3274,13 @@ function LessonRunner() {
           <GroupSharedContent group={currentGroup} hideSharedContent={usesInlineCompactPassage} />
         )}
 
-        <div className="space-y-4">
+        <div
+          className={
+            isCompactPassageItem
+              ? "space-y-4 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pl-2"
+              : "space-y-4"
+          }
+        >
           {currentGroup && currentQuestions.length > 1 && !isCompactPassageItem && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -3084,7 +3346,7 @@ function LessonRunner() {
                         if (segment.type === "text") {
                           return (
                             <span key={`passage-text-${index}`} className="whitespace-pre-wrap">
-                              {segment.value}
+                              {renderFormattedInlineText(segment.value)}
                             </span>
                           );
                         }
@@ -3200,7 +3462,7 @@ function LessonRunner() {
             return (
               <div
                 key={question.id}
-                className={`bg-white shadow-sm ${isCompactPassageItem ? "rounded-2xl p-4 space-y-4" : "rounded-3xl p-5 md:p-6 space-y-5"}`}
+                className={`bg-white shadow-sm ${isCompactPassageItem ? "rounded-2xl p-4 space-y-4" : "rounded-3xl p-5 md:p-6 space-y-5"} ${isReadingPassageItem ? "border border-[#e3eefc]" : ""}`}
               >
                 <div className={isCompactPassageItem ? "space-y-2" : "space-y-3"}>
                   <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -3243,9 +3505,11 @@ function LessonRunner() {
                     </div>
                   )}
 
-                  <div className="question-text-unified text-[#1e2e51]">
-                    {renderTextWithBreaks(question.content)}
-                  </div>
+                  {question.content?.trim() && (
+                    <div className="question-text-unified text-[#1e2e51]">
+                      {renderTextWithBreaks(question.content)}
+                    </div>
+                  )}
                 </div>
 
                 <MediaBlock imageUrl={mediaImageUrl} audioUrl={mediaAudioUrl} />
@@ -3382,4 +3646,3 @@ function LessonRunner() {
 }
 
 export default LessonRunner;
-

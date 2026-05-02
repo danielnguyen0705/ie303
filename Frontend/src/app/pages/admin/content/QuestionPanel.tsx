@@ -2506,6 +2506,16 @@ export default function QuestionPanel({
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Shared Content</label>
+                    <p className="text-xs leading-5 text-slate-500">
+                      Dá»‹nh dáº¡ng nhanh: <span className="font-semibold">**text**</span> hoáº·c{" "}
+                      <span className="font-semibold">&lt;b&gt;text&lt;/b&gt;</span> Ä‘á»ƒ in Ä‘áº­m;
+                      {" "}
+                      <span className="font-semibold">[[text]]</span> hoáº·c{" "}
+                      <span className="font-semibold">__text__</span> Ä‘á»ƒ gáº¡ch chÃ¢n. Muá»‘n Ä‘áº·t
+                      Ã´ chá»n ngay trong passage thÃ¬ nháº­p{" "}
+                      <span className="font-semibold">(1)[A|B|C|D]</span> ngay Ä‘Ãºng vá»‹ trÃ­ admin
+                      muá»‘n hiá»‡n.
+                    </p>
                     <Textarea
                       rows={6}
                       value={groupForm.sharedContent}
@@ -2684,6 +2694,15 @@ export default function QuestionPanel({
                             <>
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Content</label>
+                            <p className="text-xs leading-5 text-slate-500">
+                              HÃ´ trá»£ in Ä‘áº­m báº±ng <span className="font-semibold">**text**</span>
+                              {" "}
+                              hoáº·c <span className="font-semibold">&lt;b&gt;text&lt;/b&gt;</span>.
+                              Dá»‹nh dáº¡ng gáº¡ch chÃ¢n dÃ¹ng{" "}
+                              <span className="font-semibold">[[text]]</span>,{" "}
+                              <span className="font-semibold">__text__</span> hoáº·c{" "}
+                              <span className="font-semibold">&lt;u&gt;text&lt;/u&gt;</span>.
+                            </p>
                             <Textarea
                               rows={3}
                               value={question.content}
