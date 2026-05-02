@@ -1,4 +1,6 @@
 package com.ie303.uifive.dto.req;
 
-public class GradeRequest {
-}
+public record GradeRequest(
+        String name,
+        String description
+) {}

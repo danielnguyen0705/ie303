@@ -7,7 +7,11 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_lesson_progress")
+@Table(name = "user_lesson_progress",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"user_id", "lesson_id"})
+    }
+)
 @Data
 public class UserLessonProgress {
 
@@ -19,11 +23,16 @@ public class UserLessonProgress {
     private double score;
     private double accuracy;
 
+    @Column(name = "progress_percent")
+    private double progressPercent;
+
     @Column(name = "coins_earned")
     private int coinsEarned;
 
+    @Column(name = "last_accessed_at")
+    private LocalDateTime lastAccessedAt;
+
     @Column(name = "completed_at")
-    @CreationTimestamp
     private LocalDateTime completedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)

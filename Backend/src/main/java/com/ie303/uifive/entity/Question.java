@@ -21,14 +21,20 @@ public class Question {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "instruction", columnDefinition = "TEXT")
+    private String instruction;
+
+    @Column(name = "hint", columnDefinition = "TEXT")
+    private String hint;
+
     @Column(name = "audio_url", columnDefinition = "TEXT")
     private String audioUrl;
 
     @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
-    @Column(name = "correct_answer")
-    private String correctAnswer;
+    @Column(name = "question_data", columnDefinition = "TEXT")
+    private String questionData;
 
     @Column(columnDefinition = "TEXT")
     private String explanation;
@@ -37,6 +43,13 @@ public class Question {
     @JoinColumn(name = "lesson_id")
     private Lesson lesson;
 
-    @OneToMany(mappedBy = "question", fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "question_group_id")
+    private QuestionGroup questionGroup;
+
+    @OneToMany(mappedBy = "question", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<QuestionOption> options;
+
+    @Column(name = "correct_answer", columnDefinition = "TEXT")
+    private String correctAnswer;
 }

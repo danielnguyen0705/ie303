@@ -19,10 +19,6 @@ public class Lesson {
     private int lessonNumber;
     private String title;
 
-    @Column(name = "lesson_type")
-    @Enumerated(EnumType.STRING)
-    private LessonType lessonType;
-
     @Column(name = "skill_type")
     @Enumerated(EnumType.STRING)
     private SkillType skillType;
@@ -34,7 +30,20 @@ public class Lesson {
     @JoinColumn(name = "section_id")
     private Section section;
 
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
+    @Column(name = "is_vip_only")
+    private boolean vipOnly;
+
+    @Column(name = "order_index", nullable = false)
+    private Integer orderIndex;
+
     @OneToMany(mappedBy = "lesson", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Question> questions;
+
+    @OneToMany(mappedBy = "lesson", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<QuestionGroup> questionGroups;
 }

@@ -1,9 +1,18 @@
 package com.ie303.uifive.entity;
 
 public enum QuestionType {
-    MULTIPLE_CHOICE,
-    FILL_BLANK,
-    LISTENING,
-    SPEAKING,
-    WRITING
+    QUALITATIVE_MC,
+    READING_MC,
+    CLOZE_MC,
+    TRUE_FALSE_NG,
+    WORD_BANK_FILL,
+    LIMITED_FILL,
+    WORD_FORM,
+    VERB_FORM,
+    SENTENCE_REORDER,
+    SENTENCE_REWRITE,
+    ESSAY_WRITING,
+    MATCHING,
+    PRONUNCIATION,
+    TOPIC_SPEAKING
 }

@@ -15,14 +15,14 @@ public class AIWritingEvaluation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_answer", columnDefinition = "TEXT")
-    private String userAnswer;
-
     @Column(name = "ai_score")
     private double aiScore;
 
     @Column(name = "ai_feedback", columnDefinition = "TEXT")
     private String aiFeedback;
+
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -32,5 +32,5 @@ public class AIWritingEvaluation {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Lesson lesson;
+    private Question question;
 }

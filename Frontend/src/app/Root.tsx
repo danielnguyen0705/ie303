@@ -1,0 +1,61 @@
+import { Navigate, Outlet, useLocation } from "react-router";
+import { Navbar } from "./components/Navbar";
+import { Footer } from "./components/Footer";
+import { useAuth } from "@/context/AuthContext";
+import { PublicLanding } from "./pages/PublicLanding";
+
+export function Root() {
+  const location = useLocation();
+  const { isAuthenticated, isReady, user } = useAuth();
+
+  const adminAllowedLearnerPaths = [
+    "/lessons/",
+    "/reviews/",
+    "/tests/semester",
+    "/test/review",
+    "/test/revision",
+  ];
+
+  const canAdminAccessLearnerPath = adminAllowedLearnerPaths.some((path) =>
+    location.pathname.startsWith(path),
+  );
+  const focusRoutes = [
+    "/lessons/",
+    "/reviews/",
+    "/tests/semester",
+    "/test/review",
+    "/test/revision",
+    "/exercise/",
+  ];
+  const isFocusRoute = focusRoutes.some((path) =>
+    location.pathname.startsWith(path),
+  );
+
+  if (!isReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f6ff]">
+        <div className="rounded-2xl bg-white px-6 py-4 text-sm font-semibold text-[#155ca5] shadow-sm">
+          Loading...
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <PublicLanding />;
+  }
+
+  if (user?.role === "ADMIN" && !canAdminAccessLearnerPath) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f5f8fc] flex flex-col">
+      <Navbar />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      {!isFocusRoute && <Footer />}
+    </div>
+  );
+}

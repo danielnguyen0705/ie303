@@ -26,5 +26,18 @@ public class GroupReview {
     private Grade grade;
 
     @ManyToMany
+    @JoinTable(
+            name = "group_review_questions",
+            joinColumns = @JoinColumn(name = "group_review_id"),
+            inverseJoinColumns = @JoinColumn(name = "question_id")
+    )
     private List<Question> questions;
+
+    @ManyToMany
+    @JoinTable(
+            name = "group_review_question_groups",
+            joinColumns = @JoinColumn(name = "group_review_id"),
+            inverseJoinColumns = @JoinColumn(name = "question_group_id")
+    )
+    private List<QuestionGroup> questionGroups;
 }

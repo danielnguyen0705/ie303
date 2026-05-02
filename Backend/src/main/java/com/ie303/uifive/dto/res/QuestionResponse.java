@@ -1,0 +1,22 @@
+package com.ie303.uifive.dto.res;
+
+import com.ie303.uifive.entity.QuestionType;
+
+import java.util.List;
+
+public record QuestionResponse(
+        Long id,
+        QuestionType questionType,
+        String content,
+        String instruction,
+        String hint,
+        String audioUrl,
+        String imageUrl,
+        String questionData,
+        String explanation,
+        String correctAnswer,
+        Long lessonId,
+        Long questionGroupId,
+        List<QuestionOptionResponse> options
+) {
+}

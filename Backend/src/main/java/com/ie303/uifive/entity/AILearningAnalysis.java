@@ -18,6 +18,12 @@ public class AILearningAnalysis {
     @Column(name = "weak_skill", columnDefinition = "TEXT")
     private String weakSkill;
 
+    @Column(name = "strong_skill", columnDefinition = "TEXT")
+    private String strongSkill;
+
+    @Column(name = "trend_label", columnDefinition = "TEXT")
+    private String trendLabel;
+
     @Column(name = "weak_topic", columnDefinition = "TEXT")
     private String weakTopic;
 

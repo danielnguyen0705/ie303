@@ -12,8 +12,11 @@ public class QuestionOption {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "option_text")
-    private String optionText;
+    @Column(name = "option_key")
+    private String optionKey;
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
 
     @Column(name = "is_correct")
     private boolean isCorrect;

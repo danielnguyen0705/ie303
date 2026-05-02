@@ -18,16 +18,27 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_name")
     private String username;
+
     private String email;
     private String password;
+    private String avatar;
+    private String background;
+
 
     @Enumerated(EnumType.STRING)
     private Role role;
 
     private int coin;
+    private int exp;
     private int score;
     private int streak;
+    private boolean verified = false;
+
+    @Column(name = "verification_token",length = 255)
+    private String verificationToken;
+    private LocalDateTime verificationExpiry;
 
     @Column(name = "last_study_date")
     private LocalDate lastStudyDate;
@@ -35,10 +46,30 @@ public class User {
     @Column(name = "vip_expired_at")
     private LocalDateTime vipExpiredAt;
 
+    @Column(name = "exp_boost_multiplier")
+    private double expBoostMultiplier;
+
+    @Column(name = "exp_boost_expired_at")
+    private LocalDateTime expBoostExpiredAt;
+
+    @Column(name = "streak_item_pending_count")
+    private int streakItemPendingCount;
+
     @CreationTimestamp
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "strong_skill")
+    private String strongSkill;
+
+    @Column(name = "weak_skill")
+    private String weakSkill;
+
+    @Column(name = "trend_label")
+    private String trendLabel;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<UserLessonProgress> lessonProgresses;
+
 }

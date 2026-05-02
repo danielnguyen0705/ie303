@@ -1,0 +1,75 @@
+# ========================
+# Dependencies
+# ========================
+node_modules/
+
+# ========================
+# Build output
+# ========================
+dist/
+build/
+.next/
+out/
+
+# ========================
+# Environment variables
+# ========================
+.env
+.env.*
+!.env.example
+
+# ========================
+# Logs
+# ========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ========================
+# OS (macOS)
+# ========================
+.DS_Store
+
+# ========================
+# VS Code
+# ========================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ========================
+# TypeScript
+# ========================
+*.tsbuildinfo
+
+# ========================
+# Testing
+# ========================
+coverage/
+
+# ========================
+# Misc
+# ========================
+*.local
+*.cache
+.cache/
+.temp/
+.tmp/
+
+# ========================
+# Optional (if using Vite)
+# ========================
+vite.svg
+
+# ========================
+# Optional (if using Next.js)
+# ========================
+.next/
+
+# ========================
+# Optional (if using CRA)
+# ========================
+build/

@@ -26,6 +26,9 @@ public class Unit {
     @JoinColumn(name = "grade_id")
     private Grade grade;
 
+    @Column(name = "order_index", nullable = false)
+    private Integer orderIndex;
+
     @OneToMany(mappedBy = "unit", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Section> sections;
