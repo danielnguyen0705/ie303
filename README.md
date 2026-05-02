@@ -29,13 +29,12 @@ Hãy đảm bảo bạn đã có file `.env` nằm trong thư mục `Backend/`. 
 - Cloudinary, Gemini API keys...
 
 
-### Bước 2: Huấn luyện mô hình AI (Machine Learning)
-Trước khi khởi động AI Server, bạn cần huấn luyện mô hình để hệ thống có thể dự đoán (trong trường hợp chạy lại từ đầu).
-**Lưu ý:** Nếu trong thư mục `MLService/saved_models/` đã có sẵn các file `.pkl`, bạn hoàn toàn có thể **BỎ QUA** bước này và đi tới thẳng Bước 3.
+### Bước 2: Cài đặt môi trường và Huấn luyện mô hình AI
+Trước khi khởi động AI Server, bạn cần cài đặt các thư viện Python và huấn luyện mô hình dự đoán.
 Mở một cửa sổ Terminal (PowerShell) mới và chạy các lệnh sau:
 ```powershell
 cd d:\ie303\MLService
-# Khởi tạo môi trường ảo (tùy chọn nhưng khuyến khích)
+# Khởi tạo môi trường ảo (Bắt buộc cho lần chạy đầu tiên)
 python -m venv venv
 .\venv\Scripts\activate
 # Cài đặt các thư viện cần thiết
@@ -43,12 +42,18 @@ pip install -r requirements.txt
 # Chạy script huấn luyện
 python train.py
 ```
-> 🧠 *Sau khi chạy lệnh trên, các file mô hình `.pkl` sẽ được tạo và lưu vào thư mục `MLService/saved_models/`.*
+> 🧠 **Lưu ý:** Nếu trong thư mục `MLService/saved_models/` đã có sẵn các file `.pkl`, bạn **không cần chạy lệnh `python train.py`**, nhưng **vẫn phải chạy các lệnh cài tạo `venv` và `pip install`** ở trên cho lần đầu tiên cài đặt dự án. Khi chạy `train.py`, các file mô hình `.pkl` mới sẽ được tạo và lưu vào thư mục `MLService/saved_models/`.
 
 ### Bước 3: Khởi động hệ thống chính (Backend & Frontend)
-Mở Terminal tại thư mục gốc của dự án (`d:\ie303`) và chạy lệnh:
+Đầu tiên, bạn cần cài đặt các gói phụ thuộc (chỉ cần thực hiện 1 lần duy nhất). Mở Terminal tại thư mục gốc của dự án (`d:\ie303`) và chạy:
 ```bash
-npm install   # (Chỉ cần chạy 1 lần duy nhất để cài package concurrently)
+npm install
+cd Frontend && npm install
+cd ..
+```
+
+Sau đó, khởi động toàn bộ dự án bằng lệnh:
+```bash
 npm run dev
 ```
 > 🎉 *Lệnh này sẽ tự động bật **Backend (cổng 8080)** và **Frontend (cổng 5173)***.
@@ -57,11 +62,9 @@ npm run dev
 Mở một cửa sổ Terminal (PowerShell) **MỚI**, di chuyển vào thư mục `MLService` và chạy file script khởi động:
 ```powershell
 cd d:\ie303\MLService
-.\venv\Scripts\activate # (Nếu bạn có dùng venv ở Bước 2)
 .\start.ps1
 ```
-> 🤖 *Máy chủ AI bằng FastAPI sẽ được khởi chạy tại **cổng 8000***.
-
+> 🤖 *Máy chủ AI bằng FastAPI sẽ được khởi chạy tại **cổng 8000***. (*Lưu ý: File `start.ps1` đã được cấu hình tự động sử dụng môi trường ảo venv, nên bạn không cần gọi lệnh activate nữa*).
 ---
 
 ## 🧠 Tích Hợp Machine Learning (AI Insights)
@@ -99,3 +102,40 @@ Khi người dùng mở trang Profile, Frontend sẽ tải dữ liệu mới nh�
 
 ### 3. Giao diện thân thiện (UI/UX):
 Dữ liệu AI sau đó được đồng bộ lên trang **Profile** của người dùng. Hệ thống sẽ hiển thị một khối **AI Learning Insights** bằng các thẻ (Cards) rực rỡ và trực quan. Từ đó, học viên có thể nhìn vào Profile của mình để biết được điểm yếu cần khắc phục, giúp cá nhân hóa quá trình tự học một cách hiệu quả nhất!
+
+### 4. TEST trên postman:
+
+**Bước 1:  Cấu hình Request trên Postman**
+
+1. Mở Postman lên.
+2. Đổi phương thức (Method) từ GET sang POST.
+3. Nhập URL của AI Server: `http://localhost:8000/predict`
+
+**Bước 2: Chuẩn bị dữ liệu mẫu (JSON)**
+
+1. Ngay bên dưới thanh URL, bạn chọn tab **Body**.
+2. Chọn tiếp mục **raw**.
+3. Ở góc phải của khung chọn (chỗ có chữ **Text**), bấm vào mũi tên xổ xuống và chọn **JSON**.
+4. Copy đoạn mã JSON giả lập dữ liệu học tập của một học viên dưới đây và dán vào ô trống:
+```json
+{
+    "role": "USER",
+    "score": 1500,
+    "streak": 5,
+    "days_since_last_study": 1,
+    "active_days_7d": 4,
+    "accuracy_7d": 85.5,
+    "listening_accuracy_30d": 75.0,
+    "speaking_accuracy_30d": 35.0,
+    "reading_accuracy_30d": 95.0,
+    "writing_accuracy_30d": 60.0,
+    "vocabulary_accuracy_30d": 80.0,
+    "grammar_accuracy_30d": 70.0
+}
+```
+
+**Bước 3: Gửi request**
+Nhấn nút Send màu xanh. Ở khung Response (kết quả trả về) phía bên dưới, bạn sẽ nhận được một JSON phản hồi từ AI.
+
+**Bước 4: Ảnh kết quả mô phỏng:**
+![image](MLService/ket_qua_postman.png)
