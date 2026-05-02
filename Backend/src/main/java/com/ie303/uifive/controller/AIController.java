@@ -5,11 +5,13 @@ import com.ie303.uifive.dto.req.SubmitEssayImageRequest;
 import com.ie303.uifive.dto.req.SubmitSpeakingRequest;
 import com.ie303.uifive.dto.req.PersonalizedQuestionRequest;
 import com.ie303.uifive.dto.res.ApiResponse;
+import com.ie303.uifive.dto.res.AILearningAnalysisResponse;
 import com.ie303.uifive.dto.res.QuestionResponse;
 import com.ie303.uifive.dto.res.WritingEvaluationResponse;
 import com.ie303.uifive.dto.res.SpeakingEvaluationResponse;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.service.EssayService;
+import com.ie303.uifive.service.LearningAnalysisService;
 import com.ie303.uifive.service.PersonalizedPracticeService;
 import com.ie303.uifive.service.SpeakingService;
 import com.ie303.uifive.service.UserService;
@@ -17,6 +19,7 @@ import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -34,6 +37,7 @@ public class AIController {
     private final EssayService essayService;
     private final SpeakingService speakingService;
     private final PersonalizedPracticeService personalizedPracticeService;
+    private final LearningAnalysisService learningAnalysisService;
     private final UserService userService;
 
     @PostMapping("/essay/submit")
@@ -96,6 +100,34 @@ public class AIController {
         return ApiResponse.<List<QuestionResponse>>builder()
                 .code(1000)
                 .message("Generated personalized questions successfully")
+                .result(result)
+                .build();
+    }
+
+    @GetMapping("/learning-analysis/me")
+    public ApiResponse<AILearningAnalysisResponse> getLatestLearningAnalysis(
+            Authentication authentication
+    ) {
+        String username = authentication.getName();
+        AILearningAnalysisResponse result = learningAnalysisService.getLatestByUsername(username);
+
+        return ApiResponse.<AILearningAnalysisResponse>builder()
+                .code(1000)
+                .message(result == null ? "No learning analysis available yet" : "Fetched latest learning analysis successfully")
+                .result(result)
+                .build();
+    }
+
+    @GetMapping("/learning-analysis/me/history")
+    public ApiResponse<List<AILearningAnalysisResponse>> getLearningAnalysisHistory(
+            Authentication authentication
+    ) {
+        String username = authentication.getName();
+        List<AILearningAnalysisResponse> result = learningAnalysisService.getHistoryByUsername(username);
+
+        return ApiResponse.<List<AILearningAnalysisResponse>>builder()
+                .code(1000)
+                .message("Fetched learning analysis history successfully")
                 .result(result)
                 .build();
     }
