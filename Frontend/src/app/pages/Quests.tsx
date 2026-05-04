@@ -113,8 +113,12 @@ export function Quests() {
             Quests & Achievements
           </h1>
           <p className="text-xl text-gray-600 font-medium">
-            Complete daily challenges and unlock special achievements!
+            This area is currently under development.
           </p>
+        </div>
+
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+          Quests and achievements are not wired to backend data yet. We keep this page visible so the route remains ready for production work.
         </div>
 
         {/* Tabs */}
@@ -158,6 +162,12 @@ export function Quests() {
       {/* Quests */}
       {selectedTab !== 'achievements' && (
         <section className="space-y-6">
+          {filteredQuests.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-lg">
+              <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">Quests are currently under development</p>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredQuests.map((quest) => {
               const isCompleted = quest.status === 'completed';
@@ -251,12 +261,6 @@ export function Quests() {
             })}
           </div>
 
-          {filteredQuests.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-lg">
-              <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No {selectedTab} quests available</p>
-            </div>
-          )}
         </section>
       )}
 
@@ -325,7 +329,7 @@ export function Quests() {
           {achievements.length === 0 && (
             <div className="text-center py-12 bg-white rounded-lg">
               <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No achievements available</p>
+              <p className="text-gray-500 text-lg">Achievements are currently under development</p>
             </div>
           )}
         </section>

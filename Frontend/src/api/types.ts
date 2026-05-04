@@ -73,6 +73,36 @@ export interface EssaySubmissionResult {
   feedback: string;
 }
 
+export interface EssaySubmissionWithImageRequest {
+  questionId: number;
+  answerText: string;
+  imageUrl?: string;
+  imageFile?: File | null;
+}
+
+export interface SpeakingSubmissionRequest {
+  questionId: number;
+  transcriptText: string;
+  audioFile?: File | null;
+}
+
+export interface SpeakingSubmissionResult {
+  score: number;
+  feedback: string;
+  transcript: string | null;
+  audioUrl: string | null;
+}
+
+export interface LearningAnalysisResult {
+  id: number;
+  strongSkill: string | null;
+  weakSkill: string | null;
+  trendLabel: string | null;
+  weakTopic: string | null;
+  recommendation: string | null;
+  generatedAt: string;
+}
+
 export interface PersonalizedQuestionsRequest {
   questionCount: number;
   gradeId: number;

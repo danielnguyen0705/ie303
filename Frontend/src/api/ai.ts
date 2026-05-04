@@ -2,7 +2,11 @@ import type {
   ApiResponse,
   EssaySubmissionRequest,
   EssaySubmissionResult,
+  EssaySubmissionWithImageRequest,
+  LearningAnalysisResult,
   PersonalizedQuestionsRequest,
+  SpeakingSubmissionRequest,
+  SpeakingSubmissionResult,
 } from "./types";
 import type { QuestionDto } from "./questions";
 import { createError, request } from "./utils/http";
@@ -27,6 +31,60 @@ export async function submitEssay(
   });
 }
 
+export async function submitEssayWithImage(
+  payload: EssaySubmissionWithImageRequest,
+): Promise<ApiResponse<EssaySubmissionResult>> {
+  if (!hasPositiveNumber(payload.questionId)) {
+    return createError("Invalid question id", "VALIDATION_ERROR");
+  }
+
+  if (!payload.answerText.trim()) {
+    return createError("Answer text is required", "VALIDATION_ERROR");
+  }
+
+  const formData = new FormData();
+  formData.append("questionId", String(payload.questionId));
+  formData.append("answerText", payload.answerText);
+
+  if (payload.imageUrl?.trim()) {
+    formData.append("imageUrl", payload.imageUrl.trim());
+  }
+
+  if (payload.imageFile) {
+    formData.append("imageFile", payload.imageFile);
+  }
+
+  return request<EssaySubmissionResult>("/ai/essay/submit-image", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function submitSpeaking(
+  payload: SpeakingSubmissionRequest,
+): Promise<ApiResponse<SpeakingSubmissionResult>> {
+  if (!hasPositiveNumber(payload.questionId)) {
+    return createError("Invalid question id", "VALIDATION_ERROR");
+  }
+
+  if (!payload.transcriptText.trim()) {
+    return createError("Transcript text is required", "VALIDATION_ERROR");
+  }
+
+  const formData = new FormData();
+  formData.append("questionId", String(payload.questionId));
+  formData.append("transcriptText", payload.transcriptText);
+
+  if (payload.audioFile) {
+    formData.append("audioFile", payload.audioFile);
+  }
+
+  return request<SpeakingSubmissionResult>("/ai/speaking/submit", {
+    method: "POST",
+    body: formData,
+  });
+}
+
 export async function getPersonalizedQuestions(
   payload: PersonalizedQuestionsRequest,
 ): Promise<ApiResponse<QuestionDto[]>> {
@@ -46,4 +104,23 @@ export async function getPersonalizedQuestions(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function getLearningAnalysis(): Promise<
+  ApiResponse<LearningAnalysisResult | null>
+> {
+  return request<LearningAnalysisResult | null>("/ai/learning-analysis/me", {
+    method: "GET",
+  });
+}
+
+export async function getLearningAnalysisHistory(): Promise<
+  ApiResponse<LearningAnalysisResult[]>
+> {
+  return request<LearningAnalysisResult[]>(
+    "/ai/learning-analysis/me/history",
+    {
+      method: "GET",
+    },
+  );
 }

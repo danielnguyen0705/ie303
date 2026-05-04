@@ -62,31 +62,6 @@ export async function logout(): Promise<ApiResponse<boolean>> {
 }
 
 // =========================
-// REFRESH TOKEN
-// =========================
-export async function refreshToken(): Promise<ApiResponse<any>> {
-  return request<any>("/auth/refresh-token", {
-    method: "POST",
-  });
-}
-
-// =========================
-// RESET PASSWORD
-// =========================
-export async function resetPassword(
-  email: string,
-): Promise<ApiResponse<boolean>> {
-  if (!email) {
-    return createError("Email is required", "VALIDATION_ERROR");
-  }
-
-  return request<boolean>("/auth/reset-password", {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
-}
-
-// =========================
 // OAUTH2 GOOGLE LOGIN
 // =========================
 export function getGoogleOAuth2AuthorizeUrl(): string {

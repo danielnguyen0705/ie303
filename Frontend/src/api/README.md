@@ -71,8 +71,8 @@ const topPlayers = leaderboardResult.data.data;
 - `register(data)` - Register new user
 - `logout()` - Logout user
 - `getCurrentUser()` - Get current user
-- `refreshToken()` - Refresh auth token
-- `resetPassword(email)` - Request password reset
+- `refreshToken()` - Removed pending backend support
+- `resetPassword(email)` - Removed pending backend support
 - `changePassword(oldPass, newPass)` - Change password
 
 **Example:**

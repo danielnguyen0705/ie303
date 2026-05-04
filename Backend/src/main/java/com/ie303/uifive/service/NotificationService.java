@@ -89,6 +89,33 @@ public class NotificationService {
         }
     }
 
+    @Scheduled(cron = "${notification.streak-reset.cron:0 5 0 * * *}", zone = "${notification.time-zone:Asia/Ho_Chi_Minh}")
+    public void resetInactiveStreaks() {
+        LocalDate today = LocalDate.now(ZoneId.of(notificationTimeZone));
+        List<User> users = findNotificationCandidates();
+
+        for (User user : users) {
+            if (user.getLastStudyDate() == null) {
+                continue;
+            }
+
+            if (!user.getLastStudyDate().isBefore(today)) {
+                continue;
+            }
+
+            if (user.getStreak() <= 0) {
+                continue;
+            }
+
+            if (user.getStreakItemPendingCount() > 0) {
+                continue;
+            }
+
+            user.setStreak(0);
+            userRepo.save(user);
+        }
+    }
+
     @Async
     public void announceNewShopItem(ShopItem item) {
         if (item == null || !item.isActive()) {
