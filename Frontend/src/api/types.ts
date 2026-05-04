@@ -76,9 +76,7 @@ export interface EssaySubmissionResult {
 export interface PersonalizedQuestionsRequest {
   questionCount: number;
   gradeId: number;
-  startUnit: number;
-  endUnit: number;
-  topic: string;
+  unitNumber: number;
 }
 
 export interface UnitReviewRequest {

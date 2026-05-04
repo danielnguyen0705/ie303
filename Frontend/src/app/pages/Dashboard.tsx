@@ -6,7 +6,6 @@ import {
   Brain,
   Coins,
   Crown,
-  FileText,
   Flame,
   GraduationCap,
   Loader2,
@@ -155,7 +154,7 @@ export function Dashboard() {
     {
       label: "Streak",
       value: `${stats.currentStreak}`,
-      hint: "ngày liên tiếp",
+      hint: "ngay lien tiep",
       icon: Flame,
       accent: "text-[#f39c12]",
       bg: "bg-[#fff4e5]",
@@ -163,7 +162,7 @@ export function Dashboard() {
     {
       label: "Accuracy",
       value: `${stats.accuracy}%`,
-      hint: "độ chính xác",
+      hint: "do chinh xac",
       icon: Target,
       accent: "text-[#1f8b4d]",
       bg: "bg-[#edf9f1]",
@@ -171,7 +170,7 @@ export function Dashboard() {
     {
       label: "EXP",
       value: stats.totalXP.toLocaleString(),
-      hint: "kinh nghiệm",
+      hint: "kinh nghiem",
       icon: Zap,
       accent: "text-[#155ca5]",
       bg: "bg-[#eef6ff]",
@@ -179,7 +178,7 @@ export function Dashboard() {
     {
       label: "Coins",
       value: stats.totalCoins.toLocaleString(),
-      hint: "điểm thưởng",
+      hint: "diem thuong",
       icon: Coins,
       accent: "text-[#b7791f]",
       bg: "bg-[#fff7df]",
@@ -195,7 +194,7 @@ export function Dashboard() {
               Momentum
             </p>
             <h1 className="mt-1 text-2xl font-black text-[#1e2e51]">
-              Nhịp học hôm nay
+              Nhip hoc hom nay
             </h1>
           </div>
 
@@ -241,7 +240,7 @@ export function Dashboard() {
             Learning Path
           </p>
           <h2 className="mt-1 text-2xl font-black text-[#1e2e51]">
-            Chọn lớp để vào học
+            Chon lop de vao hoc
           </h2>
         </div>
 
@@ -280,14 +279,14 @@ export function Dashboard() {
                   <div className="text-lg font-black text-[#1e2e51]">{grade.name}</div>
                   <div className="mt-1 text-sm leading-6 text-gray-500">
                     {progress > 0
-                      ? "Vào tiếp để học các unit tiếp theo."
-                      : "Mở lộ trình học theo unit và section."}
+                      ? "Vao tiep de hoc cac unit tiep theo."
+                      : "Mo lo trinh hoc theo unit va section."}
                   </div>
                 </div>
 
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between text-sm font-bold text-[#1e2e51]">
-                    <span>Tiến độ</span>
+                    <span>Tien do</span>
                     <span>{progress}%</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100">
@@ -299,7 +298,7 @@ export function Dashboard() {
                 </div>
 
                 <div className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#155ca5]">
-                  Vào danh sách unit
+                  Vao danh sach unit
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </div>
               </Link>
@@ -311,78 +310,14 @@ export function Dashboard() {
       <section className="space-y-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
-            Review
+            AI Practice
           </p>
           <h2 className="mt-1 text-2xl font-black text-[#1e2e51]">
-            Chọn nhanh bộ ôn tập
+            Cong cu luyen them
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <Link
-            to="/reviews/unit"
-            className="rounded-[1.35rem] border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <FileText className="h-7 w-7 text-[#155ca5]" />
-              <span className="rounded-full bg-[#155ca5]/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-[#155ca5]">
-                Open
-              </span>
-            </div>
-            <div className="mt-4 text-lg font-black text-[#1e2e51]">Unit Reviews</div>
-            <div className="mt-1 text-sm leading-6 text-gray-500">
-              Ôn lại theo từng unit.
-            </div>
-          </Link>
-
-          <Link
-            to={isVip ? "/reviews/group" : "/topup"}
-            className={`rounded-[1.35rem] border p-4 shadow-sm transition hover:shadow-md ${
-              isVip ? "border-slate-100 bg-white" : "border-[#f5d39b] bg-[#fff8eb]"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <BookOpen className={`h-7 w-7 ${isVip ? "text-[#27ae60]" : "text-[#d29b2a]"}`} />
-              <span
-                className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${
-                  isVip
-                    ? "bg-[#27ae60]/10 text-[#27ae60]"
-                    : "bg-[#f7e3b7] text-[#8d5c06]"
-                }`}
-              >
-                {isVip ? "VIP" : "Upgrade"}
-              </span>
-            </div>
-            <div className="mt-4 text-lg font-black text-[#1e2e51]">Group Reviews</div>
-            <div className="mt-1 text-sm leading-6 text-gray-500">
-              Ôn tập nhiều unit trong một gói.
-            </div>
-          </Link>
-
-          <Link
-            to={isVip ? "/tests/semester" : "/topup"}
-            className={`rounded-[1.35rem] border p-4 shadow-sm transition hover:shadow-md ${
-              isVip ? "border-slate-100 bg-white" : "border-[#f5d39b] bg-[#fff8eb]"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <Trophy className={`h-7 w-7 ${isVip ? "text-[#f39c12]" : "text-[#d29b2a]"}`} />
-              <span
-                className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${
-                  isVip
-                    ? "bg-[#f39c12]/10 text-[#f39c12]"
-                    : "bg-[#f7e3b7] text-[#8d5c06]"
-                }`}
-              >
-                {isVip ? "VIP" : "Upgrade"}
-              </span>
-            </div>
-            <div className="mt-4 text-lg font-black text-[#1e2e51]">Semester Tests</div>
-            <div className="mt-1 text-sm leading-6 text-gray-500">
-              Làm đề tổng hợp nhanh.
-            </div>
-          </Link>
-
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Link
             to={isVip ? "/ai/personalized-questions" : "/topup"}
             className={`rounded-[1.35rem] border p-4 shadow-sm transition hover:shadow-md ${
@@ -404,7 +339,7 @@ export function Dashboard() {
             </div>
             <div className="mt-4 text-lg font-black text-[#1e2e51]">AI Questions</div>
             <div className="mt-1 text-sm leading-6 text-gray-500">
-              Sinh nhanh bộ câu hỏi.
+              Sinh nhanh bo cau hoi luyen them theo muc tieu.
             </div>
           </Link>
         </div>

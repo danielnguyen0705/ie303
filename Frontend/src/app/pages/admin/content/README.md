@@ -70,6 +70,9 @@ Tai lieu nay dung de nhap question trong khu admin cho dung format va khong bi d
 ### `READING_PASSAGE`
 - Group can nhap: `Group Title`, `Instruction`, `Shared Content`
 - Child question mac dinh: `READING_MC`
+- Co the format noi dung:
+  - `**text**` hoac `<b>text</b>` de in dam
+  - `[[text]]`, `__text__`, hoac `<u>text</u>` de gach chan
 
 ### `LISTENING_PASSAGE`
 - Group can nhap: `Group Title`, `Instruction`, `Shared Content`, `Audio`
@@ -78,6 +81,10 @@ Tai lieu nay dung de nhap question trong khu admin cho dung format va khong bi d
 ### `CLOZE_PASSAGE`
 - Group can nhap: `Group Title`, `Instruction`, `Shared Content`
 - Child question mac dinh: `CLOZE_MC`
+- Admin co the dat o chon ngay dung vi tri mong muon trong passage bang cu phap:
+```txt
+The best answer for (1)[A|B|C|D] is ...
+```
 
 ### `WORD_BANK`
 - Group can nhap: `Group Title`, `Instruction`, `Shared Content`, `Group Data`

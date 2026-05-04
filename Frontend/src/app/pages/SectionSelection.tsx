@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -20,16 +20,20 @@ type SectionProgressItem = {
 type PositionedSection = SectionProgressItem & {
   cx: number;
   cy: number;
+  row: number;
+  col: number;
 };
 
 const NODE_WIDTH = 220;
 const NODE_RADIUS = 58;
-const BASE_Y = 135;
-const Y_PATTERN = [-28, 44, -14, 54, -8, 34, -18];
+const BASE_Y = 96;
+const COLUMN_Y_PATTERN = [0, 42, 0];
 const MIN_STEP_X = 220;
-const MAX_STEP_X = 280;
-const SIDE_PADDING = 40;
+const MAX_STEP_X = 520;
+const SIDE_PADDING = 72;
 const MIN_MAP_WIDTH = 720;
+const MAX_COLUMNS = 3;
+const ROW_STEP_Y = 360;
 
 function clampProgress(value: number) {
   if (Number.isNaN(value)) return 0;
@@ -130,27 +134,31 @@ function buildSectionPath(
   next: PositionedSection,
   color: string,
   dot: string,
-  index: number,
 ) {
-  const startX = current.cx + NODE_RADIUS;
-  const startY = current.cy;
-  const endX = next.cx - NODE_RADIUS;
-  const endY = next.cy;
+  const sameRow = current.row === next.row;
+  const movingRight = next.cx >= current.cx;
 
-  const midX = (startX + endX) / 2;
-  const curvature =
-    index % 3 === 0 ? -90 : index % 3 === 1 ? 95 : current.cy > next.cy ? -70 : 70;
+  const startX = sameRow
+    ? current.cx + (movingRight ? NODE_RADIUS : -NODE_RADIUS)
+    : current.cx;
+  const startY = sameRow ? current.cy : current.cy + NODE_RADIUS;
+  const endX = sameRow
+    ? next.cx + (movingRight ? -NODE_RADIUS : NODE_RADIUS)
+    : next.cx;
+  const endY = sameRow ? next.cy : next.cy - NODE_RADIUS;
 
-  const controlY = (startY + endY) / 2 + curvature;
+  const path = sameRow
+    ? `M ${startX} ${startY} C ${(startX + endX) / 2} ${startY}, ${(startX + endX) / 2} ${endY}, ${endX} ${endY}`
+    : `M ${startX} ${startY} C ${startX} ${startY + 90}, ${endX} ${endY - 90}, ${endX} ${endY}`;
 
   return (
     <g key={`path-${current.sectionId}-${next.sectionId}`}>
       <path
-        d={`M ${startX} ${startY} Q ${midX} ${controlY} ${endX} ${endY}`}
+        d={path}
         fill="none"
         stroke={color}
         strokeWidth="5"
-        strokeDasharray="10 10"
+        strokeDasharray="11 11"
         strokeLinecap="round"
         opacity="0.95"
       />
@@ -162,6 +170,7 @@ function buildSectionPath(
 
 export function SectionSelection() {
   const { unitId } = useParams();
+  const navigate = useNavigate();
   const [sections, setSections] = useState<SectionProgressItem[]>([]);
   const [unitReviews, setUnitReviews] = useState<UnitReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,7 +181,7 @@ export function SectionSelection() {
   useEffect(() => {
     const loadSections = async () => {
       if (!unitIdNumber || Number.isNaN(unitIdNumber)) {
-        setError("Unit ID không hợp lệ");
+        setError("Unit ID khÃ´ng há»£p lá»‡");
         setLoading(false);
         return;
       }
@@ -236,39 +245,68 @@ export function SectionSelection() {
     const viewportWidth =
       typeof window !== "undefined" ? window.innerWidth : 1440;
 
-    const usableWidth = Math.max(720, viewportWidth - 80);
+    const usableWidth = Math.max(720, viewportWidth - 120);
 
-    let stepX =
-      count > 1
-        ? Math.floor((usableWidth - SIDE_PADDING * 2) / (count - 1))
-        : 0;
-
-    stepX = Math.max(MIN_STEP_X, Math.min(MAX_STEP_X, stepX));
+    const columns = Math.min(
+      count,
+      viewportWidth >= 1280 ? MAX_COLUMNS : viewportWidth >= 768 ? 2 : 1,
+    );
+    const rows = Math.ceil(count / columns);
+    const stepX =
+      columns <= 1
+        ? 0
+        : Math.max(
+          MIN_STEP_X,
+          Math.min(
+            MAX_STEP_X,
+            Math.floor((usableWidth - SIDE_PADDING * 2 - NODE_WIDTH) / (columns - 1)),
+          ),
+        );
 
     const contentWidth =
-      count === 1
+      columns === 1
         ? 2 * SIDE_PADDING + NODE_WIDTH
-        : 2 * SIDE_PADDING + (count - 1) * stepX + NODE_WIDTH;
+        : 2 * SIDE_PADDING + (columns - 1) * stepX + NODE_WIDTH;
 
-    const mapWidth = Math.max(MIN_MAP_WIDTH, contentWidth);
+    const mapWidth = Math.max(
+      Math.min(usableWidth + SIDE_PADDING * 2, Math.max(contentWidth, MIN_MAP_WIDTH)),
+      contentWidth,
+    );
 
     const startX =
-      count === 1
+      columns === 1
         ? mapWidth / 2
-        : Math.max(SIDE_PADDING, (mapWidth - (count - 1) * stepX) / 2);
+        : Math.max(
+          SIDE_PADDING + NODE_WIDTH / 2,
+          (mapWidth - ((columns - 1) * stepX + NODE_WIDTH)) / 2 + NODE_WIDTH / 2,
+        );
 
-    const positionedSections: PositionedSection[] = sections.map(
-      (section, index) => ({
+    const positionedSections: PositionedSection[] = sections.map((section, index) => {
+      const row = Math.floor(index / columns);
+      const columnInRow = index % columns;
+      const isReverseRow = row % 2 === 1;
+      const itemsInRow =
+        row === rows - 1 && count % columns !== 0 ? count % columns : columns;
+      const visualColumn = isReverseRow ? itemsInRow - 1 - columnInRow : columnInRow;
+      const rowWidth = NODE_WIDTH + Math.max(itemsInRow - 1, 0) * stepX;
+      const rowStartX =
+        itemsInRow === 1
+          ? mapWidth / 2
+          : (mapWidth - rowWidth) / 2 + NODE_WIDTH / 2;
+
+      return {
         ...section,
-        cx: startX + index * stepX,
-        cy: BASE_Y + Y_PATTERN[index % Y_PATTERN.length],
-      }),
-    );
+        cx: rowStartX + visualColumn * stepX,
+        cy: BASE_Y + row * ROW_STEP_Y + COLUMN_Y_PATTERN[visualColumn % COLUMN_Y_PATTERN.length],
+        row,
+        col: visualColumn,
+      };
+    });
 
     const minCy = Math.min(...positionedSections.map((item) => item.cy));
     const maxCy = Math.max(...positionedSections.map((item) => item.cy));
 
-    const containerHeight = Math.max(430, maxCy - minCy + 260);
+    const containerHeight = Math.max(430, maxCy - minCy + 300);
 
     return {
       positionedSections,
@@ -280,10 +318,9 @@ export function SectionSelection() {
   const { positionedSections, mapWidth, containerHeight } = layout;
   const isUnitCompleted =
     sections.length > 0 && sections.every((section) => clampProgress(section.progressPercent) >= 100);
-
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-center min-h-[60vh]">
+      <main className="w-full px-4 py-4 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
           <p className="text-gray-600 font-medium">Đang tải các section...</p>
@@ -294,7 +331,7 @@ export function SectionSelection() {
 
   if (error) {
     return (
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="w-full px-4 py-4">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
           <p className="text-red-600 font-bold">{error}</p>
           <Link
@@ -310,17 +347,18 @@ export function SectionSelection() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
-      <section className="mb-8">
-        <Link
-          to="/"
+    <main className="w-full px-4 py-4 pb-12">
+      <section className="mb-4">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
-          Quay lại Dashboard
-        </Link>
+          Quay lại
+        </button>
 
-        <div className="mt-4">
+        <div className="mt-3">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
             Unit {unitId}
           </span>
@@ -344,7 +382,7 @@ export function SectionSelection() {
           <div className="overflow-x-auto">
             <div className="min-w-max pl-0 pr-4 py-4">
               <div
-                className="relative"
+                className="relative mx-auto"
                 style={{
                   width: `${mapWidth}px`,
                   height: `${containerHeight}px`,
@@ -365,7 +403,6 @@ export function SectionSelection() {
                       next,
                       nextStyle.connector,
                       nextStyle.dot,
-                      index,
                     );
                   })}
                 </svg>
@@ -447,23 +484,23 @@ export function SectionSelection() {
                     Unit Review
                   </p>
                   <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
-                    Unit này đã xong, vào review tiếp luôn được
+                    Unit nÃ y Ä‘Ã£ xong, vÃ o review tiáº¿p luÃ´n Ä‘Æ°á»£c
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                    Review của unit được gắn thẳng vào hành trình học để mình chuyển từ học sang ôn ngay, không phải quay ra dashboard tìm nữa.
+                    Review cá»§a unit Ä‘Æ°á»£c gáº¯n tháº³ng vÃ o hÃ nh trÃ¬nh há»c Ä‘á»ƒ mÃ¬nh chuyá»ƒn tá»« há»c sang Ã´n ngay, khÃ´ng pháº£i quay ra dashboard tÃ¬m ná»¯a.
                   </p>
                 </div>
                 <Link
                   to={`/reviews/unit?reviewId=${unitReviews[0].id}`}
                   className="inline-flex items-center rounded-full bg-[#155ca5] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0f4c88]"
                 >
-                  Mở Unit Review
+                  Má»Ÿ Unit Review
                 </Link>
               </div>
 
               {unitReviews.length > 1 && (
                 <p className="mt-4 text-sm text-slate-500">
-                  Có {unitReviews.length} gói review cho unit này. Nút trên sẽ mở gói đầu tiên, còn trong màn hình review mình vẫn đổi gói được.
+                  CÃ³ {unitReviews.length} gÃ³i review cho unit nÃ y. NÃºt trÃªn sáº½ má»Ÿ gÃ³i Ä‘áº§u tiÃªn, cÃ²n trong mÃ n hÃ¬nh review mÃ¬nh váº«n Ä‘á»•i gÃ³i Ä‘Æ°á»£c.
                 </p>
               )}
             </div>
@@ -472,4 +509,4 @@ export function SectionSelection() {
       )}
     </main>
   );
-} 
+}

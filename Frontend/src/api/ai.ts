@@ -38,16 +38,8 @@ export async function getPersonalizedQuestions(
     return createError("Invalid grade id", "VALIDATION_ERROR");
   }
 
-  if (!hasPositiveNumber(payload.startUnit) || !hasPositiveNumber(payload.endUnit)) {
-    return createError("Invalid unit range", "VALIDATION_ERROR");
-  }
-
-  if (payload.startUnit > payload.endUnit) {
-    return createError("Start unit cannot be greater than end unit", "VALIDATION_ERROR");
-  }
-
-  if (!payload.topic.trim()) {
-    return createError("Topic is required", "VALIDATION_ERROR");
+  if (!hasPositiveNumber(payload.unitNumber)) {
+    return createError("Invalid unit number", "VALIDATION_ERROR");
   }
 
   return request<QuestionDto[]>("/ai/personalized-questions", {

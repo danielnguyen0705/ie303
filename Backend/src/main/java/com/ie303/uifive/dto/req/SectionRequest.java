@@ -5,18 +5,18 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record SectionRequest(
-        @NotNull(message = "sectionNumber không được để trống")
+        @NotNull(message = "sectionNumber khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
         Integer sectionNumber,
 
-        @NotBlank(message = "title không được để trống")
+        @NotBlank(message = "title khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
         String title,
 
-        @NotNull(message = "sectionType không được để trống")
+        @NotNull(message = "sectionType khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
         SectionType sectionType,
 
         Integer orderIndex,
 
-        @NotNull(message = "unitId không được để trống")
+        @NotNull(message = "unitId khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
         Long unitId
 ) {
 }
