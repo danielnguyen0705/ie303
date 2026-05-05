@@ -1,5 +1,14 @@
-import { useState, useEffect } from "react";
-import { Coins, Flame, Loader2, Palette, Sparkles, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Coins,
+  Flame,
+  Loader2,
+  Palette,
+  Settings,
+  Sparkles,
+  Trophy,
+  Users,
+} from "lucide-react";
 import {
   getCoinLeaderboard,
   getCollectorLeaderboard,
@@ -11,6 +20,8 @@ import type {
   ExpLeaderboardEntryResponse,
 } from "@/api/types";
 
+type Tab = "coin" | "exp" | "collection";
+
 export function Leaderboard() {
   const [coinLeaderboard, setCoinLeaderboard] = useState<
     CoinLeaderboardEntryResponse[]
@@ -21,9 +32,7 @@ export function Leaderboard() {
   const [expLeaderboard, setExpLeaderboard] = useState<
     ExpLeaderboardEntryResponse[]
   >([]);
-  const [activeTab, setActiveTab] = useState<"coin" | "exp" | "collection">(
-    "coin",
-  );
+  const [activeTab, setActiveTab] = useState<Tab>("coin");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,12 +84,19 @@ export function Leaderboard() {
     }
   };
 
+  const activeData =
+    activeTab === "coin"
+      ? coinLeaderboard
+      : activeTab === "exp"
+        ? expLeaderboard
+        : collectorLeaderboard;
+
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Loading leaderboard...</p>
+      <main className="flex min-h-[70vh] items-center justify-center px-6">
+        <div className="space-y-4 text-center">
+          <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#155ca5]" />
+          <p className="font-medium text-gray-600">Loading leaderboard...</p>
         </div>
       </main>
     );
@@ -88,12 +104,12 @@ export function Leaderboard() {
 
   if (error) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-600 font-bold">{error}</p>
+      <main className="px-6 py-10">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="font-bold text-red-600">{error}</p>
           <button
             onClick={loadLeaderboard}
-            className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md font-bold hover:bg-red-700 transition-colors"
+            className="mt-4 rounded-xl bg-red-600 px-6 py-2 font-bold text-white"
           >
             Retry
           </button>
@@ -103,321 +119,383 @@ export function Leaderboard() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-8 pb-24 md:pb-12">
-      <section className="space-y-6">
-        <div>
-          <h1 className="text-5xl font-black text-[#155ca5] tracking-tight mb-2">
+    <main className="min-h-screen w-full overflow-x-hidden bg-[#f5f7ff] pb-24 md:bg-transparent md:px-6 md:py-10 md:pb-12">
+      <section className="sticky top-0 z-10 flex items-center justify-between bg-white px-6 py-5 shadow-sm md:static md:mb-8 md:rounded-3xl">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-slate-100 ring-4 ring-slate-200">
+            <Trophy className="h-7 w-7 text-[#155ca5]" />
+          </div>
+
+          <h1 className="truncate text-3xl font-black tracking-tight text-[#155ca5] md:text-5xl">
             Leaderboard
           </h1>
-          <p className="text-xl text-gray-600 font-medium">
-            Top 10 Coins, EXP and Collection.
-          </p>
         </div>
+
+        <Settings className="h-8 w-8 shrink-0 text-slate-500 md:hidden" />
       </section>
 
-      <section className="space-y-4">
-        <div className="bg-white rounded-lg shadow-sm p-2 inline-flex gap-2">
-          <button
+      <section className="mx-auto w-full max-w-7xl space-y-8 px-5 py-10 md:px-0 md:py-0">
+        <p className="text-center text-2xl font-semibold text-slate-700 md:text-left md:text-xl">
+          Top 10 Coins, EXP and Collection.
+        </p>
+
+        <div className="grid grid-cols-3 rounded-[2rem] bg-white/70 p-2 shadow-sm md:inline-grid md:w-auto">
+          <TabButton
+            active={activeTab === "coin"}
             onClick={() => setActiveTab("coin")}
-            className={`px-4 py-2 rounded-md font-bold text-sm transition-colors inline-flex items-center gap-2 ${
-              activeTab === "coin"
-                ? "bg-[#155ca5] text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+            icon={<Coins className="h-5 w-5" />}
           >
-            <Coins className="w-4 h-4" />
             Coin
-          </button>
-          <button
+          </TabButton>
+
+          <TabButton
+            active={activeTab === "exp"}
             onClick={() => setActiveTab("exp")}
-            className={`px-4 py-2 rounded-md font-bold text-sm transition-colors inline-flex items-center gap-2 ${
-              activeTab === "exp"
-                ? "bg-[#155ca5] text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+            icon={<Sparkles className="h-5 w-5" />}
           >
-            <Sparkles className="w-4 h-4" />
             EXP
-          </button>
-          <button
+          </TabButton>
+
+          <TabButton
+            active={activeTab === "collection"}
             onClick={() => setActiveTab("collection")}
-            className={`px-4 py-2 rounded-md font-bold text-sm transition-colors inline-flex items-center gap-2 ${
-              activeTab === "collection"
-                ? "bg-[#155ca5] text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+            icon={<Palette className="h-5 w-5" />}
           >
-            <Palette className="w-4 h-4" />
             Collection
-          </button>
+          </TabButton>
         </div>
 
-        {activeTab === "coin" ? (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
-              <Coins className="w-5 h-5 text-[#f39c12]" />
-              <h2 className="text-lg font-black text-[#155ca5]">
-                Coin Leaderboard
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed">
-                <colgroup>
-                  <col className="w-[88px]" />
-                  <col className="w-[36%]" />
-                  <col />
-                  <col />
-                  <col />
-                </colgroup>
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Rank
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      User
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Coin
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Score
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Streak
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {coinLeaderboard.map((entry) => (
-                    <tr
-                      key={`coin-${entry.userId}`}
-                      className={
-                        entry.currentUser
-                          ? "bg-[#155ca5]/10"
-                          : "hover:bg-gray-50"
-                      }
-                    >
-                      <td className="px-3 py-3 whitespace-nowrap text-sm font-black">
-                        #{entry.rank}
-                      </td>
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={entry.avatar}
-                            alt={entry.username}
-                            className="w-8 h-8 rounded-full"
-                          />
-                          <span className="text-sm font-bold">
-                            {entry.username}
-                            {entry.currentUser && (
-                              <span className="ml-2 text-[10px] bg-[#155ca5] text-white px-2 py-0.5 rounded-full">
-                                YOU
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-[#f39c12]">
-                        {entry.coin.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-[#155ca5]">
-                        {entry.score.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold">
-                        <span className="inline-flex items-center gap-1">
-                          <Flame
-                            className="w-4 h-4 text-[#f39c12]"
-                            fill="#f39c12"
-                          />
-                          {entry.streak}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : activeTab === "exp" ? (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#1abc9c]" />
-              <h2 className="text-lg font-black text-[#155ca5]">
-                EXP Leaderboard
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed">
-                <colgroup>
-                  <col className="w-[88px]" />
-                  <col className="w-[52%]" />
-                  <col />
-                  <col />
-                </colgroup>
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Rank
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      User
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      EXP
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Streak
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {expLeaderboard.map((entry) => (
-                    <tr
-                      key={`exp-${entry.userId}`}
-                      className={
-                        entry.currentUser
-                          ? "bg-[#155ca5]/10"
-                          : "hover:bg-gray-50"
-                      }
-                    >
-                      <td className="px-3 py-3 whitespace-nowrap text-sm font-black">
-                        #{entry.rank}
-                      </td>
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={entry.avatar ?? undefined}
-                            alt={entry.username}
-                            className="w-8 h-8 rounded-full"
-                          />
-                          <span className="text-sm font-bold">
-                            {entry.username}
-                            {entry.currentUser && (
-                              <span className="ml-2 text-[10px] bg-[#155ca5] text-white px-2 py-0.5 rounded-full">
-                                YOU
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-[#1abc9c]">
-                        {entry.exp.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold">
-                        <span className="inline-flex items-center gap-1">
-                          <Flame
-                            className="w-4 h-4 text-[#f39c12]"
-                            fill="#f39c12"
-                          />
-                          {entry.streak}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
-              <Palette className="w-5 h-5 text-[#8e44ad]" />
-              <h2 className="text-lg font-black text-[#155ca5]">
-                Collection Leaderboard
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed">
-                <colgroup>
-                  <col className="w-[88px]" />
-                  <col className="w-[34%]" />
-                  <col />
-                  <col />
-                  <col />
-                  <col />
-                </colgroup>
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Rank
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      User
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Items
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Categories
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Avatar
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
-                      Background
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {collectorLeaderboard.map((entry) => (
-                    <tr
-                      key={`collector-${entry.userId}`}
-                      className={
-                        entry.currentUser
-                          ? "bg-[#155ca5]/10"
-                          : "hover:bg-gray-50"
-                      }
-                    >
-                      <td className="px-3 py-3 whitespace-nowrap text-sm font-black">
-                        #{entry.rank}
-                      </td>
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={entry.avatar}
-                            alt={entry.username}
-                            className="w-8 h-8 rounded-full"
-                          />
-                          <span className="text-sm font-bold">
-                            {entry.username}
-                            {entry.currentUser && (
-                              <span className="ml-2 text-[10px] bg-[#155ca5] text-white px-2 py-0.5 rounded-full">
-                                YOU
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-[#155ca5]">
-                        {entry.collectibleCount}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold">
-                        {entry.categoryCount}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-700">
-                        {entry.avatarCount}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-700">
-                        {entry.backgroundCount}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </section>
+        <div className="space-y-6 md:hidden">
+          {activeData.map((entry) => (
+            <MobileLeaderboardCard
+              key={`${activeTab}-${entry.userId}`}
+              entry={entry}
+              tab={activeTab}
+            />
+          ))}
+        </div>
 
-      {coinLeaderboard.length === 0 &&
-        expLeaderboard.length === 0 &&
-        collectorLeaderboard.length === 0 && (
-          <section className="text-center py-12 bg-white rounded-lg shadow-sm">
-            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No leaderboard data yet</p>
-          </section>
-        )}
+        <div className="hidden md:block">
+          {activeTab === "coin" ? (
+            <DesktopCoinTable data={coinLeaderboard} />
+          ) : activeTab === "exp" ? (
+            <DesktopExpTable data={expLeaderboard} />
+          ) : (
+            <DesktopCollectionTable data={collectorLeaderboard} />
+          )}
+        </div>
+
+        {coinLeaderboard.length === 0 &&
+          expLeaderboard.length === 0 &&
+          collectorLeaderboard.length === 0 && (
+            <section className="rounded-[2rem] bg-white px-4 py-12 text-center shadow-sm">
+              <Users className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+              <p className="text-lg text-gray-500">No leaderboard data yet</p>
+            </section>
+          )}
+      </section>
     </main>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex min-w-0 items-center justify-center gap-2 rounded-[1.5rem] px-3 py-4 text-sm font-black transition-all sm:text-base md:px-5 md:py-3 ${
+        active
+          ? "bg-[#155ca5] text-white shadow-lg"
+          : "text-slate-600 hover:bg-slate-100"
+      }`}
+    >
+      {icon}
+      <span className="truncate">{children}</span>
+    </button>
+  );
+}
+
+function MobileLeaderboardCard({
+  entry,
+  tab,
+}: {
+  entry:
+    | CoinLeaderboardEntryResponse
+    | ExpLeaderboardEntryResponse
+    | CollectorLeaderboardEntryResponse;
+  tab: Tab;
+}) {
+  const isCurrentUser = !!entry.currentUser;
+  const isFirst = entry.rank === 1;
+
+  return (
+    <article
+      className={`relative overflow-hidden rounded-[2rem] px-6 py-6 shadow-sm ${
+        isCurrentUser
+          ? "bg-[#155ca5] text-white"
+          : isFirst
+            ? "border-2 border-orange-200 bg-white"
+            : "bg-white"
+      }`}
+    >
+      {isCurrentUser && (
+        <span className="absolute right-8 top-0 rounded-b-2xl bg-white/80 px-6 py-1 text-sm font-black tracking-[0.25em] text-[#155ca5]">
+          YOU
+        </span>
+      )}
+
+      <div className="flex min-w-0 items-center gap-5">
+        <div
+          className={`grid h-14 w-14 shrink-0 place-items-center rounded-full text-2xl font-black ${
+            isCurrentUser
+              ? "bg-white/20 text-white"
+              : isFirst
+                ? "bg-orange-100 text-amber-800"
+                : "bg-slate-100 text-slate-700"
+          }`}
+        >
+          {entry.rank}
+        </div>
+
+        <img
+          src={entry.avatar ?? undefined}
+          alt={entry.username}
+          className="h-16 w-16 shrink-0 rounded-full object-cover ring-4 ring-slate-100"
+        />
+
+        <div className="min-w-0 flex-1">
+          <h3
+            className={`truncate text-2xl font-black ${
+              isCurrentUser ? "text-white" : "text-slate-950"
+            }`}
+          >
+            {entry.username}
+          </h3>
+
+          <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2 text-base font-bold">
+            {tab === "coin" && "coin" in entry && (
+              <>
+                <Metric
+                  icon={<Coins className="h-5 w-5" />}
+                  value={entry.coin.toLocaleString()}
+                  className={isCurrentUser ? "text-white" : "text-[#155ca5]"}
+                />
+                <Metric
+                  value={`${entry.score}%`}
+                  className={isCurrentUser ? "text-white/90" : "text-slate-700"}
+                />
+                <FlameMetric value={entry.streak} light={isCurrentUser} />
+              </>
+            )}
+
+            {tab === "exp" && "exp" in entry && (
+              <>
+                <Metric
+                  icon={<Sparkles className="h-5 w-5" />}
+                  value={entry.exp.toLocaleString()}
+                  className={isCurrentUser ? "text-white" : "text-[#155ca5]"}
+                />
+                <FlameMetric value={entry.streak} light={isCurrentUser} />
+              </>
+            )}
+
+            {tab === "collection" && "collectibleCount" in entry && (
+              <>
+                <Metric
+                  icon={<Palette className="h-5 w-5" />}
+                  value={entry.collectibleCount}
+                  className={isCurrentUser ? "text-white" : "text-[#155ca5]"}
+                />
+                <Metric value={`${entry.categoryCount} cat`} />
+                <Metric value={`${entry.avatarCount} ava`} />
+                <Metric value={`${entry.backgroundCount} bg`} />
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function Metric({
+  icon,
+  value,
+  className = "text-slate-700",
+}: {
+  icon?: React.ReactNode;
+  value: string | number;
+  className?: string;
+}) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 ${className}`}>
+      {icon}
+      {value}
+    </span>
+  );
+}
+
+function FlameMetric({
+  value,
+  light = false,
+}: {
+  value: string | number;
+  light?: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 ${
+        light ? "text-orange-100" : "text-amber-800"
+      }`}
+    >
+      <Flame className="h-5 w-5 text-orange-500" fill="#f97316" />
+      {value}
+    </span>
+  );
+}
+
+function DesktopCoinTable({ data }: { data: CoinLeaderboardEntryResponse[] }) {
+  return (
+    <DesktopTable headers={["Rank", "User", "Coin", "Score", "Streak"]}>
+      {data.map((entry) => (
+        <tr
+          key={entry.userId}
+          className={entry.currentUser ? "bg-[#155ca5]/10" : "hover:bg-gray-50"}
+        >
+          <Td>#{entry.rank}</Td>
+          <UserTd entry={entry} />
+          <Td className="text-[#155ca5]">{entry.coin.toLocaleString()}</Td>
+          <Td>{entry.score}%</Td>
+          <Td>
+            <FlameMetric value={entry.streak} />
+          </Td>
+        </tr>
+      ))}
+    </DesktopTable>
+  );
+}
+
+function DesktopExpTable({ data }: { data: ExpLeaderboardEntryResponse[] }) {
+  return (
+    <DesktopTable headers={["Rank", "User", "EXP", "Streak"]}>
+      {data.map((entry) => (
+        <tr
+          key={entry.userId}
+          className={entry.currentUser ? "bg-[#155ca5]/10" : "hover:bg-gray-50"}
+        >
+          <Td>#{entry.rank}</Td>
+          <UserTd entry={entry} />
+          <Td className="text-[#155ca5]">{entry.exp.toLocaleString()}</Td>
+          <Td>
+            <FlameMetric value={entry.streak} />
+          </Td>
+        </tr>
+      ))}
+    </DesktopTable>
+  );
+}
+
+function DesktopCollectionTable({
+  data,
+}: {
+  data: CollectorLeaderboardEntryResponse[];
+}) {
+  return (
+    <DesktopTable
+      headers={["Rank", "User", "Items", "Categories", "Avatar", "Background"]}
+    >
+      {data.map((entry) => (
+        <tr
+          key={entry.userId}
+          className={entry.currentUser ? "bg-[#155ca5]/10" : "hover:bg-gray-50"}
+        >
+          <Td>#{entry.rank}</Td>
+          <UserTd entry={entry} />
+          <Td className="text-[#155ca5]">{entry.collectibleCount}</Td>
+          <Td>{entry.categoryCount}</Td>
+          <Td>{entry.avatarCount}</Td>
+          <Td>{entry.backgroundCount}</Td>
+        </tr>
+      ))}
+    </DesktopTable>
+  );
+}
+
+function DesktopTable({
+  headers,
+  children,
+}: {
+  headers: string[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
+      <table className="w-full table-fixed">
+        <thead className="bg-slate-50">
+          <tr>
+            {headers.map((header) => (
+              <th
+                key={header}
+                className="px-4 py-4 text-left text-xs font-black uppercase text-slate-500"
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
+function Td({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <td className={`px-4 py-4 text-sm font-bold ${className}`}>{children}</td>
+  );
+}
+
+function UserTd({
+  entry,
+}: {
+  entry: {
+    avatar?: string | null;
+    username: string;
+    currentUser?: boolean;
+  };
+}) {
+  return (
+    <td className="px-4 py-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <img
+          src={entry.avatar ?? undefined}
+          alt={entry.username}
+          className="h-9 w-9 rounded-full object-cover"
+        />
+        <span className="truncate text-sm font-black">
+          {entry.username}
+          {entry.currentUser && (
+            <span className="ml-2 rounded-full bg-[#155ca5] px-2 py-0.5 text-[10px] text-white">
+              YOU
+            </span>
+          )}
+        </span>
+      </div>
+    </td>
   );
 }
