@@ -2,11 +2,13 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { PublicLanding } from "./pages/PublicLanding";
 
 export function Root() {
   const location = useLocation();
   const { isAuthenticated, isReady, user } = useAuth();
+  const { copy } = useLanguage();
 
   const adminAllowedLearnerPaths = [
     "/lessons/",
@@ -38,7 +40,7 @@ export function Root() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f6f6ff]">
         <div className="rounded-2xl bg-white px-6 py-4 text-sm font-semibold text-[#155ca5] shadow-sm">
-          Loading...
+          {copy("Loading...", "Đang tải...")}
         </div>
       </div>
     );

@@ -3,6 +3,7 @@ import { Flame, Coins, User, LogOut, History, Backpack, X } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { getMyShopItems, useSkipItem } from "@/api/shop";
 import type { UserItemResponse } from "@/api/types";
 
@@ -47,15 +48,12 @@ const containsAny = (value: string, tokens: string[]): boolean => {
   return tokens.some((token) => normalized.includes(token));
 };
 
-function mapInventoryItemsFromApi(
-  userItems: UserItemResponse[],
-): InventoryItem[] {
+function mapInventoryItemsFromApi(userItems: UserItemResponse[]): InventoryItem[] {
   const skipItems = userItems.filter((item) => item.type === "SKIP");
   const expItems = userItems.filter((item) => item.type === "EXP");
 
   const freezeItem =
-    skipItems.find((item) => containsAny(item.name, ["freeze", "streak"])) ??
-    null;
+    skipItems.find((item) => containsAny(item.name, ["freeze", "streak"])) ?? null;
 
   const skipLessonItem =
     skipItems.find(
@@ -99,10 +97,7 @@ function mapInventoryItemsFromApi(
   });
 }
 
-function getNumericField(
-  source: Record<string, unknown> | null,
-  keys: string[],
-): number {
+function getNumericField(source: Record<string, unknown> | null, keys: string[]): number {
   if (!source) {
     return 0;
   }
@@ -143,6 +138,7 @@ function NavbarContent() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutIdsRef = useRef<number[]>([]);
   const { user, loading, isAuthenticated, logout } = useAuth();
+  const { language, setLanguage, copy } = useLanguage();
   const userProfile = (user ?? null) as Record<string, unknown> | null;
 
   const streakDays = getNumericField(userProfile, [
@@ -160,7 +156,6 @@ function NavbarContent() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -230,14 +225,14 @@ function NavbarContent() {
     const response = await getMyShopItems();
 
     if (!response.success || !response.data) {
-      showToast(response.error?.message || "Failed to load inventory.");
+      showToast(response.error?.message || copy("Failed to load inventory.", "Không thể tải túi đồ."));
       setIsInventoryLoading(false);
       return;
     }
 
     setInventoryItems(mapInventoryItemsFromApi(response.data));
     setIsInventoryLoading(false);
-  }, [isAuthenticated, showToast]);
+  }, [copy, isAuthenticated, showToast]);
 
   useEffect(() => {
     if (!isInventoryModalOpen) {
@@ -269,7 +264,12 @@ function NavbarContent() {
     }
 
     if (selectedItem.useMode !== "skip" || !selectedItem.userItemId) {
-      showToast("Item này chưa có API dùng trực tiếp.");
+      showToast(
+        copy(
+          "This item does not have a direct-use API yet.",
+          "Vật phẩm này chưa có API sử dụng trực tiếp.",
+        ),
+      );
       return;
     }
 
@@ -278,7 +278,7 @@ function NavbarContent() {
     const response = await useSkipItem(selectedItem.userItemId);
 
     if (!response.success) {
-      showToast(response.error?.message || "Use item failed.");
+      showToast(response.error?.message || copy("Use item failed.", "Dùng vật phẩm thất bại."));
       setUsingItemId(null);
       return;
     }
@@ -289,7 +289,7 @@ function NavbarContent() {
     showToast(
       typeof response.data === "string"
         ? response.data
-        : `${selectedItem.icon} ${selectedItem.name} activated!`,
+        : `${selectedItem.icon} ${selectedItem.name} ${copy("activated!", "đã được kích hoạt!")}`,
     );
   };
 
@@ -297,7 +297,6 @@ function NavbarContent() {
     <>
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
-          {/* Logo */}
           <Link
             to="/"
             className="text-2xl font-black italic text-[#155ca5] tracking-tighter"
@@ -305,7 +304,6 @@ function NavbarContent() {
             UIFIVE
           </Link>
 
-          {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-8 font-medium text-sm">
             <Link
               to="/"
@@ -315,7 +313,7 @@ function NavbarContent() {
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
               }`}
             >
-              Learn
+              {copy("Learn", "Học")}
             </Link>
             <Link
               to="/quests"
@@ -325,7 +323,7 @@ function NavbarContent() {
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
               }`}
             >
-              Quests
+              {copy("Quests", "Nhiệm vụ")}
             </Link>
             <Link
               to="/leaderboard"
@@ -335,7 +333,7 @@ function NavbarContent() {
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
               }`}
             >
-              Leaderboard
+              {copy("Leaderboard", "Xếp hạng")}
             </Link>
             <Link
               to="/shop"
@@ -345,7 +343,7 @@ function NavbarContent() {
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
               }`}
             >
-              Shop
+              {copy("Shop", "Cửa hàng")}
             </Link>
             <Link
               to="/topup"
@@ -355,30 +353,56 @@ function NavbarContent() {
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
               }`}
             >
-              Topup
+              {copy("Top Up", "Nạp tiền")}
             </Link>
           </div>
 
-          {/* User Stats & Avatar */}
           <div className="flex items-center gap-4">
+            {user?.role !== "ADMIN" && (
+              <div className="hidden md:flex items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setLanguage("en")}
+                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                    language === "en"
+                      ? "bg-[#155ca5] text-white"
+                      : "text-slate-500 hover:text-[#155ca5]"
+                  }`}
+                >
+                  EN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage("vi")}
+                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                    language === "vi"
+                      ? "bg-[#155ca5] text-white"
+                      : "text-slate-500 hover:text-[#155ca5]"
+                  }`}
+                >
+                  VI
+                </button>
+              </div>
+            )}
+
             <button
               type="button"
-              aria-label="Open inventory"
+              aria-label={copy("Open inventory", "Mở túi đồ")}
               onClick={() => setIsInventoryModalOpen(true)}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[#155ca5] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-100 hover:text-[#124e8b]"
             >
               <Backpack className="h-4 w-4" />
             </button>
 
-            {/* Streak */}
             <div className="hidden sm:flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-full hover:scale-105 transition-all cursor-pointer">
               <Flame className="w-4 h-4 text-[#f39c12]" fill="#f39c12" />
               <span className="font-bold text-sm">
-                {isAuthenticated ? `${streakDays} Days` : "0 Days"}
+                {isAuthenticated
+                  ? `${streakDays} ${copy("Days", "Ngày")}`
+                  : `0 ${copy("Days", "Ngày")}`}
               </span>
             </div>
 
-            {/* Coins */}
             <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-full hover:scale-105 transition-all cursor-pointer">
               <Coins className="w-4 h-4 text-[#f1c40f]" fill="#f1c40f" />
               <span className="font-bold text-sm">
@@ -389,10 +413,9 @@ function NavbarContent() {
             {isAuthenticated && user ? (
               <>
                 <span className="hidden lg:block text-sm font-semibold text-slate-700">
-                  Hello, {user.username}
+                  {copy("Hello", "Xin chào")}, {user.username}
                 </span>
 
-                {/* Avatar with Dropdown */}
                 <div className="relative" ref={dropdownRef}>
                   <button
                     type="button"
@@ -409,27 +432,55 @@ function NavbarContent() {
                     </div>
                   </button>
 
-                  {/* Dropdown Menu */}
                   {isDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
                       <button
                         type="button"
                         onClick={() => handleNavigateAndClose("/profile")}
                         className="w-full px-4 py-2.5 text-left hover:bg-slate-100 text-slate-700 font-medium text-sm transition-colors flex items-center gap-3"
                       >
                         <User className="w-4 h-4 text-[#155ca5]" />
-                        Profile
+                        {copy("Profile", "Hồ sơ")}
                       </button>
                       <button
                         type="button"
-                        onClick={() =>
-                          handleNavigateAndClose("/payment-history")
-                        }
+                        onClick={() => handleNavigateAndClose("/payment-history")}
                         className="w-full px-4 py-2.5 text-left hover:bg-slate-100 text-slate-700 font-medium text-sm transition-colors flex items-center gap-3"
                       >
                         <History className="w-4 h-4 text-[#155ca5]" />
-                        Lịch sử nạp
+                        {copy("Payment History", "Lịch sử nạp")}
                       </button>
+                      {user.role !== "ADMIN" && (
+                        <div className="px-4 py-2">
+                          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                            {copy("Language", "Ngôn ngữ")}
+                          </div>
+                          <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
+                            <button
+                              type="button"
+                              onClick={() => setLanguage("en")}
+                              className={`flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                                language === "en"
+                                  ? "bg-[#155ca5] text-white"
+                                  : "text-slate-500 hover:text-[#155ca5]"
+                              }`}
+                            >
+                              English
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLanguage("vi")}
+                              className={`flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                                language === "vi"
+                                  ? "bg-[#155ca5] text-white"
+                                  : "text-slate-500 hover:text-[#155ca5]"
+                              }`}
+                            >
+                              Tiếng Việt
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <hr className="my-1" />
                       <button
                         type="button"
@@ -437,7 +488,7 @@ function NavbarContent() {
                         className="w-full px-4 py-2.5 text-left hover:bg-red-50 text-red-600 font-medium text-sm transition-colors flex items-center gap-3"
                       >
                         <LogOut className="w-4 h-4" />
-                        Đăng xuất
+                        {copy("Log Out", "Đăng xuất")}
                       </button>
                     </div>
                   )}
@@ -450,44 +501,43 @@ function NavbarContent() {
                 disabled={loading}
                 className="rounded-lg bg-[#155ca5] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#124e8b] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Loading..." : "Login"}
+                {loading ? copy("Loading...", "Đang tải...") : copy("Login", "Đăng nhập")}
               </button>
             )}
           </div>
         </div>
       </nav>
 
-      {/* Mobile Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex justify-around items-center py-3 z-50">
         <Link
           to="/"
           className={`flex flex-col items-center gap-1 ${isActive("/") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
-          <span className="text-xs font-bold">Learn</span>
+          <span className="text-xs font-bold">{copy("Learn", "Học")}</span>
         </Link>
         <Link
           to="/quests"
           className={`flex flex-col items-center gap-1 ${isActive("/quests") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
-          <span className="text-xs font-bold">Quests</span>
+          <span className="text-xs font-bold">{copy("Quests", "Nhiệm vụ")}</span>
         </Link>
         <Link
           to="/leaderboard"
           className={`flex flex-col items-center gap-1 ${isActive("/leaderboard") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
-          <span className="text-xs font-bold">Ranks</span>
+          <span className="text-xs font-bold">{copy("Ranks", "Xếp hạng")}</span>
         </Link>
         <Link
           to="/shop"
           className={`flex flex-col items-center gap-1 ${isActive("/shop") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
-          <span className="text-xs font-bold">Shop</span>
+          <span className="text-xs font-bold">{copy("Shop", "Cửa hàng")}</span>
         </Link>
         <Link
           to="/topup"
           className={`flex flex-col items-center gap-1 ${isActive("/topup") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
-          <span className="text-xs font-bold">Topup</span>
+          <span className="text-xs font-bold">{copy("Top Up", "Nạp tiền")}</span>
         </Link>
       </div>
 
@@ -501,7 +551,7 @@ function NavbarContent() {
           className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35 px-4 backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
-          aria-label="Your Items"
+          aria-label={copy("Your Items", "Vật phẩm của bạn")}
           onClick={() => setIsInventoryModalOpen(false)}
         >
           <div
@@ -510,13 +560,13 @@ function NavbarContent() {
           >
             <div className="mb-5 flex items-start justify-between">
               <h2 className="text-xl font-extrabold tracking-tight text-slate-800 sm:text-2xl">
-                🎒 Your Items
+                {copy("Your Items", "Vật phẩm của bạn")}
               </h2>
               <button
                 type="button"
                 onClick={() => setIsInventoryModalOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                aria-label="Close inventory"
+                aria-label={copy("Close inventory", "Đóng túi đồ")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -524,8 +574,7 @@ function NavbarContent() {
 
             <div className="space-y-3">
               {inventoryItems.map((item) => {
-                const hasUseApi =
-                  item.useMode === "skip" && Boolean(item.userItemId);
+                const hasUseApi = item.useMode === "skip" && Boolean(item.userItemId);
                 const isDisabled =
                   item.quantity <= 0 ||
                   usingItemId === item.id ||
@@ -556,7 +605,7 @@ function NavbarContent() {
                         </span>
                         {item.recommended && (
                           <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
-                            Recommended
+                            {copy("Recommended", "Đề xuất")}
                           </span>
                         )}
                       </div>
@@ -576,14 +625,14 @@ function NavbarContent() {
                       {isUsing ? (
                         <span className="inline-flex items-center gap-1.5">
                           <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/80 border-t-transparent" />
-                          Using...
+                          {copy("Using...", "Đang dùng...")}
                         </span>
                       ) : isInventoryLoading ? (
                         "..."
                       ) : !hasUseApi ? (
                         "N/A"
                       ) : (
-                        "Use"
+                        copy("Use", "Dùng")
                       )}
                     </button>
                   </div>

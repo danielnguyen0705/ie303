@@ -9,6 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { getSectionsByUnitProgress, getUnitReviews } from "@/api";
 import type { UnitReviewResponse } from "@/api/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type SectionProgressItem = {
   sectionId: number;
@@ -169,6 +170,7 @@ function buildSectionPath(
 }
 
 export function SectionSelection() {
+  const { copy } = useLanguage();
   const { unitId } = useParams();
   const navigate = useNavigate();
   const [sections, setSections] = useState<SectionProgressItem[]>([]);
@@ -181,7 +183,7 @@ export function SectionSelection() {
   useEffect(() => {
     const loadSections = async () => {
       if (!unitIdNumber || Number.isNaN(unitIdNumber)) {
-        setError("Unit ID khÃ´ng há»£p lá»‡");
+        setError(copy("Invalid unit ID", "Unit ID không hợp lệ"));
         setLoading(false);
         return;
       }
@@ -199,18 +201,18 @@ export function SectionSelection() {
           );
           setSections(sorted);
         } else {
-          setError(res.error?.message || "Không tải được danh sách section");
+          setError(res.error?.message || copy("Could not load sections", "Không tải được danh sách section"));
         }
       } catch (err) {
         console.error("Error loading sections:", err);
-        setError("Có lỗi xảy ra khi tải danh sách section");
+        setError(copy("An error occurred while loading sections", "Có lỗi xảy ra khi tải danh sách section"));
       } finally {
         setLoading(false);
       }
     };
 
-    loadSections();
-  }, [unitIdNumber]);
+    void loadSections();
+  }, [copy, unitIdNumber]);
 
   useEffect(() => {
     const loadUnitReviews = async () => {
@@ -273,14 +275,6 @@ export function SectionSelection() {
       contentWidth,
     );
 
-    const startX =
-      columns === 1
-        ? mapWidth / 2
-        : Math.max(
-          SIDE_PADDING + NODE_WIDTH / 2,
-          (mapWidth - ((columns - 1) * stepX + NODE_WIDTH)) / 2 + NODE_WIDTH / 2,
-        );
-
     const positionedSections: PositionedSection[] = sections.map((section, index) => {
       const row = Math.floor(index / columns);
       const columnInRow = index % columns;
@@ -318,12 +312,13 @@ export function SectionSelection() {
   const { positionedSections, mapWidth, containerHeight } = layout;
   const isUnitCompleted =
     sections.length > 0 && sections.every((section) => clampProgress(section.progressPercent) >= 100);
+
   if (loading) {
     return (
       <main className="w-full px-4 py-4 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Đang tải các section...</p>
+          <p className="text-gray-600 font-medium">{copy("Loading sections...", "Đang tải các section...")}</p>
         </div>
       </main>
     );
@@ -339,7 +334,7 @@ export function SectionSelection() {
             className="inline-flex items-center gap-2 mt-4 px-5 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
           >
             <ChevronLeft className="w-4 h-4" />
-            Quay lại
+            {copy("Back", "Quay lại")}
           </Link>
         </div>
       </main>
@@ -355,7 +350,7 @@ export function SectionSelection() {
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
-          Quay lại
+          {copy("Back", "Quay lại")}
         </button>
 
         <div className="mt-3">
@@ -363,10 +358,10 @@ export function SectionSelection() {
             Unit {unitId}
           </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
-            Chọn Section
+            {copy("Choose a Section", "Chọn Section")}
           </h1>
           <p className="text-gray-600 mt-2 text-lg">
-            Chọn 1 section để tiếp tục qua lesson.
+            {copy("Choose a section to continue into lessons.", "Chọn 1 section để tiếp tục qua lesson.")}
           </p>
         </div>
       </section>
@@ -374,7 +369,7 @@ export function SectionSelection() {
       {sections.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
           <p className="text-lg font-bold text-[#1e2e51]">
-            Unit này chưa có section nào
+            {copy("This unit does not have any sections yet.", "Unit này chưa có section nào")}
           </p>
         </div>
       ) : (
@@ -465,7 +460,13 @@ export function SectionSelection() {
                           </h3>
 
                           <p className="mt-2 text-xs font-semibold text-gray-500">
-                            {style.statusText}
+                            {copy(style.statusText, style.statusText === "Locked"
+                              ? "Bị khóa"
+                              : style.statusText === "Completed"
+                                ? "Hoàn thành"
+                                : style.statusText === "Current"
+                                  ? "Hiện tại"
+                                  : "Đã mở")}
                           </p>
                         </div>
                       </Link>
@@ -481,26 +482,35 @@ export function SectionSelection() {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-[#155ca5]">
-                    Unit Review
+                    {copy("Unit Review", "Ôn tập Unit")}
                   </p>
                   <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
-                    Unit nÃ y Ä‘Ã£ xong, vÃ o review tiáº¿p luÃ´n Ä‘Æ°á»£c
+                    {copy(
+                      "This unit is done. You can jump straight into the review.",
+                      "Unit này đã xong, vào review tiếp luôn được.",
+                    )}
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                    Review cá»§a unit Ä‘Æ°á»£c gáº¯n tháº³ng vÃ o hÃ nh trÃ¬nh há»c Ä‘á»ƒ mÃ¬nh chuyá»ƒn tá»« há»c sang Ã´n ngay, khÃ´ng pháº£i quay ra dashboard tÃ¬m ná»¯a.
+                    {copy(
+                      "The unit review is attached directly to the learning flow so you can move from studying into review without going back to the dashboard.",
+                      "Review của unit được gắn thẳng vào hành trình học để mình chuyển từ học sang ôn ngay, không phải quay ra dashboard tìm nữa.",
+                    )}
                   </p>
                 </div>
                 <Link
                   to={`/reviews/unit?reviewId=${unitReviews[0].id}`}
                   className="inline-flex items-center rounded-full bg-[#155ca5] px-5 py-3 text-sm font-black text-white transition hover:bg-[#0f4c88]"
                 >
-                  Má»Ÿ Unit Review
+                  {copy("Open Unit Review", "Mở Unit Review")}
                 </Link>
               </div>
 
               {unitReviews.length > 1 && (
                 <p className="mt-4 text-sm text-slate-500">
-                  CÃ³ {unitReviews.length} gÃ³i review cho unit nÃ y. NÃºt trÃªn sáº½ má»Ÿ gÃ³i Ä‘áº§u tiÃªn, cÃ²n trong mÃ n hÃ¬nh review mÃ¬nh váº«n Ä‘á»•i gÃ³i Ä‘Æ°á»£c.
+                  {copy(
+                    `There are ${unitReviews.length} review packs for this unit. The button above opens the first one, and you can switch packs inside the review screen.`,
+                    `Có ${unitReviews.length} gói review cho unit này. Nút trên sẽ mở gói đầu tiên, còn trong màn hình review mình vẫn đổi gói được.`,
+                  )}
                 </p>
               )}
             </div>

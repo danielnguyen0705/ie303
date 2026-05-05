@@ -9,6 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { getSemesterTests, getUnitsByGradeProgress } from "@/api";
 import type { SemesterTestResponse } from "@/api/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type UnitProgressItem = {
   unitId: number;
@@ -165,6 +166,7 @@ function buildUnitPath(
 }
 
 export function GradeUnits() {
+  const { copy } = useLanguage();
   const { gradeId } = useParams();
   const navigate = useNavigate();
   const [units, setUnits] = useState<UnitProgressItem[]>([]);
@@ -177,7 +179,7 @@ export function GradeUnits() {
   useEffect(() => {
     const loadUnits = async () => {
       if (!gradeIdNumber || Number.isNaN(gradeIdNumber)) {
-        setError("Grade ID không hợp lệ");
+        setError(copy("Invalid grade ID", "Grade ID không hợp lệ"));
         setLoading(false);
         return;
       }
@@ -194,18 +196,18 @@ export function GradeUnits() {
           );
           setUnits(sorted);
         } else {
-          setError(res.error?.message || "Không tải được danh sách unit");
+          setError(res.error?.message || copy("Could not load units", "Không tải được danh sách unit"));
         }
       } catch (err) {
         console.error("Error loading units:", err);
-        setError("Có lỗi xảy ra khi tải danh sách unit");
+        setError(copy("An error occurred while loading units", "Có lỗi xảy ra khi tải danh sách unit"));
       } finally {
         setLoading(false);
       }
     };
 
-    loadUnits();
-  }, [gradeIdNumber]);
+    void loadUnits();
+  }, [copy, gradeIdNumber]);
 
   useEffect(() => {
     const loadSemesterTests = async () => {
@@ -310,7 +312,7 @@ export function GradeUnits() {
       <main className="w-full px-4 py-5 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Đang tải các unit...</p>
+          <p className="text-gray-600 font-medium">{copy("Loading units...", "Đang tải các unit...")}</p>
         </div>
       </main>
     );
@@ -326,7 +328,7 @@ export function GradeUnits() {
             className="inline-flex items-center gap-2 mt-4 px-5 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
           >
             <ChevronLeft className="w-4 h-4" />
-            Quay lại Grade
+            {copy("Back to dashboard", "Quay lại Grade")}
           </Link>
         </div>
       </main>
@@ -342,18 +344,21 @@ export function GradeUnits() {
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
-          Quay lại Grade
+          {copy("Back", "Quay lại Grade")}
         </button>
 
         <div className="mt-3">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
-            Grade {gradeId}
+            {copy("Grade", "Lớp")} {gradeId}
           </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
-            Chọn Unit
+            {copy("Choose a Unit", "Chọn Unit")}
           </h1>
           <p className="text-gray-600 mt-2 text-lg">
-            Đi theo lộ trình học. Các unit được sắp theo thứ tự và có progress riêng.
+            {copy(
+              "Follow the learning path. Units are ordered and track progress individually.",
+              "Đi theo lộ trình học. Các unit được sắp theo thứ tự và có progress riêng.",
+            )}
           </p>
         </div>
       </section>
@@ -361,7 +366,7 @@ export function GradeUnits() {
       {units.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
           <p className="text-lg font-bold text-[#1e2e51]">
-            Khối này chưa có unit nào
+            {copy("No units available in this grade yet.", "Khối này chưa có unit nào")}
           </p>
         </div>
       ) : (
@@ -450,7 +455,13 @@ export function GradeUnits() {
                           </h3>
 
                           <p className="mt-2 text-xs font-semibold text-gray-500">
-                            {style.statusText}
+                            {copy(style.statusText, style.statusText === "Locked"
+                              ? "Bị khóa"
+                              : style.statusText === "Completed"
+                                ? "Hoàn thành"
+                                : style.statusText === "Current"
+                                  ? "Hiện tại"
+                                  : "Đã mở")}
                           </p>
                         </div>
                       </Link>
@@ -466,26 +477,35 @@ export function GradeUnits() {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-[#c77d00]">
-                    Semester Test
+                    {copy("Semester Test", "Bài kiểm tra học kỳ")}
                   </p>
                   <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
-                    Xong cả grade rồi, có thể vào bài test tổng
+                    {copy(
+                      "You completed the whole grade. The overall test is ready.",
+                      "Xong cả grade rồi, có thể vào bài test tổng.",
+                    )}
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                    Đề test theo grade đã được móc thẳng vào lộ trình học để mình chuyển ngay từ hoàn thành unit sang kiểm tra tổng hợp.
+                    {copy(
+                      "The grade-level test is linked directly into the learning path so you can move from unit completion straight into a full review.",
+                      "Đề test theo grade đã được móc thẳng vào lộ trình học để mình chuyển ngay từ hoàn thành unit sang kiểm tra tổng hợp.",
+                    )}
                   </p>
                 </div>
                 <Link
                   to={`/tests/semester?testId=${semesterTests[0].id}`}
                   className="inline-flex items-center rounded-full bg-[#f39c12] px-5 py-3 text-sm font-black text-white transition hover:bg-[#d68910]"
                 >
-                  Mở Semester Test
+                  {copy("Open Semester Test", "Mở Semester Test")}
                 </Link>
               </div>
 
               {semesterTests.length > 1 && (
                 <p className="mt-4 text-sm text-slate-500">
-                  Có {semesterTests.length} đề cho grade này. Nút trên sẽ mở đề đầu tiên, còn trong màn hình test vẫn đổi đề được.
+                  {copy(
+                    `There are ${semesterTests.length} tests for this grade. The button above opens the first one, and you can switch tests inside the test screen.`,
+                    `Có ${semesterTests.length} đề cho grade này. Nút trên sẽ mở đề đầu tiên, còn trong màn hình test vẫn đổi đề được.`,
+                  )}
                 </p>
               )}
             </div>

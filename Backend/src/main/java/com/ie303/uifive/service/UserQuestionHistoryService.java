@@ -73,8 +73,7 @@ public class UserQuestionHistoryService {
         mapper.updateEntityFromRequest(request, history);
         history.setUser(user);
         history.setQuestion(question);
-        // Once a question is answered correctly, keep it correct to avoid reward farming.
-        history.setCorrect(previouslyCorrect || currentlyCorrect);
+        history.setCorrect(currentlyCorrect);
 
         if (!previouslyCorrect && history.isCorrect()) {
             user.setCoin(user.getCoin() + QUESTION_CORRECT_COIN_REWARD);

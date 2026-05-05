@@ -11,6 +11,7 @@ import {
   Crown,
 } from "lucide-react";
 import { getMyTransactions } from "@/api/payments";
+import { useLanguage } from "@/context/LanguageContext";
 
 export interface PaymentHistoryTransaction {
   id: number;
@@ -28,9 +29,8 @@ export interface PaymentHistoryTransaction {
 }
 
 export function PaymentHistory() {
-  const [transactions, setTransactions] = useState<PaymentHistoryTransaction[]>(
-    [],
-  );
+  const { copy } = useLanguage();
+  const [transactions, setTransactions] = useState<PaymentHistoryTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ export function PaymentHistory() {
       }
     };
 
-    loadTransactions();
+    void loadTransactions();
   }, []);
 
   const getStatusIcon = (status: string) => {
@@ -92,13 +92,13 @@ export function PaymentHistory() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "SUCCESS":
-        return "Thành công";
+        return copy("Success", "Thành công");
       case "FAILED":
-        return "Thất bại";
+        return copy("Failed", "Thất bại");
       case "CANCELLED":
-        return "Đã hủy";
+        return copy("Cancelled", "Đã hủy");
       case "PENDING":
-        return "Chờ xử lý";
+        return copy("Pending", "Chờ xử lý");
       default:
         return status;
     }
@@ -107,12 +107,14 @@ export function PaymentHistory() {
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes} ${day}/${month}/${year}`;
+    const locale = copy("en-US", "vi-VN");
+    return date.toLocaleString(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   const formatProvider = (provider: string) => {
@@ -120,7 +122,7 @@ export function PaymentHistory() {
       MOCK: "Demo",
       MOMO: "Momo",
       VNPAY: "VNPay",
-      BANK: "Chuyển khoản",
+      BANK: copy("Bank Transfer", "Chuyển khoản"),
     };
     return providerMap[provider] || provider;
   };
@@ -131,7 +133,7 @@ export function PaymentHistory() {
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin mx-auto text-[#155ca5]" />
           <p className="text-slate-600 font-semibold">
-            Đang tải lịch sử nạp tiền...
+            {copy("Loading payment history...", "Đang tải lịch sử nạp tiền...")}
           </p>
         </div>
       </main>
@@ -140,7 +142,6 @@ export function PaymentHistory() {
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-6 md:py-10 pb-24 md:pb-12 space-y-8">
-      {/* Header */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1a5fa8] to-[#005095] flex items-center justify-center">
@@ -148,10 +149,13 @@ export function PaymentHistory() {
           </div>
           <div>
             <h1 className="text-4xl font-black text-slate-900">
-              Lịch sử nạp tiền
+              {copy("Payment History", "Lịch sử nạp tiền")}
             </h1>
             <p className="text-slate-600 mt-1">
-              Xem tất cả các giao dịch nạp coin và VIP của bạn
+              {copy(
+                "Review all of your coin top-up and VIP transactions.",
+                "Xem tất cả các giao dịch nạp coin và VIP của bạn",
+              )}
             </p>
           </div>
         </div>
@@ -163,12 +167,13 @@ export function PaymentHistory() {
         </div>
       )}
 
-      {/* Stats Overview - Moved to top */}
       {transactions.length > 0 && (
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-slate-600 font-medium text-sm">Thành công</p>
+              <p className="text-slate-600 font-medium text-sm">
+                {copy("Success", "Thành công")}
+              </p>
               <CheckCircle2 className="w-5 h-5 text-green-600" />
             </div>
             <p className="text-3xl font-black text-green-700">
@@ -178,7 +183,9 @@ export function PaymentHistory() {
 
           <div className="rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-slate-600 font-medium text-sm">Chờ xử lý</p>
+              <p className="text-slate-600 font-medium text-sm">
+                {copy("Pending", "Chờ xử lý")}
+              </p>
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
             <p className="text-3xl font-black text-blue-700">
@@ -188,7 +195,9 @@ export function PaymentHistory() {
 
           <div className="rounded-xl bg-gradient-to-br from-red-50 to-pink-50 border border-red-200 p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-slate-600 font-medium text-sm">Thất bại</p>
+              <p className="text-slate-600 font-medium text-sm">
+                {copy("Failed", "Thất bại")}
+              </p>
               <XCircle className="w-5 h-5 text-red-600" />
             </div>
             <p className="text-3xl font-black text-red-700">
@@ -202,7 +211,6 @@ export function PaymentHistory() {
         </section>
       )}
 
-      {/* Transactions Table */}
       {transactions.length > 0 ? (
         <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
           <div className="overflow-x-auto">
@@ -210,25 +218,25 @@ export function PaymentHistory() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-bold text-slate-900">
-                    Mã giao dịch
+                    {copy("Transaction Code", "Mã giao dịch")}
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-slate-900">
-                    Loại
+                    {copy("Type", "Loại")}
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-slate-900">
-                    Mô tả
+                    {copy("Description", "Mô tả")}
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-slate-900">
-                    Số tiền
+                    {copy("Amount", "Số tiền")}
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-slate-900">
-                    Hình thức
+                    {copy("Provider", "Hình thức")}
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-slate-900">
-                    Trạng thái
+                    {copy("Status", "Trạng thái")}
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-bold text-slate-900">
-                    Thời gian
+                    {copy("Time", "Thời gian")}
                   </th>
                 </tr>
               </thead>
@@ -257,7 +265,7 @@ export function PaymentHistory() {
                         {tx.type === "COIN" ? (
                           <>
                             <Coins className="w-4 h-4" />
-                            Nạp Coin
+                            {copy("Coin Top-up", "Nạp Coin")}
                           </>
                         ) : (
                           <>
@@ -268,46 +276,37 @@ export function PaymentHistory() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-slate-900">
-                          {tx.offerName}
-                        </span>
-                        <span className="text-xs text-slate-500">
-                          {tx.description}
-                        </span>
-                        {tx.type === "COIN" && (
-                          <span className="text-xs text-amber-600 font-semibold">
-                            +{tx.amountCoin.toLocaleString()} coins
-                          </span>
-                        )}
-                        {tx.type === "VIP" && tx.durationDays && (
-                          <span className="text-xs text-purple-600 font-semibold">
-                            {tx.durationDays} ngày
-                          </span>
-                        )}
+                      <div className="text-sm text-slate-800 font-medium">
+                        {tx.description || tx.offerName}
                       </div>
+                      {tx.durationDays ? (
+                        <div className="text-xs text-slate-500 mt-1">
+                          {tx.durationDays} {copy("days", "ngày")}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-bold text-slate-900">
+                      <div className="text-sm font-bold text-slate-900">
                         {tx.amountMoney.toLocaleString()} VND
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-slate-600 font-medium">
-                        {formatProvider(tx.provider)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(tx.status)}
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(tx.status)}`}
-                        >
-                          {getStatusLabel(tx.status)}
-                        </span>
                       </div>
+                      {tx.amountCoin > 0 && (
+                        <div className="text-xs text-amber-700 mt-1">
+                          +{tx.amountCoin.toLocaleString()} coins
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
+                    <td className="px-6 py-4 text-sm text-slate-700">
+                      {formatProvider(tx.provider)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${getStatusColor(tx.status)}`}
+                      >
+                        {getStatusIcon(tx.status)}
+                        {getStatusLabel(tx.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-700">
                       {formatDate(tx.paidAt || tx.createdAt)}
                     </td>
                   </tr>
@@ -317,12 +316,19 @@ export function PaymentHistory() {
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
-          <CreditCard className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-          <p className="text-slate-600 font-semibold mb-2">
-            Chưa có lịch sử nạp tiền
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+            <CreditCard className="h-6 w-6 text-slate-400" />
+          </div>
+          <h2 className="mt-4 text-xl font-black text-slate-900">
+            {copy("No payment history yet", "Chưa có lịch sử nạp tiền")}
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            {copy(
+              "Top up coins or purchase VIP to see your transactions here.",
+              "Hãy nạp coin hoặc mua VIP để bắt đầu.",
+            )}
           </p>
-          <p className="text-slate-500">Hãy nạp coin hoặc mua VIP để bắt đầu</p>
         </div>
       )}
     </main>

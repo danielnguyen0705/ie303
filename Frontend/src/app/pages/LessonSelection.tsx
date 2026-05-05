@@ -8,6 +8,7 @@ import {
   faFire,
 } from "@fortawesome/free-solid-svg-icons";
 import { getLessonsBySectionProgress } from "@/api";
+import { useLanguage } from "@/context/LanguageContext";
 
 type LessonProgressItem = {
   lessonId: number;
@@ -187,6 +188,7 @@ function getReviewLessonMeta(lessons: LessonProgressItem[], lessonId: number) {
 }
 
 export function LessonSelection() {
+  const { copy } = useLanguage();
   const { sectionId } = useParams();
   const navigate = useNavigate();
   const [lessons, setLessons] = useState<LessonProgressItem[]>([]);
@@ -198,7 +200,7 @@ export function LessonSelection() {
   useEffect(() => {
     const loadLessons = async () => {
       if (!sectionIdNumber || Number.isNaN(sectionIdNumber)) {
-        setError("Section ID khong hop le");
+        setError(copy("Invalid section ID", "Section ID không hợp lệ"));
         setLoading(false);
         return;
       }
@@ -215,18 +217,18 @@ export function LessonSelection() {
           );
           setLessons(sorted);
         } else {
-          setError(res.error?.message || "Khong tai duoc danh sach lesson");
+          setError(res.error?.message || copy("Could not load lessons", "Không tải được danh sách lesson"));
         }
       } catch (err) {
         console.error("Error loading lessons:", err);
-        setError("Co loi xay ra khi tai danh sach lesson");
+        setError(copy("An error occurred while loading lessons", "Có lỗi xảy ra khi tải danh sách lesson"));
       } finally {
         setLoading(false);
       }
     };
 
     void loadLessons();
-  }, [sectionIdNumber]);
+  }, [copy, sectionIdNumber]);
 
   const layout = useMemo(() => {
     const count = lessons.length;
@@ -253,12 +255,12 @@ export function LessonSelection() {
       columns <= 1
         ? 0
         : Math.max(
-            MIN_STEP_X,
-            Math.min(
-              MAX_STEP_X,
-              Math.floor((usableWidth - SIDE_PADDING * 2 - NODE_WIDTH) / (columns - 1)),
-            ),
-          );
+          MIN_STEP_X,
+          Math.min(
+            MAX_STEP_X,
+            Math.floor((usableWidth - SIDE_PADDING * 2 - NODE_WIDTH) / (columns - 1)),
+          ),
+        );
 
     const contentWidth =
       columns === 1
@@ -269,14 +271,6 @@ export function LessonSelection() {
       Math.min(usableWidth + SIDE_PADDING * 2, Math.max(contentWidth, MIN_MAP_WIDTH)),
       contentWidth,
     );
-
-    const startX =
-      columns === 1
-        ? mapWidth / 2
-        : Math.max(
-            SIDE_PADDING + NODE_WIDTH / 2,
-            (mapWidth - ((columns - 1) * stepX + NODE_WIDTH)) / 2 + NODE_WIDTH / 2,
-          );
 
     const positionedLessons: PositionedLesson[] = lessons.map((lesson, index) => {
       const row = Math.floor(index / columns);
@@ -313,12 +307,13 @@ export function LessonSelection() {
   }, [lessons]);
 
   const { positionedLessons, mapWidth, containerHeight } = layout;
+
   if (loading) {
     return (
       <main className="w-full px-4 py-4 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Dang tai cac lesson...</p>
+          <p className="text-gray-600 font-medium">{copy("Loading lessons...", "Đang tải các lesson...")}</p>
         </div>
       </main>
     );
@@ -334,7 +329,7 @@ export function LessonSelection() {
             className="inline-flex items-center gap-2 mt-4 px-5 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
           >
             <ChevronLeft className="w-4 h-4" />
-            Quay lai
+            {copy("Back", "Quay lại")}
           </Link>
         </div>
       </main>
@@ -350,7 +345,7 @@ export function LessonSelection() {
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
-          Quay lai
+          {copy("Back", "Quay lại")}
         </button>
 
         <div className="mt-3">
@@ -358,13 +353,19 @@ export function LessonSelection() {
             Section {sectionId}
           </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
-            Chọn Lesson
+            {copy("Choose a Lesson", "Chọn Lesson")}
           </h1>
           <p className="text-gray-600 mt-2 text-lg">
-            Lesson đang học sẽ màu cam, hoàn thành sẽ màu xanh, chưa mở khóa sẽ màu xám.
+            {copy(
+              "Current lessons are orange, completed lessons are green, and locked lessons are gray.",
+              "Lesson đang học sẽ màu cam, hoàn thành sẽ màu xanh, chưa mở khóa sẽ màu xám.",
+            )}
           </p>
           <p className="mt-2 text-sm font-semibold text-[#155ca5]">
-            Cứ 4 bài thường sẽ có 1 bài review.
+            {copy(
+              "Every 4 regular lessons usually unlock 1 review lesson.",
+              "Cứ 4 bài thường sẽ có 1 bài review.",
+            )}
           </p>
         </div>
       </section>
@@ -372,7 +373,7 @@ export function LessonSelection() {
       {lessons.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
           <p className="text-lg font-bold text-[#1e2e51]">
-            Section nay chua co lesson nao
+            {copy("This section does not have any lessons yet.", "Section này chưa có lesson nào")}
           </p>
         </div>
       ) : (
@@ -452,7 +453,7 @@ export function LessonSelection() {
                           className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${style.badge}`}
                         >
                           {lesson.reviewLesson
-                            ? `Review ${reviewMeta?.reviewIndex ?? lesson.lessonNumber}`
+                            ? `${copy("Review", "Review")} ${reviewMeta?.reviewIndex ?? lesson.lessonNumber}`
                             : `Lesson ${lesson.lessonNumber}`}
                         </div>
 
@@ -463,12 +464,27 @@ export function LessonSelection() {
                         </h3>
 
                         <p className="mt-2 text-xs font-semibold text-gray-500">
-                          {style.statusText}
+                          {copy(style.statusText, style.statusText === "Locked"
+                            ? "Bị khóa"
+                            : style.statusText === "Completed"
+                              ? "Hoàn thành"
+                              : style.statusText === "Current"
+                                ? "Hiện tại"
+                                : style.statusText === "Review Done"
+                                  ? "Review đã xong"
+                                  : style.statusText === "Review Ready"
+                                    ? "Review sẵn sàng"
+                                    : style.statusText === "Review"
+                                      ? "Review"
+                                      : "Đã mở")}
                         </p>
 
                         {lesson.reviewLesson && reviewMeta && (
                           <p className="mt-1 text-xs font-semibold text-[#155ca5]">
-                            On lai sau {reviewMeta.coveredLessons} bai
+                            {copy(
+                              `Review after ${reviewMeta.coveredLessons} lessons`,
+                              `Ôn lại sau ${reviewMeta.coveredLessons} bài`,
+                            )}
                           </p>
                         )}
                       </div>

@@ -89,6 +89,8 @@ export {
 export {
   submitEssay,
   getPersonalizedQuestions,
+  getMyLearningAnalysis,
+  getMyLearningAnalysisHistory,
 } from "./ai";
 
 export {

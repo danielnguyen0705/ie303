@@ -79,6 +79,16 @@ export interface PersonalizedQuestionsRequest {
   unitNumber: number;
 }
 
+export interface AILearningAnalysis {
+  id: number;
+  strongSkill: string | null;
+  weakSkill: string | null;
+  trendLabel: string | null;
+  weakTopic: string | null;
+  recommendation: string | null;
+  generatedAt: string;
+}
+
 export interface UnitReviewRequest {
   title: string;
   unitId: number;

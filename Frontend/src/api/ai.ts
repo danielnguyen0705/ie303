@@ -1,4 +1,5 @@
 import type {
+  AILearningAnalysis,
   ApiResponse,
   EssaySubmissionRequest,
   EssaySubmissionResult,
@@ -45,5 +46,19 @@ export async function getPersonalizedQuestions(
   return request<QuestionDto[]>("/ai/personalized-questions", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function getMyLearningAnalysis(): Promise<ApiResponse<AILearningAnalysis | null>> {
+  return request<AILearningAnalysis | null>("/ai/learning-analysis/me", {
+    method: "GET",
+  });
+}
+
+export async function getMyLearningAnalysisHistory(): Promise<
+  ApiResponse<AILearningAnalysis[]>
+> {
+  return request<AILearningAnalysis[]>("/ai/learning-analysis/me/history", {
+    method: "GET",
   });
 }

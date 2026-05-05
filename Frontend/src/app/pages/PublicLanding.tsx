@@ -1,7 +1,9 @@
 import { useState } from "react";
 import AuthModal from "@/components/AuthModal";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function PublicLanding() {
+  const { language, setLanguage, copy } = useLanguage();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (
@@ -13,19 +15,44 @@ export function PublicLanding() {
           </div>
 
           <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setLanguage("en")}
+                className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                  language === "en"
+                    ? "bg-[#155ca5] text-white"
+                    : "text-slate-500 hover:text-[#155ca5]"
+                }`}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage("vi")}
+                className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                  language === "vi"
+                    ? "bg-[#155ca5] text-white"
+                    : "text-slate-500 hover:text-[#155ca5]"
+                }`}
+              >
+                VI
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => setIsAuthModalOpen(true)}
               className="font-['Lexend'] text-sm font-medium text-slate-600 transition-colors hover:text-blue-800"
             >
-              Login
+              {copy("Login", "Đăng nhập")}
             </button>
             <button
               type="button"
               onClick={() => setIsAuthModalOpen(true)}
               className="rounded-full bg-[#155ca5] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#155ca5]/20 transition-transform duration-200 active:scale-95"
             >
-              Sign Up
+              {copy("Sign Up", "Đăng ký")}
             </button>
           </div>
         </div>
@@ -37,18 +64,21 @@ export function PublicLanding() {
             <div className="lg:col-span-7 lg:ml-[8%]">
               <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-[#fed023] px-4 py-1.5 text-[#594700] shadow-[0_10px_32px_-4px_rgba(30,46,81,0.06)]">
                 <span className="text-xs font-black uppercase tracking-wider">
-                  Học Tiếng Anh Gen Z
+                  {copy("English Learning For Gen Z", "Học Tiếng Anh Gen Z")}
                 </span>
               </div>
 
               <h1 className="mb-6 font-['Nunito'] text-5xl font-black leading-[1.05] tracking-tighter md:text-7xl lg:text-8xl">
-                Học Tiếng Anh Theo Cách Của{" "}
+                {copy("Learn English the ", "Học Tiếng Anh Theo Cách Của ")}
                 <span className="italic text-[#155ca5]">Gen Z</span>
+                {copy(" way", "")}
               </h1>
 
               <p className="mb-10 max-w-xl font-['Lexend'] text-lg leading-relaxed text-[#4c5b81] md:text-xl">
-                Bám sát sách giáo khoa Global Success lớp 10-12 với lộ trình cá
-                nhân hóa và gamification sinh động.
+                {copy(
+                  "Follow the Global Success textbook for grades 10-12 with personalized paths and energetic gamification.",
+                  "Bám sát sách giáo khoa Global Success lớp 10-12 với lộ trình cá nhân hóa và gamification sinh động.",
+                )}
               </p>
 
               <div className="flex flex-col items-center gap-6 sm:flex-row">
@@ -57,14 +87,14 @@ export function PublicLanding() {
                   onClick={() => setIsAuthModalOpen(true)}
                   className="w-full rounded-full bg-gradient-to-r from-[#155ca5] to-[#005095] px-10 py-5 text-lg font-bold text-white shadow-xl shadow-[#155ca5]/30 transition-transform hover:scale-105 active:scale-95 sm:w-auto"
                 >
-                  Bắt đầu học ngay
+                  {copy("Start Learning Now", "Bắt đầu học ngay")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsAuthModalOpen(true)}
                   className="group flex items-center gap-2 font-bold text-[#155ca5]"
                 >
-                  Đăng nhập
+                  {copy("Login", "Đăng nhập")}
                   <span className="transition-transform group-hover:translate-x-1">
                     →
                   </span>
@@ -88,7 +118,10 @@ export function PublicLanding() {
         <section className="mx-auto mb-28 max-w-7xl px-6">
           <div className="rounded-3xl border border-[#9eacd7]/20 bg-[#eef0ff] p-8">
             <p className="font-['Nunito'] text-2xl font-black md:text-3xl">
-              Hơn 10,000 học sinh đang tham gia chuỗi học tập mỗi ngày.
+              {copy(
+                "More than 10,000 students are learning with UIFIVE every day.",
+                "Hơn 10,000 học sinh đang tham gia chuỗi học tập mỗi ngày.",
+              )}
             </p>
           </div>
         </section>
@@ -97,20 +130,24 @@ export function PublicLanding() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <article className="rounded-3xl bg-white p-10 shadow-[0_10px_32px_-4px_rgba(30,46,81,0.06)]">
               <h3 className="mb-4 font-['Nunito'] text-2xl font-black">
-                Bám sát SGK
+                {copy("Textbook Aligned", "Bám sát SGK")}
               </h3>
               <p className="font-['Lexend'] leading-relaxed text-[#4c5b81]">
-                Toàn bộ nội dung chuẩn bị GD&DT, cập nhật mới nhất cho chương
-                trình Global Success.
+                {copy(
+                  "All content is aligned with the latest Global Success curriculum.",
+                  "Toàn bộ nội dung chuẩn bị GD&DT, cập nhật mới nhất cho chương trình Global Success.",
+                )}
               </p>
             </article>
             <article className="rounded-3xl bg-white p-10 shadow-[0_10px_32px_-4px_rgba(30,46,81,0.06)]">
               <h3 className="mb-4 font-['Nunito'] text-2xl font-black">
-                Học mà chơi
+                {copy("Learn Through Play", "Học mà chơi")}
               </h3>
               <p className="font-['Lexend'] leading-relaxed text-[#4c5b81]">
-                Tích lũy coin, duy trì streak, đưa top bảng xếp hạng cùng bạn bè
-                trong từng bài học.
+                {copy(
+                  "Collect coins, keep streaks alive, and climb the leaderboard with friends.",
+                  "Tích lũy coin, duy trì streak, đưa top bảng xếp hạng cùng bạn bè trong từng bài học.",
+                )}
               </p>
             </article>
             <article className="rounded-3xl bg-white p-10 shadow-[0_10px_32px_-4px_rgba(30,46,81,0.06)]">
@@ -118,8 +155,10 @@ export function PublicLanding() {
                 AI Native
               </h3>
               <p className="font-['Lexend'] leading-relaxed text-[#4c5b81]">
-                Chấm điểm phát âm và writing theo thời gian thực để bạn tiến bộ
-                nhanh và bền vững.
+                {copy(
+                  "Get pronunciation and writing feedback in real time so your progress stays fast and steady.",
+                  "Chấm điểm phát âm và writing theo thời gian thực để bạn tiến bộ nhanh và bền vững.",
+                )}
               </p>
             </article>
           </div>
@@ -132,7 +171,7 @@ export function PublicLanding() {
             UIFIVE
           </div>
           <p className="mt-4 font-['Lexend'] text-xs uppercase tracking-widest text-slate-500">
-            © 2026 UIFIVE. Built for the next generation of linguists.
+            © 2026 UIFIVE. {copy("Built for the next generation of linguists.", "Xây dựng cho thế hệ học ngôn ngữ tiếp theo.")}
           </p>
         </div>
       </footer>
