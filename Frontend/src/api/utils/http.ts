@@ -64,9 +64,23 @@ export async function request<T>(
       data?: T;
     } | null;
 
+    if (payload && typeof payload === "object" && "result" in payload) {
+      return {
+        success: true,
+        data: payload.result as T,
+      };
+    }
+
+    if (payload && typeof payload === "object" && "data" in payload) {
+      return {
+        success: true,
+        data: payload.data as T,
+      };
+    }
+
     return {
       success: true,
-      data: (payload?.result ?? payload?.data ?? data) as T,
+      data: data as T,
     };
   } catch (error: unknown) {
     return {

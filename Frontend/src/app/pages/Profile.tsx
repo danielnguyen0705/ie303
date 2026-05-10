@@ -32,6 +32,7 @@ import {
 } from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import { ActivityCalendar } from "@/app/components/ActivityCalendar";
+import { useLanguage } from "@/context/LanguageContext";
 
 type CurrentUserProfile = {
   id: number;
@@ -160,6 +161,7 @@ function getStreakStatus(user: ProfileUser | null): StreakStatus {
 }
 
 export function Profile() {
+  const { copy } = useLanguage();
   const { logout, loading: authLoading } = useAuth();
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [stats, setStats] = useState<UserStats>(initialStats);
@@ -310,11 +312,11 @@ export function Profile() {
           averageScore: Number(currentUser.score ?? 0),
         }));
       } else {
-        setError("Failed to load profile data");
+        setError(copy("Failed to load profile data", "Không thể tải dữ liệu hồ sơ"));
       }
     } catch (err) {
       console.error("Error loading profile:", err);
-      setError("Failed to load profile data");
+      setError(copy("Failed to load profile data", "Không thể tải dữ liệu hồ sơ"));
     } finally {
       setLoading(false);
     }
@@ -357,17 +359,17 @@ export function Profile() {
       const response = await changePasswordApi(oldPassword, newPassword);
 
       if (!response.success) {
-        setPasswordError(response.error?.message || "Change password failed.");
+          setPasswordError(response.error?.message || copy("Change password failed.", "Đổi mật khẩu thất bại."));
         return;
       }
 
-      setPasswordSuccess("Password changed successfully.");
+      setPasswordSuccess(copy("Password changed successfully.", "Đổi mật khẩu thành công."));
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
       console.error("Error changing password:", err);
-      setPasswordError("Change password failed. Please try again.");
+      setPasswordError(copy("Change password failed. Please try again.", "Đổi mật khẩu thất bại. Vui lòng thử lại."));
     } finally {
       setChangingPassword(false);
     }
@@ -435,7 +437,7 @@ export function Profile() {
         const response = await equipAvatar(selectedAvatarId);
         if (!response.success) {
           setCustomizationError(
-            response.error?.message || "Failed to equip avatar.",
+            response.error?.message || copy("Failed to equip avatar.", "Không thể trang bị avatar."),
           );
           return;
         }
@@ -445,7 +447,7 @@ export function Profile() {
         const response = await equipBackground(selectedBackgroundId);
         if (!response.success) {
           setCustomizationError(
-            response.error?.message || "Failed to equip background.",
+            response.error?.message || copy("Failed to equip background.", "Không thể trang bị ảnh nền."),
           );
           return;
         }
@@ -493,7 +495,7 @@ export function Profile() {
       setIsCustomizeModalOpen(false);
     } catch (err) {
       console.error("Failed to save customization:", err);
-      setCustomizationError("Failed to save customization. Please try again.");
+      setCustomizationError(copy("Failed to save customization. Please try again.", "Không thể lưu tùy chỉnh. Vui lòng thử lại."));
     } finally {
       setSavingCustomization(false);
     }
@@ -504,7 +506,7 @@ export function Profile() {
     const isSuccess = await logout();
 
     if (!isSuccess) {
-      setLogoutError("Unable to logout right now. Please try again.");
+      setLogoutError(copy("Unable to logout right now. Please try again.", "Hiện không thể đăng xuất. Vui lòng thử lại."));
     }
   };
 
@@ -513,7 +515,7 @@ export function Profile() {
       <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Loading profile...</p>
+          <p className="text-gray-600 font-medium">{copy("Loading profile...", "Đang tải hồ sơ...")}</p>
         </div>
       </main>
     );
@@ -528,7 +530,7 @@ export function Profile() {
             onClick={loadProfileData}
             className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md font-bold hover:bg-red-700 transition-colors"
           >
-            Retry
+            {copy("Retry", "Thử lại")}
           </button>
         </div>
       </main>
@@ -608,7 +610,7 @@ export function Profile() {
               <div className="flex items-center gap-2 bg-orange-50 px-6 py-3 rounded-full hover:scale-105 transition-transform cursor-pointer">
                 <Flame className="w-5 h-5 text-[#f39c12]" fill="#f39c12" />
                 <span className="font-mono font-bold">
-                  {stats.currentStreak}-day Streak
+                  {stats.currentStreak} {copy("day Streak", "ngày streak")}
                 </span>
               </div>
               <div
@@ -627,11 +629,11 @@ export function Profile() {
               onClick={openCustomizeModal}
               className="bg-[#155ca5] text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg shadow-[#155ca5]/20 hover:scale-105 active:scale-95 transition-all"
             >
-              Edit Profile
+              {copy("Edit Profile", "Chỉnh hồ sơ")}
             </button>
             <button className="bg-gray-100 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors">
               <Settings className="w-5 h-5 inline mr-2" />
-              Settings
+              {copy("Settings", "Cài đặt")}
             </button>
           </div>
         </div>
@@ -649,7 +651,7 @@ export function Profile() {
             </div>
           </div>
           <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
-            Lessons Completed
+            {copy("Lessons Completed", "Bài học đã hoàn thành")}
           </div>
         </div>
 
@@ -661,7 +663,7 @@ export function Profile() {
             <div className="text-3xl font-black">{stats.totalTestsTaken}</div>
           </div>
           <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
-            Tests Taken
+            {copy("Tests Taken", "Bài kiểm tra đã làm")}
           </div>
         </div>
 
@@ -675,7 +677,7 @@ export function Profile() {
             </div>
           </div>
           <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
-            Score
+            {copy("Score", "Điểm")}
           </div>
         </div>
 
@@ -687,7 +689,7 @@ export function Profile() {
             <div className="text-3xl font-black">{stats.longestStreak}</div>
           </div>
           <div className="text-xs font-bold uppercase tracking-widest text-gray-500">
-            Longest Streak
+            {copy("Longest Streak", "Streak dài nhất")}
           </div>
         </div>
       </section>
@@ -696,7 +698,7 @@ export function Profile() {
       <section className="bg-white rounded-lg shadow-sm p-8">
         <div className="flex items-center gap-3 mb-6">
           <Sparkles className="w-7 h-7 text-[#155ca5]" />
-          <h2 className="text-2xl font-black">AI Learning Insights</h2>
+          <h2 className="text-2xl font-black">{copy("AI Learning Insights", "Phân tích học tập AI")}</h2>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -706,10 +708,12 @@ export function Profile() {
               <div className="p-2 bg-green-100 rounded-lg">
                 <BrainCircuit className="w-5 h-5 text-green-600" />
               </div>
-              <span className="font-bold text-green-700 uppercase tracking-wider text-sm">Strongest Skill</span>
+              <span className="font-bold text-green-700 uppercase tracking-wider text-sm">
+                {copy("Strongest Skill", "Kỹ năng mạnh nhất")}
+              </span>
             </div>
             <div className="text-2xl font-black text-green-800 capitalize">
-              {user.strongSkill || "Not enough data"}
+              {user.strongSkill || copy("Not enough data", "Chưa đủ dữ liệu")}
             </div>
           </div>
 
@@ -719,10 +723,12 @@ export function Profile() {
               <div className="p-2 bg-red-100 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
-              <span className="font-bold text-red-700 uppercase tracking-wider text-sm">Needs Improvement</span>
+              <span className="font-bold text-red-700 uppercase tracking-wider text-sm">
+                {copy("Needs Improvement", "Cần cải thiện")}
+              </span>
             </div>
             <div className="text-2xl font-black text-red-800 capitalize">
-              {user.weakSkill || "Not enough data"}
+              {user.weakSkill || copy("Not enough data", "Chưa đủ dữ liệu")}
             </div>
           </div>
 
@@ -732,10 +738,12 @@ export function Profile() {
               <div className="p-2 bg-blue-100 rounded-lg">
                 {user.trendLabel === "IMPROVING" ? <TrendingUp className="w-5 h-5 text-blue-600" /> : user.trendLabel === "DECLINING" ? <TrendingDown className="w-5 h-5 text-red-600" /> : <Minus className="w-5 h-5 text-blue-600" />}
               </div>
-              <span className="font-bold text-blue-700 uppercase tracking-wider text-sm">Learning Trend</span>
+              <span className="font-bold text-blue-700 uppercase tracking-wider text-sm">
+                {copy("Learning Trend", "Xu hướng học")}
+              </span>
             </div>
             <div className="text-2xl font-black text-blue-800 capitalize">
-              {user.trendLabel ? user.trendLabel.toLowerCase() : "Not enough data"}
+              {user.trendLabel ? user.trendLabel.toLowerCase() : copy("Not enough data", "Chưa đủ dữ liệu")}
             </div>
           </div>
         </div>
@@ -745,11 +753,15 @@ export function Profile() {
         <div className="flex items-center justify-between gap-3 mb-6">
           <h2 className="text-2xl font-black flex items-center gap-3">
             <GraduationCap className="w-7 h-7 text-[#155ca5]" />
-            Studying Grades
+            {copy("Studying Grades", "Lớp đang học")}
           </h2>
           {studyingGrades.length > 0 && (
             <div className="rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
-              {studyingGrades.length} grade{studyingGrades.length !== 1 ? 's' : ''} in progress
+              {studyingGrades.length}{" "}
+              {copy(
+                studyingGrades.length !== 1 ? "grades in progress" : "grade in progress",
+                "lớp đang học",
+              )}
             </div>
           )}
         </div>
@@ -782,7 +794,7 @@ export function Profile() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-gray-500">
-            No studying grades found yet.
+            {copy("No studying grades found yet.", "Chưa tìm thấy lớp đang học.")}
           </div>
         )}
       </section>
@@ -795,7 +807,7 @@ export function Profile() {
         <div className="bg-white p-8 rounded-lg shadow-sm">
           <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
             <Award className="w-7 h-7 text-[#155ca5]" />
-            Account Information
+            {copy("Account Information", "Thông tin tài khoản")}
           </h2>
           <div className="space-y-4">
             <div className="flex justify-between py-3 border-b border-gray-200">
@@ -803,17 +815,17 @@ export function Profile() {
               <span className="font-bold">{user.email}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">Member Since</span>
+              <span className="text-gray-600 font-medium">{copy("Member Since", "Tham gia từ")}</span>
               <span className="font-bold">{formatDate(user.createdAt)}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">Account Type</span>
+              <span className="text-gray-600 font-medium">{copy("Account Type", "Loại tài khoản")}</span>
               <span
                 className={`font-bold capitalize ${
                   user.isVip ? "text-amber-600" : "text-gray-600"
                 }`}
               >
-                {user.isVip ? "VIP" : "Free"}
+                {user.isVip ? "VIP" : copy("Free", "Miễn phí")}
               </span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
@@ -821,13 +833,13 @@ export function Profile() {
               <span className="font-bold text-[#155ca5]">{user.role}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">Last Study Date</span>
+              <span className="text-gray-600 font-medium">{copy("Last Study Date", "Ngày học gần nhất")}</span>
               <span className="font-bold">
-                {user.lastStudyDate ? formatDate(user.lastStudyDate) : "N/A"}
+                {user.lastStudyDate ? formatDate(user.lastStudyDate) : copy("N/A", "Chưa có")}
               </span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">Streak Status</span>
+              <span className="text-gray-600 font-medium">{copy("Streak Status", "Trạng thái streak")}</span>
               <span
                 className={`font-bold rounded-full px-3 py-1 text-xs uppercase tracking-widest ${streakStatus.className}`}
                 title={streakStatus.description}
@@ -836,21 +848,21 @@ export function Profile() {
               </span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">Study Progress</span>
+              <span className="text-gray-600 font-medium">{copy("Study Progress", "Tiến độ học")}</span>
               <span className="font-bold text-[#27ae60]">
                 {stats.accuracy.toFixed(1)}%
               </span>
             </div>
             {user.isVip && user.vipExpiredAt && (
               <div className="flex justify-between py-3 border-b border-gray-200">
-                <span className="text-gray-600 font-medium">VIP Expires</span>
+                <span className="text-gray-600 font-medium">{copy("VIP Expires", "VIP hết hạn")}</span>
                 <span className="font-bold text-amber-600">
                   {formatDate(user.vipExpiredAt)}
                 </span>
               </div>
             )}
             <div className="flex justify-between py-3">
-              <span className="text-gray-600 font-medium">Total XP</span>
+              <span className="text-gray-600 font-medium">{copy("Total XP", "Tổng XP")}</span>
               <span className="font-bold text-[#155ca5]">
                 {stats.totalXP.toLocaleString()}
               </span>
@@ -863,7 +875,7 @@ export function Profile() {
             className="w-full mt-6 bg-[#155ca5]/10 text-[#155ca5] py-3 rounded-lg font-bold hover:bg-[#155ca5]/20 transition-colors flex items-center justify-center gap-2"
           >
             <KeyRound className="w-5 h-5" />
-            Change Password
+            {copy("Change Password", "Đổi mật khẩu")}
           </button>
 
           <button
@@ -873,7 +885,7 @@ export function Profile() {
             className="w-full mt-6 bg-red-50 text-red-600 py-3 rounded-lg font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <LogOut className="w-5 h-5" />
-            {authLoading ? "Signing out..." : "Sign Out"}
+            {authLoading ? copy("Signing out...", "Đang đăng xuất...") : copy("Sign Out", "Đăng xuất")}
           </button>
 
           {logoutError && (
@@ -895,28 +907,28 @@ export function Profile() {
           >
             <h3 className="font-black text-xl text-slate-900 flex items-center gap-2">
               <KeyRound className="w-5 h-5 text-[#155ca5]" />
-              Change Password
+              {copy("Change Password", "Đổi mật khẩu")}
             </h3>
 
             <input
               type="password"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
-              placeholder="Current Password"
+              placeholder={copy("Current Password", "Mật khẩu hiện tại")}
               className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#155ca5]/40"
             />
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New Password"
+              placeholder={copy("New Password", "Mật khẩu mới")}
               className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#155ca5]/40"
             />
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm New Password"
+              placeholder={copy("Confirm New Password", "Xác nhận mật khẩu mới")}
               className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#155ca5]/40"
             />
 
@@ -927,7 +939,7 @@ export function Profile() {
             )}
             {passwordSuccess && (
               <p className="text-sm font-semibold text-green-600">
-                {passwordSuccess} This dialog will close automatically.
+                {passwordSuccess} {copy("This dialog will close automatically.", "Hộp thoại sẽ tự đóng.")}
               </p>
             )}
 
@@ -938,7 +950,7 @@ export function Profile() {
                 disabled={changingPassword}
                 className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-md font-bold hover:bg-slate-200 transition-colors disabled:opacity-60"
               >
-                Cancel
+                {copy("Cancel", "Hủy")}
               </button>
               <button
                 type="button"
@@ -946,7 +958,7 @@ export function Profile() {
                 disabled={changingPassword}
                 className="flex-1 bg-[#155ca5] text-white py-2.5 rounded-md font-bold hover:brightness-105 transition-colors disabled:opacity-70"
               >
-                {changingPassword ? "Changing..." : "Confirm"}
+                {changingPassword ? copy("Changing...", "Đang đổi...") : copy("Confirm", "Xác nhận")}
               </button>
             </div>
           </div>
@@ -965,18 +977,18 @@ export function Profile() {
             <div className="flex items-center justify-between gap-4">
               <h3 className="font-black text-xl md:text-2xl text-slate-900 flex items-center gap-2">
                 <Palette className="w-5 h-5 text-[#155ca5]" />
-                Customize Profile
+                {copy("Customize Profile", "Tùy chỉnh hồ sơ")}
               </h3>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-base md:text-lg text-slate-900">
-                  Avatars
+                  {copy("Avatars", "Avatar")}
                 </h4>
                 <span className="text-xs font-semibold text-slate-500">
                   {avatarOptions.filter((item) => item.owned).length}/
-                  {avatarOptions.length} owned
+                  {avatarOptions.length} {copy("owned", "đã sở hữu")}
                 </span>
               </div>
               <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/60">
@@ -999,10 +1011,10 @@ export function Profile() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Current avatar
+                        {copy("Current avatar", "Avatar hiện tại")}
                       </p>
                       <p className="font-bold text-slate-900 truncate">
-                        {selectedAvatarOption?.name || "Default avatar"}
+                        {selectedAvatarOption?.name || copy("Default avatar", "Avatar mặc định")}
                       </p>
                     </div>
                   </div>
@@ -1011,7 +1023,7 @@ export function Profile() {
                     onClick={() => setIsAvatarPickerModalOpen(true)}
                     className="px-3 py-2 rounded-md bg-[#155ca5] text-white text-sm font-bold hover:brightness-105 transition-colors"
                   >
-                    Edit avatar
+                    {copy("Edit avatar", "Đổi avatar")}
                   </button>
                 </div>
               </div>
@@ -1020,21 +1032,21 @@ export function Profile() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-base md:text-lg text-slate-900">
-                  Backgrounds
+                  {copy("Backgrounds", "Ảnh nền")}
                 </h4>
                 <span className="text-xs font-semibold text-slate-500">
                   {backgroundOptions.filter((item) => item.owned).length}/
-                  {backgroundOptions.length} owned
+                  {backgroundOptions.length} {copy("owned", "đã sở hữu")}
                 </span>
               </div>
               <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/60 space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Current background
+                      {copy("Current background", "Ảnh nền hiện tại")}
                     </p>
                     <p className="font-bold text-slate-900 truncate">
-                      {selectedBackgroundOption?.name || "Default background"}
+                      {selectedBackgroundOption?.name || copy("Default background", "Ảnh nền mặc định")}
                     </p>
                   </div>
                   <button
@@ -1042,7 +1054,7 @@ export function Profile() {
                     onClick={() => setIsBackgroundPickerModalOpen(true)}
                     className="px-3 py-2 rounded-md bg-[#155ca5] text-white text-sm font-bold hover:brightness-105 transition-colors"
                   >
-                    Edit background
+                    {copy("Edit background", "Đổi ảnh nền")}
                   </button>
                 </div>
 
@@ -1061,7 +1073,7 @@ export function Profile() {
                     />
                   ) : (
                     <div className="w-full h-full grid place-items-center text-xs text-slate-500">
-                      No Image
+                      {copy("No Image", "Không có ảnh")}
                     </div>
                   )}
                 </div>
@@ -1081,7 +1093,7 @@ export function Profile() {
                 disabled={savingCustomization}
                 className="px-4 py-2 rounded-md bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors disabled:opacity-60"
               >
-                Cancel
+                {copy("Cancel", "Hủy")}
               </button>
               <button
                 type="button"
@@ -1089,7 +1101,7 @@ export function Profile() {
                 disabled={savingCustomization}
                 className="px-4 py-2 rounded-md bg-[#155ca5] text-white font-bold hover:brightness-105 transition-colors disabled:opacity-70"
               >
-                {savingCustomization ? "Saving..." : "Save changes"}
+                {savingCustomization ? copy("Saving...", "Đang lưu...") : copy("Save changes", "Lưu thay đổi")}
               </button>
             </div>
           </div>
@@ -1108,7 +1120,7 @@ export function Profile() {
               >
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   <h4 className="font-black text-lg text-slate-900 text-center">
-                    Choose Avatar
+                    {copy("Choose Avatar", "Chọn avatar")}
                   </h4>
 
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -1141,7 +1153,7 @@ export function Profile() {
                             />
                           ) : (
                             <div className="w-full h-full grid place-items-center text-xs text-slate-500">
-                              No Image
+                              {copy("No Image", "Không có ảnh")}
                             </div>
                           )}
                         </div>
@@ -1150,14 +1162,14 @@ export function Profile() {
                         </p>
                         {item.equipped && (
                           <span className="inline-block text-[11px] font-bold text-[#155ca5]">
-                            Equipped
+                            {copy("Equipped", "Đang dùng")}
                           </span>
                         )}
                         {isLocked && (
                           <div className="absolute inset-0 rounded-lg bg-black/35 grid place-items-center">
                             <div className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
                               <Lock className="w-3 h-3" />
-                              Locked
+                              {copy("Locked", "Đã khóa")}
                             </div>
                           </div>
                         )}
@@ -1174,7 +1186,7 @@ export function Profile() {
                       onClick={() => setIsAvatarPickerModalOpen(false)}
                       className="px-6 py-2.5 rounded-md bg-[#155ca5] text-white font-bold hover:brightness-105 transition-colors"
                     >
-                      Save
+                      {copy("Save", "Lưu")}
                     </button>
                   </div>
                 </div>
@@ -1196,7 +1208,7 @@ export function Profile() {
               >
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   <h4 className="font-black text-lg text-slate-900 text-center">
-                    Choose Background
+                    {copy("Choose Background", "Chọn ảnh nền")}
                   </h4>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -1229,7 +1241,7 @@ export function Profile() {
                             />
                           ) : (
                             <div className="w-full h-full grid place-items-center text-xs text-slate-500">
-                              No Image
+                              {copy("No Image", "Không có ảnh")}
                             </div>
                           )}
                         </div>
@@ -1238,14 +1250,14 @@ export function Profile() {
                         </p>
                         {item.equipped && (
                           <span className="inline-block text-[11px] font-bold text-[#155ca5]">
-                            Equipped
+                            {copy("Equipped", "Đang dùng")}
                           </span>
                         )}
                         {isLocked && (
                           <div className="absolute inset-0 rounded-lg bg-black/35 grid place-items-center">
                             <div className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
                               <Lock className="w-3 h-3" />
-                              Locked
+                              {copy("Locked", "Đã khóa")}
                             </div>
                           </div>
                         )}
@@ -1262,7 +1274,7 @@ export function Profile() {
                       onClick={() => setIsBackgroundPickerModalOpen(false)}
                       className="px-6 py-2.5 rounded-md bg-[#155ca5] text-white font-bold hover:brightness-105 transition-colors"
                     >
-                      Save
+                      {copy("Save", "Lưu")}
                     </button>
                   </div>
                 </div>

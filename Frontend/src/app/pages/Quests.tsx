@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { getAllQuests, claimQuestReward, getAllAchievements } from "@/api";
 import type { Quest, Achievement } from "@/api/quests";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Quests() {
+  const { copy } = useLanguage();
   const [quests, setQuests] = useState<Quest[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [selectedTab, setSelectedTab] = useState<
@@ -42,7 +44,7 @@ export function Quests() {
         setAchievements(achievementsResponse.data ?? []);
     } catch (err) {
       console.error("Error loading quests:", err);
-      setError("Failed to load quests and achievements");
+      setError(copy("Failed to load quests and achievements", "Không thể tải nhiệm vụ và huy hiệu"));
     } finally {
       setLoading(false);
     }
@@ -61,14 +63,17 @@ export function Quests() {
         );
 
         alert(
-          `🎉 Claimed ${response.data.rewards.xp} XP and ${response.data.rewards.coins} coins!`,
+          copy(
+            `Claimed ${response.data.rewards.xp} XP and ${response.data.rewards.coins} coins!`,
+            `Đã nhận ${response.data.rewards.xp} XP và ${response.data.rewards.coins} xu!`,
+          ),
         );
       } else {
-        alert("Quests are currently under development. Check back soon!");
+        alert(copy("Quests are currently under development. Check back soon!", "Nhiệm vụ đang được phát triển. Hãy quay lại sau nhé!"));
       }
     } catch (err) {
       console.error("Error claiming reward:", err);
-      alert("Quests are currently under development. Check back soon!");
+      alert(copy("Quests are currently under development. Check back soon!", "Nhiệm vụ đang được phát triển. Hãy quay lại sau nhé!"));
     } finally {
       setClaimingQuest(null);
     }
@@ -92,7 +97,7 @@ export function Quests() {
       <main className="flex min-h-[70vh] items-center justify-center px-4">
         <div className="space-y-4 text-center">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#155ca5]" />
-          <p className="font-medium text-gray-600">Loading quests...</p>
+          <p className="font-medium text-gray-600">{copy("Loading quests...", "Đang tải nhiệm vụ...")}</p>
         </div>
       </main>
     );
@@ -107,7 +112,7 @@ export function Quests() {
             onClick={loadQuestsAndAchievements}
             className="mt-4 rounded-xl bg-red-600 px-6 py-2 font-bold text-white transition-colors hover:bg-red-700"
           >
-            Retry
+            {copy("Retry", "Thử lại")}
           </button>
         </div>
       </main>
@@ -119,19 +124,21 @@ export function Quests() {
       <section className="space-y-5">
         <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#155ca5] sm:text-xs">
-            Challenges
+            {copy("Challenges", "Thử thách")}
           </p>
           <h1 className="mt-1 text-3xl font-black tracking-tight text-[#155ca5] sm:text-4xl lg:text-5xl">
-            Quests & Achievements
+            {copy("Quests & Achievements", "Nhiệm vụ & huy hiệu")}
           </h1>
           <p className="mt-2 text-sm font-medium leading-6 text-gray-600 sm:text-lg">
-            This area is currently under development.
+            {copy("This area is currently under development.", "Khu vực này hiện đang được phát triển.")}
           </p>
         </div>
 
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium leading-5 text-amber-900 sm:text-sm">
-          Quests and achievements are not wired to backend data yet. We keep
-          this page visible so the route remains ready for production work.
+          {copy(
+            "Quests and achievements are not wired to backend data yet. We keep this page visible so the route remains ready for production work.",
+            "Nhiệm vụ và huy hiệu chưa được nối hoàn chỉnh với dữ liệu backend. Trang vẫn được hiển thị để route sẵn sàng cho phần triển khai sau.",
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 shadow-sm sm:inline-grid sm:w-auto">
@@ -140,7 +147,7 @@ export function Quests() {
             onClick={() => setSelectedTab("daily")}
             icon={<Target className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
-            Daily
+            {copy("Daily", "Hằng ngày")}
           </TabButton>
 
           <TabButton
@@ -148,7 +155,7 @@ export function Quests() {
             onClick={() => setSelectedTab("weekly")}
             icon={<Star className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
-            Weekly
+            {copy("Weekly", "Hằng tuần")}
           </TabButton>
 
           <TabButton
@@ -156,7 +163,7 @@ export function Quests() {
             onClick={() => setSelectedTab("achievements")}
             icon={<Trophy className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
-            Badges
+            {copy("Badges", "Huy hiệu")}
           </TabButton>
         </div>
       </section>
@@ -168,7 +175,7 @@ export function Quests() {
               icon={
                 <Target className="mx-auto mb-4 h-14 w-14 text-gray-300 sm:h-16 sm:w-16" />
               }
-              text="Quests are currently under development"
+              text={copy("Quests are currently under development", "Nhiệm vụ đang được phát triển")}
             />
           )}
 
@@ -216,7 +223,7 @@ export function Quests() {
 
                   <div className="mt-5 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Progress</span>
+                      <span className="text-gray-600">{copy("Progress", "Tiến độ")}</span>
                       <span className="font-black">
                         {quest.progress}/{quest.target}
                       </span>
@@ -254,7 +261,7 @@ export function Quests() {
 
                     {isClaimed ? (
                       <span className="text-sm font-black text-gray-500">
-                        Claimed ✓
+                        {copy("Claimed", "Đã nhận")} ✓
                       </span>
                     ) : isCompleted ? (
                       <button
@@ -265,18 +272,21 @@ export function Quests() {
                         {isClaiming ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Claiming...
+                            {copy("Claiming...", "Đang nhận...")}
                           </>
                         ) : (
                           <>
                             <Gift className="h-4 w-4" />
-                            Claim Reward
+                            {copy("Claim Reward", "Nhận thưởng")}
                           </>
                         )}
                       </button>
                     ) : (
                       <span className="text-sm font-black text-gray-500">
-                        {quest.target - quest.progress} more to go
+                        {copy(
+                          `${quest.target - quest.progress} more to go`,
+                          `Còn ${quest.target - quest.progress} nữa`,
+                        )}
                       </span>
                     )}
                   </div>
@@ -327,7 +337,7 @@ export function Quests() {
                   {!isUnlocked && achievement.requirement && (
                     <div className="mt-5 space-y-2 text-left">
                       <div className="flex justify-between text-xs text-gray-600">
-                        <span>Progress</span>
+                        <span>{copy("Progress", "Tiến độ")}</span>
                         <span className="font-black">
                           {achievement.progress || 0}/{achievement.requirement}
                         </span>
@@ -346,7 +356,7 @@ export function Quests() {
                   {isUnlocked && achievement.unlockedAt && (
                     <div className="mt-5 border-t border-gray-200 pt-4">
                       <p className="text-xs text-gray-500">
-                        Unlocked on{" "}
+                        {copy("Unlocked on", "Mở khóa vào")}{" "}
                         {new Date(achievement.unlockedAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -361,7 +371,7 @@ export function Quests() {
               icon={
                 <Trophy className="mx-auto mb-4 h-14 w-14 text-gray-300 sm:h-16 sm:w-16" />
               }
-              text="Achievements are currently under development"
+              text={copy("Achievements are currently under development", "Huy hiệu đang được phát triển")}
             />
           )}
         </section>

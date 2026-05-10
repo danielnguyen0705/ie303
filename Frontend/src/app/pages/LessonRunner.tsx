@@ -21,9 +21,11 @@ import {
   getLessonsBySectionProgress,
   getQuestionsByLesson,
   submitEssay,
+  submitEssayWithImage,
   submitQuestionHistory,
 } from "@/api";
 import { ENV } from "@/config/env";
+import { useLanguage } from "@/context/LanguageContext";
 import type {
   LessonQuestionResponse,
   QuestionDto,
@@ -78,6 +80,12 @@ type SectionLessonProgressItem = {
 type FlagState = Record<number, boolean>;
 
 type EliminatedOptionState = Record<number, string[]>;
+type EssayAttachmentState = Record<
+  number,
+  {
+    file: File | null;
+  }
+>;
 
 function buildRunnerItems(data: LessonQuestionResponse): RunnerItem[] {
   const flat: RunnerItem[] = [];
@@ -150,7 +158,7 @@ function isFillType(type: QuestionType) {
 }
 
 function isManualType(type: QuestionType) {
-  return ["SENTENCE_REWRITE", "ESSAY_WRITING"].includes(type);
+  return type === "ESSAY_WRITING";
 }
 
 function isSpeechType(type: QuestionType) {
@@ -528,6 +536,7 @@ function SmartAudioPlayer({
   audioUrl: string;
   syncText?: string | null;
 }) {
+  const { copy } = useLanguage();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -618,7 +627,7 @@ function SmartAudioPlayer({
             className="inline-flex items-center gap-2 rounded-full border border-[#bfd8ff] bg-[#f8fbff] px-4 py-2 text-sm font-bold text-[#155ca5] hover:bg-[#eef6ff]"
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {isPlaying ? "Tạm dừng" : "Phát audio"}
+            {isPlaying ? copy("Pause", "Tạm dừng") : copy("Play audio", "Phát audio")}
           </button>
           <button
             type="button"
@@ -626,15 +635,15 @@ function SmartAudioPlayer({
             className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             <SkipBack className="h-4 w-4" />
-            Lùi 5 giây
+            {copy("Back 5 seconds", "Lùi 5 giây")}
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           {[
-            { label: "Slow", value: 0.8 },
-            { label: "Normal", value: 1 },
-            { label: "Fast", value: 1.2 },
+            { label: copy("Slow", "Chậm"), value: 0.8 },
+            { label: copy("Normal", "Bình thường"), value: 1 },
+            { label: copy("Fast", "Nhanh"), value: 1.2 },
           ].map((rate) => (
             <button
               key={rate.value}
@@ -772,6 +781,7 @@ function isCompactPassageGroup(group: QuestionGroupDto | null) {
 
 function LessonRunner() {
   const { lessonId } = useParams();
+  const { copy } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const lessonIdNumber = useMemo(() => Number(lessonId), [lessonId]);
@@ -787,6 +797,7 @@ function LessonRunner() {
     number | null
   >(null);
   const [answers, setAnswers] = useState<AnswerState>({});
+  const [essayAttachments, setEssayAttachments] = useState<EssayAttachmentState>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<FlagState>({});
   const [eliminatedOptions, setEliminatedOptions] = useState<EliminatedOptionState>({});
   const [finished, setFinished] = useState(false);
@@ -832,6 +843,7 @@ function LessonRunner() {
     setCurrentIndex(0);
     setCurrentGroupQuestionIndex(0);
     setAnswers({});
+    setEssayAttachments({});
     setFlaggedQuestions({});
     setEliminatedOptions({});
     setSelectedMatchingAnswers({});
@@ -1160,6 +1172,15 @@ function LessonRunner() {
       };
     }
 
+    if (question.questionType === "SENTENCE_REWRITE") {
+      return {
+        submitted: true,
+        correct:
+          normalizeText(String(answer)) ===
+          normalizeText(String(question.correctAnswer ?? "")),
+      };
+    }
+
     if (question.questionType === "MATCHING") {
       const answerMap =
         answer && typeof answer === "object" && !Array.isArray(answer)
@@ -1263,6 +1284,15 @@ function LessonRunner() {
           typeof answer === "string" ? answer.trim() : prev[questionId]?.recognizedText ?? null,
         similarity: null,
         issueSummary: null,
+      },
+    }));
+  };
+
+  const setEssayImageFile = (questionId: number, file: File | null) => {
+    setEssayAttachments((prev) => ({
+      ...prev,
+      [questionId]: {
+        file,
       },
     }));
   };
@@ -1873,6 +1903,10 @@ function LessonRunner() {
       const builtSentence = getSentenceReorderAnswerText(saved.answer);
       const expected = normalizeText(String(question.correctAnswer ?? ""));
       correct = normalizeText(builtSentence) === expected;
+    } else if (question.questionType === "SENTENCE_REWRITE") {
+      const typed = normalizeText(String(saved.answer));
+      const expected = normalizeText(String(question.correctAnswer ?? ""));
+      correct = typed === expected;
     } else if (question.questionType === "MATCHING") {
       const answerMap =
         saved.answer &&
@@ -1915,10 +1949,17 @@ function LessonRunner() {
     const answerText = toAnswerText(saved.answer, question);
 
     if (question.questionType === "ESSAY_WRITING") {
-      const res = await submitEssay({
-        questionId: question.id,
-        answerText,
-      });
+      const essayImageFile = essayAttachments[question.id]?.file ?? null;
+      const res = essayImageFile
+        ? await submitEssayWithImage({
+            questionId: question.id,
+            answerText,
+            imageFile: essayImageFile,
+          })
+        : await submitEssay({
+            questionId: question.id,
+            answerText,
+          });
 
       if (res.success && res.data) {
         correct = null;
@@ -2015,6 +2056,10 @@ function LessonRunner() {
         const builtSentence = getSentenceReorderAnswerText(saved.answer);
         const expected = normalizeText(String(question.correctAnswer ?? ""));
         correct = normalizeText(builtSentence) === expected;
+      } else if (question.questionType === "SENTENCE_REWRITE") {
+        const typed = normalizeText(String(saved.answer));
+        const expected = normalizeText(String(question.correctAnswer ?? ""));
+        correct = typed === expected;
       } else if (question.questionType === "MATCHING") {
         const answerMap =
           saved.answer &&
@@ -2069,10 +2114,17 @@ function LessonRunner() {
       const answerText = toAnswerText(saved.answer, question);
 
       if (question.questionType === "ESSAY_WRITING") {
-        const res = await submitEssay({
-          questionId: question.id,
-          answerText,
-        });
+        const essayImageFile = essayAttachments[question.id]?.file ?? null;
+        const res = essayImageFile
+          ? await submitEssayWithImage({
+              questionId: question.id,
+              answerText,
+              imageFile: essayImageFile,
+            })
+          : await submitEssay({
+              questionId: question.id,
+              answerText,
+            });
 
         if (res.success && res.data) {
           correct = null;
@@ -2216,6 +2268,82 @@ function LessonRunner() {
           <p>
             <span className="font-bold">Question data:</span> {question.questionData}
           </p>
+        )}
+      </div>
+    );
+  };
+
+  const getLocalizedQuestionHint = (question: QuestionDto) => {
+    if (question.hint?.trim()) {
+      return question.hint.trim();
+    }
+
+    switch (question.questionType) {
+      case "MATCHING":
+        return copy(
+          "Match each item on the left with the correct answer on the right. Each answer should usually be used once.",
+          "Nối từng mục bên trái với đúng đáp án bên phải. Mỗi đáp án thường chỉ dùng một lần.",
+        );
+      case "TRUE_FALSE_NG":
+        return copy(
+          "Use the shared passage to choose TRUE, FALSE, or NOT GIVEN. Do not guess beyond the information in the text.",
+          "Dựa vào đoạn chung để chọn TRUE, FALSE hoặc NOT GIVEN. Không đoán ngoài dữ kiện có trong bài.",
+        );
+      case "WORD_BANK_FILL":
+        return copy(
+          "Read the whole sentence first, then choose the best word from the word bank to fill the blank.",
+          "Đọc toàn câu trước, sau đó chọn từ phù hợp nhất từ word bank để điền vào chỗ trống.",
+        );
+      case "SENTENCE_REORDER":
+        return copy(
+          "Arrange the words in the correct order to form a complete sentence.",
+          "Ghép các từ theo thứ tự tạo thành câu hoàn chỉnh.",
+        );
+      case "SENTENCE_REWRITE":
+        return copy(
+          "Rewrite the sentence while keeping the original meaning.",
+          "Viết lại câu nhưng giữ nguyên nghĩa chính của câu gốc.",
+        );
+      case "ESSAY_WRITING":
+        return copy(
+          "Answer clearly and cover the main idea. Simple but correct writing is better than overcomplicated writing.",
+          "Trả lời đủ ý, rõ ràng. Câu đơn giản nhưng đúng vẫn tốt hơn viết quá rối.",
+        );
+      case "PRONUNCIATION":
+      case "TOPIC_SPEAKING":
+        return copy(
+          "Tap record so the system can capture your speech and compare it with the expected answer. Each question allows up to 3 attempts.",
+          "Bấm ghi âm để hệ thống nghe và đối chiếu với câu mẫu. Mỗi câu có tối đa 3 lượt thử.",
+        );
+      default:
+        return copy(
+          "Read the instruction carefully and choose the best answer before submitting.",
+          "Đọc kỹ yêu cầu và chọn đáp án phù hợp nhất trước khi nộp.",
+        );
+    }
+  };
+
+  const renderQuestionHintLocalized = (question: QuestionDto) => {
+    const hint = getLocalizedQuestionHint(question);
+    const showQuestionData = false;
+
+    if (!hint && !showQuestionData) return null;
+
+    return (
+      <div className="space-y-2">
+        {hint && (
+          <div className="rounded-2xl border border-[#ffe2a8] bg-[#fff8e8] px-4 py-3 text-sm text-[#7a4b00]">
+            <span className="font-black">
+              {copy("Hint:", "Gợi ý:")}
+            </span>{" "}
+            {hint}
+          </div>
+        )}
+
+        {showQuestionData && (
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-500">
+            <span className="font-bold">Question data:</span> {question.questionData}
+          </div>
         )}
       </div>
     );
@@ -2421,7 +2549,7 @@ function LessonRunner() {
           <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-5 shadow-sm">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
-                Câu đang ghép
+                {copy("Your sentence", "Cau dang ghep")}
               </p>
 
               <div className="flex items-center gap-2">
@@ -2431,7 +2559,7 @@ function LessonRunner() {
                   onClick={() => removeLastReorderWord(question.id)}
                   className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  Undo
+                  {copy("Undo", "Hoan tac")}
                 </button>
                 <button
                   type="button"
@@ -2440,7 +2568,7 @@ function LessonRunner() {
                   className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  Reset
+                  {copy("Reset", "Dat lai")}
                 </button>
               </div>
             </div>
@@ -2466,7 +2594,7 @@ function LessonRunner() {
                 </div>
               ) : (
                 <span className="text-sm text-slate-400">
-                  Chọn từ bên dưới để ghép câu ở đây...
+                  {copy("Choose words below to build your sentence here...", "Chon tu ben duoi de ghep cau o day...")}
                 </span>
               )}
             </div>
@@ -2474,7 +2602,7 @@ function LessonRunner() {
 
           <div>
             <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
-              Từ bên dưới
+              {copy("Available words", "Tu ben duoi")}
             </p>
             <div className="flex flex-wrap gap-3">
               {reorderWords.map((word, index) => {
@@ -2606,10 +2734,8 @@ function LessonRunner() {
                 Matching data chưa đúng format.
               </p>
               <p className="text-sm text-gray-500 mt-2">
-                Cần questionData dạng:
-                {" "}
-                {"{\"left\":[...],\"right\":[...]}"}
-              </p>
+              {copy("Submitted:", "Da nop:")} {totalSubmitted}/{totalQuestions} {copy("question(s)", "cau")}
+            </p>
             </div>
           )}
         </div>
@@ -2630,15 +2756,39 @@ function LessonRunner() {
     }
 
     if (question.questionType === "ESSAY_WRITING") {
+      const attachedImage = essayAttachments[question.id]?.file ?? null;
       return (
-        <textarea
-          rows={8}
-          disabled={isAnswerLocked}
-          value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
-          onChange={(e) => setAnswer(question.id, e.target.value)}
-          placeholder="Write your essay here..."
-          className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-y"
-        />
+        <div className="space-y-4">
+          <textarea
+            rows={8}
+            disabled={isAnswerLocked}
+            value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
+            onChange={(e) => setAnswer(question.id, e.target.value)}
+            placeholder="Write your essay here..."
+            className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-y"
+          />
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
+              Essay Image
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              Attach a photo of your handwritten or printed essay if you want the AI to review it together with your typed answer.
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              disabled={isAnswerLocked}
+              onChange={(e) => setEssayImageFile(question.id, e.target.files?.[0] || null)}
+              className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-[#155ca5] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#0f4c88]"
+            />
+            <p className="mt-2 text-sm text-slate-500">
+              {attachedImage
+                ? `Selected image: ${attachedImage.name}`
+                : "No image selected. Text-only essay scoring still works."}
+            </p>
+          </div>
+        </div>
       );
     }
 
@@ -2708,13 +2858,13 @@ function LessonRunner() {
                   submittingCurrent ? "bg-gray-200 text-gray-700" : "border border-[#155ca5] bg-white text-[#155ca5] hover:bg-[#eef6ff]"
                 } disabled:opacity-50`}
               >
-                Kiểm tra
+                {copy("Check", "Kiem tra")}
               </button>
             </div>
 
             {speakingActive && (
               <span className="text-xs font-bold uppercase tracking-wider text-red-600">
-                Đang nghe...
+                {copy("Listening...", "Dang nghe...")}
               </span>
             )}
 
@@ -2725,19 +2875,19 @@ function LessonRunner() {
                 disabled={submittingCurrent}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#155ca5] bg-[#155ca5] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#0f4c88] disabled:opacity-50"
               >
-                {submittingCurrent ? "Đang kiểm tra..." : "Kiểm tra"}
+                {submittingCurrent ? copy("Submitting...", "Dang nop...") : copy("Submit answer", "Nop cau tra loi")}
               </button>
             )}
           </div>
 
           {speechPreview && (
             <p className="text-sm text-[#155ca5]">
-              Đang nghe: <span className="font-semibold">{speechPreview}</span>
+              {copy("Listening:", "Dang nghe:")} <span className="font-semibold">{speechPreview}</span>
             </p>
           )}
 
           {speechError && (
-            <p className="text-sm text-red-600">Lỗi voice: {speechError}</p>
+            <p className="text-sm text-red-600">{copy("Voice error:", "Loi voice:")} {speechError}</p>
           )}
 
           {(transcript || currentAnswer?.recognizedText) && (
@@ -3112,6 +3262,219 @@ function LessonRunner() {
     );
   };
 
+  const renderFeedbackLocalized = (question: QuestionDto) => {
+    const currentAnswer = getQuestionAnswer(question.id);
+    if (!currentAnswer?.submitted) return null;
+
+    const selectedOption =
+      typeof currentAnswer.answer === "string"
+        ? question.options.find(
+            (option) =>
+              normalizeText(option.optionKey) === normalizeText(currentAnswer.answer as string) ||
+              normalizeText(option.content) === normalizeText(currentAnswer.answer as string),
+          )
+        : null;
+    const correctOption = question.options.find((option) => option.isCorrect) ?? null;
+    const isPronunciationQuestion =
+      question.questionType === "PRONUNCIATION" ||
+      question.questionType === "TOPIC_SPEAKING";
+    const isUngraded =
+      currentAnswer.correct === null &&
+      !(
+        isPronunciationQuestion &&
+        typeof currentAnswer.similarity === "number" &&
+        typeof currentAnswer.expectedAnswer === "string"
+      );
+    const isManualQuestion = isManualType(question.questionType);
+    const userAnswerText =
+      question.questionType === "SENTENCE_REORDER"
+        ? getDisplayedReorderSentence(question.id)
+        : toAnswerText(currentAnswer.answer, question);
+
+    return (
+      <div
+        className={`rounded-2xl border p-5 ${
+          isUngraded
+            ? "border-amber-200 bg-amber-50"
+            : currentAnswer.correct
+              ? "border-green-200 bg-green-50"
+              : "border-red-200 bg-red-50"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          {isUngraded ? (
+            <div className="mt-0.5 h-6 w-6 rounded-full bg-amber-400" />
+          ) : currentAnswer.correct ? (
+            <CheckCircle2 className="mt-0.5 h-6 w-6 text-green-600" />
+          ) : (
+            <XCircle className="mt-0.5 h-6 w-6 text-red-600" />
+          )}
+
+          <div className="space-y-2">
+            <p
+              className={`font-black ${
+                isUngraded
+                  ? "text-amber-800"
+                  : currentAnswer.correct
+                    ? "text-green-700"
+                    : "text-red-700"
+              }`}
+            >
+              {isUngraded
+                ? isManualQuestion
+                  ? copy("Submitted, waiting for evaluation", "Đã nộp, chờ đánh giá")
+                  : question.questionType === "MATCHING"
+                    ? copy(
+                        "Submitted, but there is not enough answer data to auto-grade yet",
+                        "Đã nộp, nhưng chưa có đủ dữ liệu đáp án để tự chấm",
+                      )
+                    : copy("Submitted", "Đã nộp")
+                : currentAnswer.correct
+                  ? copy("Correct!", "Chính xác!")
+                  : copy("Not correct yet", "Chưa đúng")}
+            </p>
+
+            {currentAnswer.issueSummary && (
+              <p className="text-sm font-medium text-gray-700">
+                {currentAnswer.issueSummary}
+              </p>
+            )}
+
+            {!isManualQuestion &&
+              !isPronunciationQuestion &&
+              question.questionType !== "MATCHING" &&
+              !isMCQ(question.questionType) &&
+              question.questionType !== "TRUE_FALSE_NG" &&
+              userAnswerText && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">
+                    {copy("You answered:", "Bạn trả lời:")}
+                  </span>{" "}
+                  {userAnswerText}
+                </p>
+              )}
+
+            {isMCQ(question.questionType) && selectedOption && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">
+                  {copy("You chose:", "Bạn chọn:")}
+                </span>{" "}
+                {selectedOption.optionKey}. {selectedOption.content}
+              </p>
+            )}
+
+            {question.questionType === "TRUE_FALSE_NG" &&
+              typeof currentAnswer.answer === "string" && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">
+                    {copy("You chose:", "Bạn chọn:")}
+                  </span>{" "}
+                  {currentAnswer.answer.toUpperCase()}
+                </p>
+              )}
+
+            {question.questionType === "MATCHING" &&
+              currentAnswer.answer &&
+              typeof currentAnswer.answer === "object" &&
+              !Array.isArray(currentAnswer.answer) && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">
+                    {copy("Your matches:", "Ghép của bạn:")}
+                  </span>{" "}
+                  {Object.entries(currentAnswer.answer)
+                    .map(([left, right]) => `${left} -> ${right}`)
+                    .join(" | ")}
+                </p>
+              )}
+
+            {isPronunciationQuestion && currentAnswer.recognizedText && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">
+                  {copy("The system heard:", "Hệ thống nghe được:")}
+                </span>{" "}
+                {currentAnswer.recognizedText}
+              </p>
+            )}
+
+            {isPronunciationQuestion && currentAnswer.expectedAnswer && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">
+                  {copy("Expected answer:", "Câu mẫu:")}
+                </span>{" "}
+                {currentAnswer.expectedAnswer}
+              </p>
+            )}
+
+            {isPronunciationQuestion && typeof currentAnswer.similarity === "number" && (
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">
+                  {copy("Similarity:", "Độ khớp:")}
+                </span>{" "}
+                {Math.round(currentAnswer.similarity * 100)}%
+              </p>
+            )}
+
+            {typeof currentAnswer.score === "number" && (
+              <p className="text-sm font-semibold text-[#155ca5]">
+                {copy("Essay score:", "Điểm bài viết:")} {currentAnswer.score}
+              </p>
+            )}
+
+            {currentAnswer.feedback && (
+              <p className="text-sm text-gray-700">
+                {copy("Feedback:", "Nhận xét:")} {currentAnswer.feedback}
+              </p>
+            )}
+
+            {!currentAnswer.correct && correctOption && (
+              <p className="text-sm font-semibold text-gray-700">
+                {copy("Correct answer:", "Dap an dung:")} {correctOption.optionKey}.{" "}
+                {correctOption.content}
+              </p>
+            )}
+
+            {!currentAnswer.correct &&
+              !correctOption &&
+              question.correctAnswer &&
+              !isManualQuestion && (
+                <p className="text-sm font-semibold text-gray-700">
+                  {copy("Correct answer:", "Dap an dung:")} {question.correctAnswer}
+                </p>
+              )}
+
+            {question.questionType === "MATCHING" &&
+              currentAnswer.correct === null && (
+                <p className="text-sm text-gray-600">
+                  {copy(
+                    "Matching can only be auto-graded when the backend returns a complete answer mapping.",
+                    "Matching chỉ tự chấm khi backend trả về mapping đáp án đầy đủ.",
+                  )}
+                </p>
+              )}
+
+            {isManualQuestion && (
+              <p className="text-sm text-gray-600">
+                {copy(
+                  "This answer has been submitted. The system will evaluate your written content instead of grading it instantly as right or wrong.",
+                  "Dạng này đã được gửi đi, hệ thống sẽ dùng nội dung bạn nộp để đánh giá thay vì chấm đúng/sai ngay.",
+                )}
+              </p>
+            )}
+
+            {!isManualQuestion && question.explanation && (
+              <div className="rounded-xl border border-white/70 bg-white/70 p-3 text-sm text-gray-700">
+                <span className="font-semibold">
+                  {copy("Explanation:", "Giải thích:")}
+                </span>{" "}
+                {question.explanation}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const isCurrentItemComplete = currentQuestions.every(
     (question) => answers[question.id]?.submitted,
   );
@@ -3123,7 +3486,7 @@ function LessonRunner() {
       <main className="max-w-5xl mx-auto px-6 py-10 min-h-[60vh] flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin mx-auto text-[#155ca5]" />
-          <p className="text-gray-600 font-medium">Đang tải câu hỏi...</p>
+          <p className="text-gray-600 font-medium">{copy("Loading questions...", "Dang tai cau hoi...")}</p>
         </div>
       </main>
     );
@@ -3139,7 +3502,7 @@ function LessonRunner() {
             className="inline-flex items-center gap-2 mt-4 px-5 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50"
           >
             <ChevronLeft className="w-4 h-4" />
-            Quay lại
+            {copy("Back", "Quay lai")}
           </Link>
         </div>
       </main>
@@ -3151,7 +3514,7 @@ function LessonRunner() {
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
           <p className="text-lg font-bold text-[#1e2e51]">
-            Lesson này chưa có câu hỏi nào
+            {copy("This lesson does not have any questions yet", "Lesson nay chua co cau hoi nao")}
           </p>
         </div>
       </main>
@@ -3168,27 +3531,27 @@ function LessonRunner() {
 
           <div>
             <h1 className="text-4xl font-black text-[#1e2e51]">
-              Hoàn thành lesson
+              {copy("Lesson completed", "Hoan thanh lesson")}
             </h1>
             <p className="text-gray-600 mt-3 text-lg">
-              Auto-grade: đúng {autoGradedCorrectCount}/{autoGradedSubmittedCount || 0} câu.
+              {copy("Auto-grade:", "Tu cham:")} {copy("correct", "dung")} {autoGradedCorrectCount}/{autoGradedSubmittedCount || 0} {copy("question(s)", "cau")}
             </p>
             <p className="text-sm text-gray-500 mt-2">
               Đã nộp: {totalSubmitted}/{totalQuestions} câu
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              Điều kiện qua bài: accuracy từ 80% trở lên.
+              {copy("Pass condition: accuracy from 80% or above.", "Dieu kien qua bai: do chinh xac tu 80% tro len.")}
             </p>
 
             {lessonReward && (
               <p className="text-sm text-[#1e2e51] mt-2 font-semibold">
-                Thưởng: +{lessonReward.coinsEarned} coins, +{lessonReward.expEarned} EXP
+                {copy("Reward:", "Thuong:")} +{lessonReward.coinsEarned} coins, +{lessonReward.expEarned} EXP
               </p>
             )}
 
             {lessonReward && (
               <p className="text-sm text-gray-600 mt-1">
-                Tiến độ lesson (BE2): {lessonReward.progressPercent}% | Tổng EXP: {lessonReward.currentExp}
+                {copy("Lesson progress:", "Tien do lesson:")} {lessonReward.progressPercent}% | {copy("Total EXP:", "Tong EXP:")} {lessonReward.currentExp}
               </p>
             )}
 
@@ -3210,7 +3573,7 @@ function LessonRunner() {
               }}
               className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold hover:bg-[#0f4c88]"
             >
-              Làm lại
+              {copy("Retry", "Lam lai")}
             </button>
 
             {sectionId ? (
@@ -3218,14 +3581,14 @@ function LessonRunner() {
                 to={`/sections/${sectionId}/lessons`}
                 className="px-6 py-3 rounded-xl border border-gray-300 font-bold text-[#1e2e51] hover:bg-gray-50"
               >
-                Về danh sách lesson
+                {copy("Back to lesson list", "Ve danh sach lesson")}
               </Link>
             ) : (
               <Link
                 to="/"
                 className="px-6 py-3 rounded-xl border border-gray-300 font-bold text-[#1e2e51] hover:bg-gray-50"
               >
-                Về dashboard
+                {copy("Back to dashboard", "Ve dashboard")}
               </Link>
             )}
 
@@ -3240,7 +3603,7 @@ function LessonRunner() {
                 }}
                 className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d]"
               >
-                {nextLesson ? nextLessonLabel : "Về lesson list"}
+                {nextLesson ? copy(nextLessonLabel, nextLesson?.reviewLesson ? "Review tiep theo" : "Lesson tiep theo") : copy("Back to lesson list", "Ve danh sach lesson")}
               </button>
             )}
           </div>
@@ -3274,7 +3637,7 @@ function LessonRunner() {
           className="inline-flex items-center gap-2 text-[#155ca5] font-bold hover:underline"
         >
           <ChevronLeft className="w-4 h-4" />
-          Quay lại
+          {copy("Back", "Quay lai")}
         </button>
 
         <div className="mt-3 space-y-3">
@@ -3283,7 +3646,7 @@ function LessonRunner() {
               Lesson {lessonId}
             </span>
             <span className="text-sm font-bold text-gray-500">
-              Màn {currentIndex + 1}/{items.length}
+              {copy("Screen", "Man")} {currentIndex + 1}/{items.length}
             </span>
           </div>
 
@@ -3291,14 +3654,14 @@ function LessonRunner() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[#155ca5]">
-                  Question Navigator
+                  {copy("Question Navigator", "Dieu huong cau hoi")}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
-                  Thanh này sẽ bám theo màn hình để luôn thấy câu hiện tại.
+                  {copy("This navigator stays visible so you can always see the current question.", "Thanh nay se bam theo man hinh de luon thay cau hien tai.")}
                 </p>
               </div>
               <div className="rounded-full bg-[#155ca5]/10 px-3 py-1.5 text-sm font-bold text-[#155ca5] shadow-sm">
-                Câu {questionNavigatorItems.findIndex((item) => item.itemIndex === currentIndex && item.questionIndex === activeQuestionIndex) + 1}/{totalQuestions}
+                {copy("Question", "Cau")} {questionNavigatorItems.findIndex((item) => item.itemIndex === currentIndex && item.questionIndex === activeQuestionIndex) + 1}/{totalQuestions}
               </div>
             </div>
 
@@ -3377,14 +3740,14 @@ function LessonRunner() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.22em] text-[#155ca5]">
-                    Group Questions
+                    {copy("Group Questions", "Nhom cau hoi")}
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
-                    Chuyển từng câu trong cùng một màn để đỡ cuộn dài.
+                    {copy("Move through questions in the same screen to avoid a long scroll.", "Chuyen tung cau trong cung mot man de do cuon dai.")}
                   </p>
                 </div>
                 <div className="rounded-full bg-[#155ca5]/10 px-3 py-1.5 text-sm font-bold text-[#155ca5]">
-                  Câu {activeQuestionIndex + 1}/{currentQuestions.length}
+                  {copy("Question", "Cau")} {activeQuestionIndex + 1}/{currentQuestions.length}
                 </div>
               </div>
 
@@ -3430,7 +3793,7 @@ function LessonRunner() {
                 <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
                   <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-5">
                     <p className="mb-4 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
-                      Complete The Passage
+                      {copy("Complete The Passage", "Hoan thanh doan van")}
                     </p>
                     <div className="question-text-unified leading-relaxed text-[#1e2e51]">
                       {compactPassageSegments.map((segment, index) => {
@@ -3490,7 +3853,7 @@ function LessonRunner() {
                                 }
                                 className="w-full appearance-none bg-transparent px-4 py-3 pr-10 text-sm font-bold outline-none"
                               >
-                                <option value="">Blank {segment.label}</option>
+                                <option value="">{copy("Blank", "Cho trong")} {segment.label}</option>
                                 {dropdownChoices.map((choice) => (
                                   <option key={`${mappedQuestion.id}-${choice}`} value={choice}>
                                     {choice}
@@ -3522,11 +3885,11 @@ function LessonRunner() {
                           }`}
                         >
                           <p className="text-sm font-bold text-[#1e2e51]">
-                            Blank {compactPassageBlankLabelByQuestionId.get(question.id) ?? index + 1}
+                            {copy("Blank", "Cho trong")} {compactPassageBlankLabelByQuestionId.get(question.id) ?? index + 1}
                           </p>
                           {questionAnswer.correct === false && (
                             <p className="mt-1 text-sm text-gray-700">
-                              Correct answer:{" "}
+                              {copy("Correct answer:", "Dap an dung:")}{" "}
                               <span className="font-semibold">
                                 {question.options.find((option) => option.isCorrect)?.content ||
                                   question.correctAnswer}
@@ -3585,17 +3948,17 @@ function LessonRunner() {
                       }`}
                     >
                       {flagged ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
-                      {flagged ? "Đã đánh dấu" : "Đánh dấu để xem lại"}
+                      {flagged ? copy("Flagged", "Da danh dau") : copy("Flag for review", "Danh dau de xem lai")}
                     </button>
 
                     <div className="text-xs font-semibold text-gray-500">
                       {questionAnswer?.submitted
                         ? questionAnswer.correct === null
-                          ? "Đã nộp"
+                          ? copy("Submitted", "Da nop")
                           : questionAnswer.correct
-                            ? "Đúng"
-                            : "Sai"
-                        : "Chưa nộp"}
+                            ? copy("Correct", "Dung")
+                            : copy("Incorrect", "Sai")
+                        : copy("Not submitted", "Chua nop")}
                     </div>
                   </div>
 
@@ -3614,11 +3977,11 @@ function LessonRunner() {
 
                 <MediaBlock imageUrl={mediaImageUrl} audioUrl={mediaAudioUrl} />
 
-                {renderQuestionHint(question)}
+                {renderQuestionHintLocalized(question)}
 
                 {renderAnswerArea(question, currentGroup, isCompactPassageItem)}
 
-                {renderFeedback(question)}
+                {renderFeedbackLocalized(question)}
 
                 {!isListeningItem && !isCompactPassageItem && (
                   <div className={`flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 ${isCompactPassageItem ? "pt-3" : "pt-4"}`}>
@@ -3630,7 +3993,7 @@ function LessonRunner() {
                           disabled={activeQuestionIndex === 0}
                           className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition hover:border-[#155ca5] hover:text-[#155ca5] disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          Câu trước
+                          {copy("Previous question", "Cau truoc")}
                         </button>
                         <button
                           type="button"
@@ -3645,7 +4008,7 @@ function LessonRunner() {
                           }
                           className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition hover:border-[#155ca5] hover:text-[#155ca5] disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          Câu sau
+                          {copy("Next question", "Cau sau")}
                         </button>
                       </div>
                     ) : (
@@ -3660,7 +4023,7 @@ function LessonRunner() {
                         disabled={!canSubmitQuestion(question) || submittingCurrent}
                         className={`rounded-xl bg-[#155ca5] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0f4c88] ${isCompactPassageItem ? "px-4 py-2.5 text-sm" : "px-6 py-3"}`}
                       >
-                        {submittingCurrent ? "Đang nộp..." : "Nộp câu trả lời"}
+                        {submittingCurrent ? copy("Submitting...", "Dang nop...") : copy("Submit answer", "Nop cau tra loi")}
                       </button>
                     )}
                   </div>
@@ -3674,7 +4037,7 @@ function LessonRunner() {
                       disabled={!canSubmitQuestion(question) || submittingCurrent}
                       className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0f4c88]"
                     >
-                      {submittingCurrent ? "Đang nộp..." : "Nộp câu trả lời"}
+                      {submittingCurrent ? copy("Submitting...", "Dang nop...") : copy("Submit answer", "Nop cau tra loi")}
                     </button>
                   )}
                 </div>
@@ -3687,7 +4050,7 @@ function LessonRunner() {
 
       <footer className="mt-8 flex items-center justify-between gap-4 flex-wrap">
         <div className="text-sm text-gray-500 font-medium">
-          Đúng {totalCorrect}/{totalQuestions} câu | Hoàn thành {submittedPercent}%
+          {copy("Correct", "Dung")} {totalCorrect}/{totalQuestions} {copy("question(s)", "cau")} | {copy("Completed", "Hoan thanh")} {submittedPercent}%
         </div>
 
         <div className="flex items-center gap-3">
@@ -3704,10 +4067,10 @@ function LessonRunner() {
               className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold hover:bg-[#0f4c88] disabled:opacity-60"
             >
               {submittingCurrent
-                ? "\u0110ang n\u1ed9p..."
+                ? copy("Submitting...", "Dang nop...")
                 : isListeningItem
-                  ? "N\u1ed9p to\u00e0n b\u1ed9 c\u00e2u nghe"
-                  : "N\u1ed9p to\u00e0n b\u1ed9 c\u00e2u h\u1ecfi"}
+                  ? copy("Submit all listening answers", "Nop toan bo cau nghe")
+                  : copy("Submit all questions", "Nop toan bo cau hoi")}
             </button>
           )}
           {false && isCompactPassageItem && !isCurrentItemComplete && (
@@ -3719,7 +4082,7 @@ function LessonRunner() {
               }
               className="px-6 py-3 rounded-xl bg-[#155ca5] text-white font-bold hover:bg-[#0f4c88] disabled:opacity-60"
             >
-              {submittingCurrent ? "Submitting..." : "Submit all listening answers"}
+              {submittingCurrent ? copy("Submitting...", "Dang nop...") : copy("Submit answer", "Nop cau tra loi")}
             </button>
           )}
           <button
@@ -3729,11 +4092,11 @@ function LessonRunner() {
           >
             {currentIndex === items.length - 1
               ? completingLesson
-                ? "Đang lưu kết quả..."
-                : "Kết thúc"
+                ? copy("Saving result...", "Dang luu ket qua...")
+                : copy("Finish", "Ket thuc")
               : currentGroup
-                ? "Nhóm tiếp theo"
-                : "Câu tiếp"}
+                ? copy("Next group", "Nhom tiep theo")
+                : copy("Next question", "Cau tiep")}
           </button>
         </div>
 

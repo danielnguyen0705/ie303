@@ -19,10 +19,12 @@ import type {
   CollectorLeaderboardEntryResponse,
   ExpLeaderboardEntryResponse,
 } from "@/api/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Tab = "coin" | "exp" | "collection";
 
 export function Leaderboard() {
+  const { copy } = useLanguage();
   const [coinLeaderboard, setCoinLeaderboard] = useState<
     CoinLeaderboardEntryResponse[]
   >([]);
@@ -53,14 +55,14 @@ export function Leaderboard() {
 
       if (!coinResponse.success) {
         setError(
-          coinResponse.error?.message || "Failed to load coin leaderboard",
+          coinResponse.error?.message || copy("Failed to load coin leaderboard", "Không thể tải bảng xếp hạng xu"),
         );
         return;
       }
 
       if (!expResponse.success) {
         setError(
-          expResponse.error?.message || "Failed to load exp leaderboard",
+          expResponse.error?.message || copy("Failed to load exp leaderboard", "Không thể tải bảng xếp hạng EXP"),
         );
         return;
       }
@@ -68,7 +70,7 @@ export function Leaderboard() {
       if (!collectorResponse.success) {
         setError(
           collectorResponse.error?.message ||
-            "Failed to load collector leaderboard",
+            copy("Failed to load collector leaderboard", "Không thể tải bảng xếp hạng sưu tập"),
         );
         return;
       }
@@ -78,7 +80,7 @@ export function Leaderboard() {
       setCollectorLeaderboard(collectorResponse.data?.leaderboard || []);
     } catch (err) {
       console.error("Error loading leaderboard:", err);
-      setError("Failed to load leaderboard");
+      setError(copy("Failed to load leaderboard", "Không thể tải bảng xếp hạng"));
     } finally {
       setLoading(false);
     }
@@ -96,7 +98,7 @@ export function Leaderboard() {
       <main className="flex min-h-[70vh] items-center justify-center px-6">
         <div className="space-y-4 text-center">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#155ca5]" />
-          <p className="font-medium text-gray-600">Loading leaderboard...</p>
+          <p className="font-medium text-gray-600">{copy("Loading leaderboard...", "Đang tải bảng xếp hạng...")}</p>
         </div>
       </main>
     );
@@ -111,7 +113,7 @@ export function Leaderboard() {
             onClick={loadLeaderboard}
             className="mt-4 rounded-xl bg-red-600 px-6 py-2 font-bold text-white"
           >
-            Retry
+            {copy("Retry", "Thử lại")}
           </button>
         </div>
       </main>
@@ -127,7 +129,7 @@ export function Leaderboard() {
           </div>
 
           <h1 className="truncate text-3xl font-black tracking-tight text-[#155ca5] md:text-5xl">
-            Leaderboard
+            {copy("Leaderboard", "Bảng xếp hạng")}
           </h1>
         </div>
 
@@ -136,7 +138,7 @@ export function Leaderboard() {
 
       <section className="mx-auto w-full max-w-7xl space-y-8 px-5 py-10 md:px-0 md:py-0">
         <p className="text-center text-2xl font-semibold text-slate-700 md:text-left md:text-xl">
-          Top 10 Coins, EXP and Collection.
+          {copy("Top 10 Coins, EXP and Collection.", "Top 10 xu, EXP và bộ sưu tập.")}
         </p>
 
         <div className="grid grid-cols-3 rounded-[2rem] bg-white/70 p-2 shadow-sm md:inline-grid md:w-auto">
@@ -161,7 +163,7 @@ export function Leaderboard() {
             onClick={() => setActiveTab("collection")}
             icon={<Palette className="h-5 w-5" />}
           >
-            Collection
+            {copy("Collection", "Sưu tập")}
           </TabButton>
         </div>
 
@@ -190,7 +192,9 @@ export function Leaderboard() {
           collectorLeaderboard.length === 0 && (
             <section className="rounded-[2rem] bg-white px-4 py-12 text-center shadow-sm">
               <Users className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-              <p className="text-lg text-gray-500">No leaderboard data yet</p>
+              <p className="text-lg text-gray-500">
+                {copy("No leaderboard data yet", "Chưa có dữ liệu xếp hạng")}
+              </p>
             </section>
           )}
       </section>
@@ -234,6 +238,7 @@ function MobileLeaderboardCard({
     | CollectorLeaderboardEntryResponse;
   tab: Tab;
 }) {
+  const { copy } = useLanguage();
   const isCurrentUser = !!entry.currentUser;
   const isFirst = entry.rank === 1;
 
@@ -249,7 +254,7 @@ function MobileLeaderboardCard({
     >
       {isCurrentUser && (
         <span className="absolute right-8 top-0 rounded-b-2xl bg-white/80 px-6 py-1 text-sm font-black tracking-[0.25em] text-[#155ca5]">
-          YOU
+          {copy("YOU", "BẠN")}
         </span>
       )}
 
@@ -315,8 +320,8 @@ function MobileLeaderboardCard({
                   value={entry.collectibleCount}
                   className={isCurrentUser ? "text-white" : "text-[#155ca5]"}
                 />
-                <Metric value={`${entry.categoryCount} cat`} />
-                <Metric value={`${entry.avatarCount} ava`} />
+                <Metric value={`${entry.categoryCount} ${copy("cat", "loại")}`} />
+                <Metric value={`${entry.avatarCount} ${copy("ava", "avatar")}`} />
                 <Metric value={`${entry.backgroundCount} bg`} />
               </>
             )}
@@ -364,8 +369,17 @@ function FlameMetric({
 }
 
 function DesktopCoinTable({ data }: { data: CoinLeaderboardEntryResponse[] }) {
+  const { copy } = useLanguage();
   return (
-    <DesktopTable headers={["Rank", "User", "Coin", "Score", "Streak"]}>
+    <DesktopTable
+      headers={[
+        copy("Rank", "Hạng"),
+        copy("User", "Người dùng"),
+        copy("Coin", "Xu"),
+        copy("Score", "Điểm"),
+        copy("Streak", "Chuỗi ngày"),
+      ]}
+    >
       {data.map((entry) => (
         <tr
           key={entry.userId}
@@ -385,8 +399,9 @@ function DesktopCoinTable({ data }: { data: CoinLeaderboardEntryResponse[] }) {
 }
 
 function DesktopExpTable({ data }: { data: ExpLeaderboardEntryResponse[] }) {
+  const { copy } = useLanguage();
   return (
-    <DesktopTable headers={["Rank", "User", "EXP", "Streak"]}>
+    <DesktopTable headers={[copy("Rank", "Hạng"), copy("User", "Người dùng"), "EXP", copy("Streak", "Chuỗi ngày")]}>
       {data.map((entry) => (
         <tr
           key={entry.userId}
@@ -409,9 +424,17 @@ function DesktopCollectionTable({
 }: {
   data: CollectorLeaderboardEntryResponse[];
 }) {
+  const { copy } = useLanguage();
   return (
     <DesktopTable
-      headers={["Rank", "User", "Items", "Categories", "Avatar", "Background"]}
+      headers={[
+        copy("Rank", "Hạng"),
+        copy("User", "Người dùng"),
+        copy("Items", "Vật phẩm"),
+        copy("Categories", "Danh mục"),
+        "Avatar",
+        copy("Background", "Nền"),
+      ]}
     >
       {data.map((entry) => (
         <tr
@@ -479,6 +502,7 @@ function UserTd({
     currentUser?: boolean;
   };
 }) {
+  const { copy } = useLanguage();
   return (
     <td className="px-4 py-4">
       <div className="flex min-w-0 items-center gap-3">
@@ -491,7 +515,7 @@ function UserTd({
           {entry.username}
           {entry.currentUser && (
             <span className="ml-2 rounded-full bg-[#155ca5] px-2 py-0.5 text-[10px] text-white">
-              YOU
+              {copy("YOU", "BẠN")}
             </span>
           )}
         </span>

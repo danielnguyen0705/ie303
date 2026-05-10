@@ -27,6 +27,10 @@ public class MLPredictionService {
 
     @Async
     public void predictAndUpdateUserSkills(Long userId) {
+        predictAndUpdateUserSkillsNow(userId);
+    }
+
+    public void predictAndUpdateUserSkillsNow(Long userId) {
         try {
             User user = userRepo.findById(userId).orElse(null);
             if (user == null) return;
