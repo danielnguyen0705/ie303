@@ -18,7 +18,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,7 +49,7 @@ class NotificationServiceTest {
         User targetUser = new User();
         targetUser.setId(1L);
         targetUser.setUsername("student");
-        targetUser.setEmail("student@example.com");
+        targetUser.setEmail("tohigh2023@gmail.com");
         targetUser.setRole(Role.USER);
         targetUser.setVerified(true);
         targetUser.setVipExpiredAt(LocalDateTime.now(zoneId).plusDays(2));
@@ -65,8 +67,33 @@ class NotificationServiceTest {
 
         notificationService.sendVipExpiryReminders();
 
-        verify(emailService).sendVipExpiryReminderEmail("student@example.com", "student", targetUser.getVipExpiredAt(), 2);
+        verify(emailService).sendVipExpiryReminderEmail("tohigh2023@gmail.com", "student", targetUser.getVipExpiredAt(), 2);
         verify(emailService, never()).sendVipExpiryReminderEmail("ignored@example.com", "ignored", ignoredUser.getVipExpiredAt(), 10);
+    }
+
+    @Test
+    void sendVipExpiryReminders_ShouldIgnoreUsersWithoutEmailOrNonUserRole() {
+        ZoneId zoneId = ZoneId.of("Asia/Ho_Chi_Minh");
+
+        User noEmailUser = new User();
+        noEmailUser.setId(10L);
+        noEmailUser.setUsername("no-email");
+        noEmailUser.setEmail(" ");
+        noEmailUser.setRole(Role.USER);
+        noEmailUser.setVipExpiredAt(LocalDateTime.now(zoneId).plusDays(1));
+
+        User adminUser = new User();
+        adminUser.setId(11L);
+        adminUser.setUsername("admin");
+        adminUser.setEmail("admin@example.com");
+        adminUser.setRole(Role.ADMIN);
+        adminUser.setVipExpiredAt(LocalDateTime.now(zoneId).plusDays(1));
+
+        when(userRepo.findAll()).thenReturn(List.of(noEmailUser, adminUser));
+
+        notificationService.sendVipExpiryReminders();
+
+        verifyNoInteractions(emailService);
     }
 
     @Test
@@ -100,6 +127,47 @@ class NotificationServiceTest {
 
         verify(emailService).sendStreakReminderEmail("learner@example.com", "learner", 7, targetUser.getLastStudyDate());
         verify(emailService, never()).sendStreakReminderEmail("safe@example.com", "safe", 5, ignoredUser.getLastStudyDate());
+    }
+
+    @Test
+    void sendStreakReminders_ShouldSkipUsersAlreadyCheckedOrWithoutStreak() {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        User checkedUser = new User();
+        checkedUser.setId(12L);
+        checkedUser.setUsername("checked");
+        checkedUser.setEmail("checked@example.com");
+        checkedUser.setRole(Role.USER);
+        checkedUser.setStreak(3);
+        checkedUser.setStreakItemPendingCount(0);
+        checkedUser.setLastStudyDate(today.minusDays(1));
+        checkedUser.setStreakCheckedAt(today);
+
+        User noStreakUser = new User();
+        noStreakUser.setId(13L);
+        noStreakUser.setUsername("nostreak");
+        noStreakUser.setEmail("nostreak@example.com");
+        noStreakUser.setRole(Role.USER);
+        noStreakUser.setStreak(0);
+        noStreakUser.setStreakItemPendingCount(0);
+        noStreakUser.setLastStudyDate(today.minusDays(1));
+
+        when(userRepo.findAll()).thenReturn(List.of(checkedUser, noStreakUser));
+
+        notificationService.sendStreakReminders();
+
+        verify(emailService).sendStreakReminderEmail(
+                "checked@example.com",
+                "checked",
+                3,
+                checkedUser.getLastStudyDate()
+        );
+        verify(emailService, never()).sendStreakReminderEmail(
+                "nostreak@example.com",
+                "nostreak",
+                0,
+                noStreakUser.getLastStudyDate()
+        );
     }
 
     @Test
@@ -145,6 +213,39 @@ class NotificationServiceTest {
     }
 
     @Test
+    void resetInactiveStreaks_ShouldSkipUsersWithoutYesterdayStudyOrAlreadyChecked() {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        User todayStudyUser = new User();
+        todayStudyUser.setId(14L);
+        todayStudyUser.setUsername("today");
+        todayStudyUser.setEmail("today@example.com");
+        todayStudyUser.setRole(Role.USER);
+        todayStudyUser.setStreak(5);
+        todayStudyUser.setLastStudyDate(today);
+        todayStudyUser.setStreakCheckedAt(null);
+
+        User alreadyCheckedUser = new User();
+        alreadyCheckedUser.setId(15L);
+        alreadyCheckedUser.setUsername("again");
+        alreadyCheckedUser.setEmail("again@example.com");
+        alreadyCheckedUser.setRole(Role.USER);
+        alreadyCheckedUser.setStreak(6);
+        alreadyCheckedUser.setLastStudyDate(today.minusDays(1));
+        alreadyCheckedUser.setStreakCheckedAt(today);
+
+        when(userRepo.findAll()).thenReturn(List.of(todayStudyUser, alreadyCheckedUser));
+
+        notificationService.resetInactiveStreaks();
+
+        verifyNoInteractions(emailService);
+        verify(userRepo, never()).save(todayStudyUser);
+        verify(userRepo, never()).save(alreadyCheckedUser);
+        assertEquals(5, todayStudyUser.getStreak());
+        assertEquals(6, alreadyCheckedUser.getStreak());
+    }
+
+    @Test
     void announceNewShopItem_ShouldNotifyAllVerifiedUsers() {
         User firstUser = new User();
         firstUser.setId(5L);
@@ -176,5 +277,23 @@ class NotificationServiceTest {
 
         verify(emailService).sendNewShopItemAnnouncementEmail("first@example.com", item);
         verify(emailService).sendNewShopItemAnnouncementEmail("second@example.com", item);
+    }
+
+    @Test
+    void announceNewShopItem_ShouldIgnoreInactiveOrNullItems() {
+        notificationService.announceNewShopItem(null);
+
+        ShopItem inactiveItem = new ShopItem();
+        inactiveItem.setId(101L);
+        inactiveItem.setName("Inactive item");
+        inactiveItem.setDescription("hidden");
+        inactiveItem.setPrice(50);
+        inactiveItem.setType(ItemType.VIP);
+        inactiveItem.setDurationDays(7);
+        inactiveItem.setActive(false);
+
+        notificationService.announceNewShopItem(inactiveItem);
+
+        verifyNoInteractions(emailService, userRepo);
     }
 }
