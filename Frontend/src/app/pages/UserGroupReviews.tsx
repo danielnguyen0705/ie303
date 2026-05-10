@@ -2,6 +2,7 @@ import { getGroupReviewById, getGroupReviews } from "@/api";
 import { PracticePackageRunner } from "@/app/components/PracticePackageRunner";
 import type { GroupReviewResponse } from "@/api/types";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { hasVipAccess, loadQuestionBundle } from "./practicePackageData";
 
 async function loadGroupReviewItems() {
@@ -42,22 +43,32 @@ async function loadGroupReviewPackage(
 
 export function UserGroupReviews() {
   const { user } = useAuth();
+  const { copy } = useLanguage();
   const includeVipLessons = hasVipAccess(user);
 
   return (
     <PracticePackageRunner<GroupReviewResponse>
-      badgeLabel="VIP Group Review"
-      pageTitle="Group Review Packages"
-      pageDescription="These packages combine questions across multiple units. VIP users can reopen them and practice as one focused review test."
-      packageKindLabel="Group Review"
-      introText="Group reviews are built from a selected grade and unit span. Start one here to retake the whole package in a lesson-style runner."
-      emptyListText="No group reviews available yet."
-      emptyQuestionsText="This group review package has no questions yet."
-      startButtonLabel="Start Group Review"
+      badgeLabel={copy("VIP Group Review", "On tap nhom VIP")}
+      pageTitle={copy("Group Review Packages", "Goi on tap nhom")}
+      pageDescription={copy(
+        "These packages combine questions across multiple units. VIP users can reopen them and practice as one focused review test.",
+        "Cac goi nay ket hop cau hoi tu nhieu unit. Tai khoan VIP co the mo lai va luyen nhu mot bai on tap tap trung.",
+      )}
+      packageKindLabel={copy("Group Review", "On tap nhom")}
+      introText={copy(
+        "Group reviews are built from a selected grade and unit span. Start one here to retake the whole package in a lesson-style runner.",
+        "On tap nhom duoc tao tu khoi lop va khoang unit da chon. Bat dau tai day de lam lai ca goi theo kieu lesson runner.",
+      )}
+      emptyListText={copy("No group reviews available yet.", "Chua co goi on tap nhom nao.")}
+      emptyQuestionsText={copy(
+        "This group review package has no questions yet.",
+        "Goi on tap nhom nay chua co cau hoi.",
+      )}
+      startButtonLabel={copy("Start Group Review", "Bat dau on tap nhom")}
       loadItems={loadGroupReviewItems}
       loadPackage={(item) => loadGroupReviewPackage(item, includeVipLessons)}
       getItemMeta={(item) =>
-        `Grade ${item.gradeId} - Units ${item.startUnit} to ${item.endUnit} - ${item.questionIds.length} question(s)`
+        `${copy("Grade", "Lop")} ${item.gradeId} - ${copy("Units", "Unit")} ${item.startUnit} ${copy("to", "den")} ${item.endUnit} - ${item.questionIds.length} ${copy("question(s)", "cau hoi")}`
       }
     />
   );

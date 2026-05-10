@@ -29,6 +29,7 @@ import type {
 } from "@/api/types";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
+import { useLanguage } from "@/context/LanguageContext";
 
 const VIP_PLANS: TopupVipPlan[] = [
   {
@@ -114,6 +115,7 @@ function PackIcon({ icon }: { icon: TopupCoinPackIcon }) {
 }
 
 export function Topup() {
+  const { copy } = useLanguage();
   const [balance, setBalance] = useState(0);
   const [activeOffers, setActiveOffers] = useState<PaymentOffer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,7 +217,7 @@ export function Topup() {
           transaction: latestTransaction,
           errorMessage:
             transactionsResponse.error?.message ||
-            "Please check payment history.",
+            copy("Please check payment history.", "Vui lòng kiểm tra lịch sử thanh toán."),
         };
       }
 
@@ -249,7 +251,7 @@ export function Topup() {
 
     if (errorMessage) {
       popup.warning({
-        title: "Unable to verify payment result",
+        title: copy("Unable to verify payment result", "Không thể xác minh kết quả thanh toán"),
         message: errorMessage,
       });
       clearReturnQuery();
@@ -258,9 +260,12 @@ export function Topup() {
 
     if (!transaction) {
       popup.warning({
-        title: "Payment not found",
-        message: "Transaction was created but has not been synced yet.",
-        description: `Transaction: ${transactionCode}`,
+        title: copy("Payment not found", "Không tìm thấy thanh toán"),
+        message: copy(
+          "Transaction was created but has not been synced yet.",
+          "Giao dịch đã được tạo nhưng chưa đồng bộ.",
+        ),
+        description: `${copy("Transaction:", "Giao dịch:")} ${transactionCode}`,
       });
       clearReturnQuery();
       return;
@@ -269,27 +274,30 @@ export function Topup() {
     if (transaction.status === "SUCCESS") {
       await refreshBalance();
       popup.success({
-        title: "Payment successful",
-        message: "Your transaction was confirmed.",
-        description: `Transaction: ${transaction.transactionCode}`,
+        title: copy("Payment successful", "Thanh toán thành công"),
+        message: copy("Your transaction was confirmed.", "Giao dịch của bạn đã được xác nhận."),
+        description: `${copy("Transaction:", "Giao dịch:")} ${transaction.transactionCode}`,
       });
       clearPendingCheckout();
     } else if (transaction.status === "PENDING") {
       const vnpResponseCode = query.get("vnp_ResponseCode");
 
       popup.warning({
-        title: "Payment is pending",
+        title: copy("Payment is pending", "Thanh toán đang chờ"),
         message:
           vnpResponseCode && vnpResponseCode !== "00"
-            ? `VNPAY return code ${vnpResponseCode}. Waiting for server callback.`
-            : "Please wait a moment and check payment history.",
-        description: `Transaction: ${transaction.transactionCode}`,
+            ? copy(
+              `VNPAY return code ${vnpResponseCode}. Waiting for server callback.`,
+              `Mã trả về VNPAY ${vnpResponseCode}. Đang chờ server callback.`,
+            )
+            : copy("Please wait a moment and check payment history.", "Vui lòng chờ một lát và kiểm tra lịch sử thanh toán."),
+        description: `${copy("Transaction:", "Giao dịch:")} ${transaction.transactionCode}`,
       });
     } else {
       popup.error({
-        title: "Payment failed",
-        message: `Status: ${transaction.status}`,
-        description: `Transaction: ${transaction.transactionCode}`,
+        title: copy("Payment failed", "Thanh toán thất bại"),
+        message: `${copy("Status:", "Trạng thái:")} ${transaction.status}`,
+        description: `${copy("Transaction:", "Giao dịch:")} ${transaction.transactionCode}`,
       });
       clearPendingCheckout();
     }
@@ -310,7 +318,7 @@ export function Topup() {
 
         if (!balanceResponse.success) {
           setError(
-            balanceResponse.error?.message || "Failed to load coin balance",
+            balanceResponse.error?.message || copy("Failed to load coin balance", "Không thể tải số dư xu"),
           );
           return;
         }
@@ -318,7 +326,7 @@ export function Topup() {
         setBalance(balanceResponse.data?.balance || 0);
 
         if (!offersResponse.success) {
-          setError(offersResponse.error?.message || "Failed to load offers");
+          setError(offersResponse.error?.message || copy("Failed to load offers", "Không thể tải ưu đãi"));
           return;
         }
 
@@ -329,7 +337,7 @@ export function Topup() {
         }
       } catch (err) {
         console.error("Error loading topup data:", err);
-        setError("Failed to load top-up data");
+        setError(copy("Failed to load top-up data", "Không thể tải dữ liệu nạp tiền"));
       } finally {
         setLoading(false);
       }
@@ -339,10 +347,13 @@ export function Topup() {
   }, []);
 
   const heroSubtitle = useMemo(() => {
-    if (loading) return "Syncing your wallet...";
-    if (error) return "Continue with curated VIP plans and coin bundles.";
-    return `Your current balance is ${balance.toLocaleString()} coins.`;
-  }, [balance, error, loading]);
+    if (loading) return copy("Syncing your wallet...", "Đang đồng bộ ví của bạn...");
+    if (error) return copy("Continue with curated VIP plans and coin bundles.", "Tiếp tục với các gói VIP và gói xu được chọn lọc.");
+    return copy(
+      `Your current balance is ${balance.toLocaleString()} coins.`,
+      `Số dư hiện tại của bạn là ${balance.toLocaleString()} xu.`,
+    );
+  }, [balance, copy, error, loading]);
 
   const findVipOffer = (plan: TopupVipPlan): PaymentOffer | undefined => {
     const durationDaysMap: Record<TopupVipPlan["id"], number> = {
@@ -407,12 +418,12 @@ export function Topup() {
 
       if (!webhookResponse.success || !webhookResponse.data) {
         popup.warning({
-          title: "Transaction pending",
+          title: copy("Transaction pending", "Giao dịch đang chờ"),
           message:
             confirmResponse.error?.message ||
             webhookResponse.error?.message ||
-            "Checkout created, waiting for payment confirmation.",
-          description: `Transaction: ${transactionCode}`,
+            copy("Checkout created, waiting for payment confirmation.", "Checkout đã được tạo, đang chờ xác nhận thanh toán."),
+          description: `${copy("Transaction:", "Giao dịch:")} ${transactionCode}`,
         });
         return;
       }
@@ -426,7 +437,7 @@ export function Topup() {
     popup.success({
       title: successTitle,
       message: successMessage,
-      description: `Transaction: ${
+      description: `${copy("Transaction:", "Giao dịch:")} ${
         confirmedTransaction?.transactionCode || transactionCode
       }`,
     });
@@ -445,9 +456,9 @@ export function Topup() {
 
     if (!checkoutResponse.success || !checkoutResponse.data) {
       popup.error({
-        title: "Checkout failed",
+        title: copy("Checkout failed", "Checkout thất bại"),
         message:
-          checkoutResponse.error?.message || "Unable to create transaction",
+          checkoutResponse.error?.message || copy("Unable to create transaction", "Không thể tạo giao dịch"),
       });
       return;
     }
@@ -471,9 +482,12 @@ export function Topup() {
 
     if (!checkoutData.paymentUrl?.trim()) {
       popup.warning({
-        title: "Transaction pending",
-        message: "Checkout was created but payment URL is empty.",
-        description: `Transaction: ${checkoutData.transactionCode}`,
+        title: copy("Transaction pending", "Giao dịch đang chờ"),
+        message: copy(
+          "Checkout was created but payment URL is empty.",
+          "Checkout đã được tạo nhưng URL thanh toán đang trống.",
+        ),
+        description: `${copy("Transaction:", "Giao dịch:")} ${checkoutData.transactionCode}`,
       });
       return;
     }
@@ -520,8 +534,11 @@ export function Topup() {
     const offer = findVipOffer(plan);
     if (!offer) {
       popup.error({
-        title: "Offer not available",
-        message: `No active VIP offer found for ${plan.title}.`,
+        title: copy("Offer not available", "Ưu đãi không khả dụng"),
+        message: copy(
+          `No active VIP offer found for ${plan.title}.`,
+          `Không tìm thấy ưu đãi VIP đang hoạt động cho ${plan.title}.`,
+        ),
       });
       return;
     }
@@ -530,7 +547,7 @@ export function Topup() {
     openCheckoutIntent(
       plan.id,
       offer,
-      "VIP activated",
+      copy("VIP activated", "Đã kích hoạt VIP"),
       `${plan.title} • ${priceDisplay}`,
     );
   };
@@ -539,21 +556,53 @@ export function Topup() {
     const offer = pack.offer || findCoinOffer(pack);
     if (!offer) {
       popup.error({
-        title: "Offer not available",
-        message: `No active coin offer found for ${pack.coins.toLocaleString()} coins.`,
+        title: copy("Offer not available", "Ưu đãi không khả dụng"),
+        message: copy(
+          `No active coin offer found for ${pack.coins.toLocaleString()} coins.`,
+          `Không tìm thấy ưu đãi xu đang hoạt động cho ${pack.coins.toLocaleString()} xu.`,
+        ),
       });
       return;
     }
 
     const priceDisplay =
-      offer.price > 0 ? `${offer.price.toLocaleString()} VND` : "Free";
+      offer.price > 0 ? `${offer.price.toLocaleString()} VND` : copy("Free", "Miễn phí");
 
     openCheckoutIntent(
       pack.id,
       offer,
-      "Top-up successful",
+      copy("Top-up successful", "Nạp xu thành công"),
       `${pack.coins.toLocaleString()} coins • ${priceDisplay}`,
     );
+  };
+
+  const getPlanTitle = (plan: TopupVipPlan) => {
+    if (plan.id === "month") return copy("1 Month", "1 tháng");
+    if (plan.id === "year") return copy("1 Year", "1 năm");
+    if (plan.id === "half-year") return copy("6 Months", "6 tháng");
+    return plan.title;
+  };
+
+  const getPlanSubtitle = (plan: TopupVipPlan) => {
+    if (plan.id === "month") return copy("Short Term", "Ngắn hạn");
+    if (plan.id === "year") return copy("Elite Status", "Hạng cao cấp");
+    if (plan.id === "half-year") return copy("Momentum", "Duy trì nhịp học");
+    return plan.subtitle;
+  };
+
+  const getFeatureLabel = (feature: string) => {
+    switch (feature) {
+      case "Ad-free Experience":
+        return copy("Ad-free Experience", "Trải nghiệm không quảng cáo");
+      case "AI Writing Feedback":
+        return copy("AI Writing Feedback", "Nhận xét bài viết bằng AI");
+      case "Detailed Project Keys":
+        return copy("Detailed Project Keys", "Mở khóa tính năng chi tiết");
+      case "Exclusive Profile Frame":
+        return copy("Exclusive Profile Frame", "Khung hồ sơ độc quyền");
+      default:
+        return feature;
+    }
   };
 
   if (loading) {
@@ -562,7 +611,7 @@ export function Topup() {
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin mx-auto text-[#155ca5]" />
           <p className="text-slate-600 font-semibold">
-            Loading top-up options...
+            {copy("Loading top-up options...", "Đang tải lựa chọn nạp tiền...")}
           </p>
         </div>
       </main>
@@ -581,13 +630,13 @@ export function Topup() {
           <div className="space-y-5">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-1.5 text-xs tracking-[0.2em] uppercase font-bold text-[#155ca5]">
               <Crown className="w-4 h-4" />
-              Premium Access
+              {copy("Premium Access", "Quyền truy cập Premium")}
             </span>
 
             <h1 className="text-4xl md:text-6xl font-black leading-[0.95] tracking-tight text-slate-900">
-              Elevate Your
+              {copy("Elevate Your", "Nâng tầm")}
               <br />
-              Learning Journey
+              {copy("Learning Journey", "hành trình học tập")}
             </h1>
 
             <div className="inline-flex items-center gap-3 rounded-2xl bg-white/70 backdrop-blur-sm px-5 py-3">
@@ -609,7 +658,7 @@ export function Topup() {
 
                 <div>
                   <div className="text-xs uppercase tracking-widest text-white/80">
-                    Coin Wallet
+                    {copy("Coin Wallet", "Ví xu")}
                   </div>
                   <div className="text-3xl font-black mt-1">
                     {balance.toLocaleString()}
@@ -617,8 +666,8 @@ export function Topup() {
                 </div>
 
                 <div className="flex items-center justify-between text-white/80 text-sm">
-                  <span>Premium Tier</span>
-                  <span>Gold</span>
+                  <span>{copy("Premium Tier", "Hạng Premium")}</span>
+                  <span>{copy("Gold", "Vàng")}</span>
                 </div>
               </div>
             </div>
@@ -630,17 +679,19 @@ export function Topup() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h2 className="text-4xl font-black tracking-tight text-slate-900">
-              Choose Your Status
+              {copy("Choose Your Status", "Chọn gói của bạn")}
             </h2>
             <p className="text-slate-600 mt-2 max-w-xl">
-              Precision-engineered plans for learners who want a faster path to
-              mastery.
+              {copy(
+                "Precision-engineered plans for learners who want a faster path to mastery.",
+                "Các gói được thiết kế cho người học muốn tiến bộ nhanh hơn.",
+              )}
             </p>
           </div>
 
           <div className="text-sm font-semibold text-slate-500">
-            {visibleVipPlans.length + visibleCoinPacks.length} active offers
-            available
+            {visibleVipPlans.length + visibleCoinPacks.length}{" "}
+            {copy("active offers available", "ưu đãi đang khả dụng")}
           </div>
         </div>
 
@@ -664,10 +715,10 @@ export function Topup() {
                     <p
                       className={`text-xs uppercase tracking-[0.18em] font-bold ${plan.highlighted ? "text-[#155ca5]" : "text-slate-500"}`}
                     >
-                      {plan.subtitle}
+                      {getPlanSubtitle(plan)}
                     </p>
                     <h3 className="text-3xl font-black text-slate-900 mt-2">
-                      {plan.title}
+                      {getPlanTitle(plan)}
                     </h3>
                     <p className="mt-3 text-5xl font-black tracking-tight text-slate-900">
                       {price.toLocaleString()}
@@ -695,7 +746,7 @@ export function Topup() {
                         <span
                           className={`${plan.highlighted ? "font-semibold" : "font-medium"}`}
                         >
-                          {feature}
+                          {getFeatureLabel(feature)}
                         </span>
                       </li>
                     ))}
@@ -712,10 +763,10 @@ export function Topup() {
                     } ${isProcessing ? "opacity-70" : ""}`}
                   >
                     {isProcessing
-                      ? "Processing..."
+                      ? copy("Processing...", "Đang xử lý...")
                       : plan.highlighted
-                        ? "Get VIP Gold"
-                        : "Select Plan"}
+                        ? copy("Get VIP Gold", "Nhận VIP Gold")
+                        : copy("Select Plan", "Chọn gói")}
                   </button>
                 </article>
               );
@@ -723,7 +774,7 @@ export function Topup() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-slate-600 font-medium">
-            No active VIP offers available right now.
+            {copy("No active VIP offers available right now.", "Hiện chưa có ưu đãi VIP đang hoạt động.")}
           </div>
         )}
       </section>
@@ -731,7 +782,7 @@ export function Topup() {
       <section className="space-y-8">
         <div className="flex items-center gap-4">
           <h2 className="text-4xl font-black tracking-tight text-slate-900">
-            Refill Coins
+            {copy("Refill Coins", "Nạp xu")}
           </h2>
           <div className="h-[2px] flex-1 bg-slate-300/50" />
         </div>
@@ -759,7 +810,7 @@ export function Topup() {
                     {pack.label}
                   </p>
                   <h3 className="text-3xl font-black text-slate-900 mb-5">
-                    {pack.coins.toLocaleString()} Coins
+                    {pack.coins.toLocaleString()} {copy("Coins", "xu")}
                   </h3>
 
                   <button
@@ -769,10 +820,10 @@ export function Topup() {
                     className="mt-auto w-full rounded-xl py-3 bg-gradient-to-r from-[#1a5fa8] to-[#005095] text-white font-bold hover:brightness-105 transition-all disabled:opacity-70"
                   >
                     {isProcessing
-                      ? "Processing..."
+                      ? copy("Processing...", "Đang xử lý...")
                       : price > 0
                         ? `${price.toLocaleString()} VND`
-                        : "Free"}
+                        : copy("Free", "Miễn phí")}
                   </button>
                 </article>
               );
@@ -780,7 +831,7 @@ export function Topup() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-slate-600 font-medium">
-            No active coin offers available right now.
+            {copy("No active coin offers available right now.", "Hiện chưa có ưu đãi xu đang hoạt động.")}
           </div>
         )}
       </section>
@@ -790,11 +841,13 @@ export function Topup() {
           <Flame className="w-7 h-7 mt-1" />
           <div>
             <h3 className="text-2xl font-black mb-1">
-              Need More Coins Without Paying?
+              {copy("Need More Coins Without Paying?", "Muốn kiếm thêm xu miễn phí?")}
             </h3>
             <p className="text-white/90">
-              Complete quests, daily lessons, and revision tests to stack coins
-              faster.
+              {copy(
+                "Complete quests, daily lessons, and revision tests to stack coins faster.",
+                "Hoàn thành nhiệm vụ, bài học hằng ngày và bài ôn tập để tích xu nhanh hơn.",
+              )}
             </p>
           </div>
         </div>
@@ -803,7 +856,7 @@ export function Topup() {
           to="/quests"
           className="inline-flex items-center justify-center rounded-xl bg-white text-[#155ca5] px-5 py-3 font-bold hover:bg-slate-100 transition-colors whitespace-nowrap"
         >
-          View Quests
+          {copy("View Quests", "Xem nhiệm vụ")}
         </Link>
       </section>
 
@@ -817,11 +870,13 @@ export function Topup() {
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 p-6">
             <h3 className="text-2xl font-black text-slate-900">
-              Chọn phương thức thanh toán
+              {copy("Choose payment method", "Chọn phương thức thanh toán")}
             </h3>
             <p className="text-sm text-slate-600 mt-2">
-              Đơn hàng sẽ tạo giao dịch PENDING trước, sau đó chuyển tới cổng
-              thanh toán bạn chọn.
+              {copy(
+                "Your order will create a PENDING transaction first, then redirect to the selected payment gateway.",
+                "Đơn hàng sẽ tạo giao dịch PENDING trước, sau đó chuyển tới cổng thanh toán bạn chọn.",
+              )}
             </p>
 
             <div className="grid grid-cols-2 gap-3 mt-5">
@@ -847,7 +902,7 @@ export function Topup() {
 
             {provider === "MOCK" && (
               <p className="mt-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">
-                MOCK chỉ dùng cho local test.
+                {copy("MOCK is only for local testing.", "MOCK chỉ dùng cho local test.")}
               </p>
             )}
 
@@ -857,14 +912,14 @@ export function Topup() {
                 onClick={() => setCheckoutIntent(null)}
                 className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-slate-700 font-semibold hover:bg-slate-50"
               >
-                Hủy
+                {copy("Cancel", "Hủy")}
               </button>
               <button
                 type="button"
                 onClick={confirmCheckout}
                 className="flex-1 rounded-xl bg-gradient-to-r from-[#1a5fa8] to-[#005095] px-4 py-2.5 text-white font-bold hover:brightness-105"
               >
-                Tiếp tục
+                {copy("Continue", "Tiếp tục")}
               </button>
             </div>
           </div>

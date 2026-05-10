@@ -12,6 +12,7 @@ import com.ie303.uifive.dto.res.SpeakingEvaluationResponse;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.service.EssayService;
 import com.ie303.uifive.service.LearningAnalysisService;
+import com.ie303.uifive.service.MLPredictionService;
 import com.ie303.uifive.service.PersonalizedPracticeService;
 import com.ie303.uifive.service.SpeakingService;
 import com.ie303.uifive.service.UserService;
@@ -38,6 +39,7 @@ public class AIController {
     private final SpeakingService speakingService;
     private final PersonalizedPracticeService personalizedPracticeService;
     private final LearningAnalysisService learningAnalysisService;
+    private final MLPredictionService mlPredictionService;
     private final UserService userService;
 
     @PostMapping("/essay/submit")
@@ -114,6 +116,23 @@ public class AIController {
         return ApiResponse.<AILearningAnalysisResponse>builder()
                 .code(1000)
                 .message(result == null ? "No learning analysis available yet" : "Fetched latest learning analysis successfully")
+                .result(result)
+                .build();
+    }
+
+    @PostMapping("/learning-analysis/me/refresh")
+    public ApiResponse<AILearningAnalysisResponse> refreshLearningAnalysis(
+            Authentication authentication
+    ) {
+        String username = authentication.getName();
+        User user = userService.getByUsername(username);
+
+        mlPredictionService.predictAndUpdateUserSkillsNow(user.getId());
+        AILearningAnalysisResponse result = learningAnalysisService.getLatestByUsername(username);
+
+        return ApiResponse.<AILearningAnalysisResponse>builder()
+                .code(1000)
+                .message(result == null ? "No learning analysis available yet" : "Refreshed learning analysis successfully")
                 .result(result)
                 .build();
     }

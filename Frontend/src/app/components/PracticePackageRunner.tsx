@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { ENV } from "@/config/env";
+import { useLanguage } from "@/context/LanguageContext";
 import type { QuestionDto, QuestionGroupDto, QuestionType } from "@/api/questions";
 
 type UserAnswer = string | string[] | Record<string, string>;
@@ -97,13 +98,14 @@ function isFillType(type: QuestionType) {
 }
 
 function isManualType(type: QuestionType) {
-  return ["SENTENCE_REWRITE", "ESSAY_WRITING"].includes(type);
+  return type === "ESSAY_WRITING";
 }
 
 function normalizeText(value: string) {
   return value
     .trim()
     .replace(/[_-]+/g, " ")
+    .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
     .toLowerCase();
 }
@@ -272,6 +274,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
   getResultMeta,
   preferredItemId,
 }: PracticePackageRunnerProps<TItem>) {
+  const { copy } = useLanguage();
   const [items, setItems] = useState<TItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<TItem | null>(null);
   const [questions, setQuestions] = useState<QuestionDto[]>([]);
@@ -372,6 +375,41 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
     [currentQuestion?.questionData],
   );
   const isLocked = Boolean(result);
+
+  const getLocalizedQuestionTypeLabel = (type: QuestionType) => {
+    switch (type) {
+      case "QUALITATIVE_MC":
+        return copy("Multiple Choice", "Trac nghiem");
+      case "READING_MC":
+        return copy("Reading Question", "Cau hoi doc hieu");
+      case "CLOZE_MC":
+        return copy("Cloze Question", "Cau hoi dien tu");
+      case "TRUE_FALSE_NG":
+        return copy("True / False / Not Given", "Dung / Sai / Khong co thong tin");
+      case "WORD_BANK_FILL":
+        return copy("Word Bank Fill", "Dien tu trong ngan hang tu");
+      case "LIMITED_FILL":
+        return copy("Fill in the Blank", "Dien vao cho trong");
+      case "WORD_FORM":
+        return copy("Word Form", "Dang cua tu");
+      case "VERB_FORM":
+        return copy("Verb Form", "Dang cua dong tu");
+      case "SENTENCE_REORDER":
+        return copy("Sentence Reorder", "Sap xep cau");
+      case "SENTENCE_REWRITE":
+        return copy("Sentence Rewrite", "Viet lai cau");
+      case "ESSAY_WRITING":
+        return copy("Essay Writing", "Viet luan");
+      case "MATCHING":
+        return copy("Matching", "Noi cap");
+      case "PRONUNCIATION":
+        return copy("Pronunciation", "Phat am");
+      case "TOPIC_SPEAKING":
+        return copy("Speaking", "Noi theo chu de");
+      default:
+        return getQuestionTypeLabel(type);
+    }
+  };
 
   const wordBank = useMemo(() => {
     const groupWords = groupData?.wordBank;
@@ -849,7 +887,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
           disabled={isLocked}
           value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
           onChange={(event) => setAnswer(currentQuestion.id, event.target.value)}
-          placeholder="Type your answer here..."
+          placeholder={copy("Type your answer here...", "Nhap cau tra loi cua ban...")}
           className="w-full rounded-[1.5rem] border border-slate-300 px-5 py-4 text-lg text-[#1e2e51] outline-none transition focus:border-[#155ca5]"
         />
       );
@@ -861,7 +899,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
           {wordBank.length > 0 && (
             <div className="rounded-[1.5rem] border border-[#cfe3ff] bg-[#f5f9ff] p-5">
               <div className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
-                Word Bank
+                {copy("Word Bank", "Ngan hang tu")}
               </div>
               <div className="flex flex-wrap gap-2">
                 {wordBank.map((word) => (
@@ -884,7 +922,10 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
             disabled={isLocked}
             value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
             onChange={(event) => setAnswer(currentQuestion.id, event.target.value)}
-            placeholder="Fill from the word bank or type directly..."
+            placeholder={copy(
+              "Fill from the word bank or type directly...",
+              "Dien tu ngan hang tu hoac nhap truc tiep...",
+            )}
             className="w-full rounded-[1.5rem] border border-slate-300 px-5 py-4 text-lg text-[#1e2e51] outline-none transition focus:border-[#155ca5]"
           />
         </div>
@@ -898,11 +939,11 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         <div className="space-y-5">
           <div className="rounded-[1.5rem] border border-[#cfe3ff] bg-[#f5f9ff] p-5">
             <div className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
-              Your Sentence
+              {copy("Your Sentence", "Cau cua ban")}
             </div>
             <div className="min-h-[72px] rounded-[1.25rem] border border-dashed border-[#9dc1ff] bg-white p-4 text-lg font-semibold text-[#1e2e51]">
               {getDisplayedReorderSentence(currentQuestion, currentAnswer?.answer) ||
-                "Build your sentence here"}
+                copy("Build your sentence here", "Ghep cau cua ban tai day")}
             </div>
 
             <div className="mt-4 flex flex-wrap gap-3">
@@ -912,7 +953,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                 onClick={removeLastReorderWord}
                 className="rounded-xl border border-slate-300 px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Undo
+                {copy("Undo", "Hoan tac")}
               </button>
               <button
                 type="button"
@@ -921,14 +962,14 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RotateCcw className="h-4 w-4" />
-                Reset
+                {copy("Reset", "Dat lai")}
               </button>
             </div>
           </div>
 
           <div>
             <div className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-slate-500">
-              Available Words
+              {copy("Available Words", "Tu co san")}
             </div>
             <div className="flex flex-wrap gap-3">
               {reorderWords.map((word, index) => {
@@ -983,7 +1024,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                   onChange={(event) => updateMatchingAnswer(leftItem, event.target.value)}
                   className="rounded-[1rem] border border-slate-300 bg-white px-4 py-3 text-[#1e2e51] outline-none transition focus:border-[#155ca5]"
                 >
-                  <option value="">Choose a match</option>
+                  <option value="">{copy("Choose a match", "Chon dap an ghep")}</option>
                   {rightItems.map((rightItem) => (
                     <option key={`${leftItem}-${rightItem}`} value={rightItem}>
                       {rightItem}
@@ -1003,7 +1044,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         disabled={isLocked}
         value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
         onChange={(event) => setAnswer(currentQuestion.id, event.target.value)}
-        placeholder="Write your answer here..."
+        placeholder={copy("Write your answer here...", "Viet cau tra loi cua ban...")}
         className="w-full rounded-[1.5rem] border border-slate-300 px-5 py-4 text-base text-[#1e2e51] outline-none transition focus:border-[#155ca5]"
       />
     );
@@ -1018,7 +1059,10 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
     if (!saved?.submitted) {
       return (
         <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-          You did not answer this question in the attempt.
+          {copy(
+            "You did not answer this question in the attempt.",
+            "Ban chua tra loi cau nay trong luot lam bai.",
+          )}
         </div>
       );
     }
@@ -1032,9 +1076,13 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
           <div className="rounded-[1.5rem] border border-green-300 bg-green-50 p-5 text-green-800">
             <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em]">
               <CheckCircle2 className="h-4 w-4" />
-              Correct
+              {copy("Correct", "Dung")}
             </div>
-            {answerText && <div className="mt-3 font-semibold">Your answer: {answerText}</div>}
+            {answerText && (
+              <div className="mt-3 font-semibold">
+                {copy("Your answer:", "Cau tra loi cua ban:")} {answerText}
+              </div>
+            )}
           </div>
         )}
 
@@ -1042,14 +1090,20 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
           <div className="rounded-[1.5rem] border border-red-300 bg-red-50 p-5 text-red-800">
             <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em]">
               <XCircle className="h-4 w-4" />
-              Incorrect
+              {copy("Incorrect", "Sai")}
             </div>
             <div className="mt-3 space-y-2 text-sm">
               <div>
-                <span className="font-black">Your answer:</span> {answerText || "No answer"}
+                <span className="font-black">
+                  {copy("Your answer:", "Cau tra loi cua ban:")}
+                </span>{" "}
+                {answerText || copy("No answer", "Chua tra loi")}
               </div>
               <div>
-                <span className="font-black">Correct answer:</span> {expectedAnswer}
+                <span className="font-black">
+                  {copy("Correct answer:", "Dap an dung:")}
+                </span>{" "}
+                {expectedAnswer}
               </div>
             </div>
           </div>
@@ -1057,21 +1111,28 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
 
         {saved.correct === null && (
           <div className="rounded-[1.5rem] border border-amber-300 bg-amber-50 p-5 text-amber-900">
-            <div className="text-sm font-black uppercase tracking-[0.2em]">Submitted</div>
+            <div className="text-sm font-black uppercase tracking-[0.2em]">
+              {copy("Submitted", "Da nop")}
+            </div>
             <div className="mt-3 space-y-2 text-sm">
               {answerText && (
                 <div>
-                  <span className="font-black">Your answer:</span> {answerText}
+                  <span className="font-black">
+                    {copy("Your answer:", "Cau tra loi cua ban:")}
+                  </span>{" "}
+                  {answerText}
                 </div>
               )}
               {saved.score != null && (
                 <div>
-                  <span className="font-black">Score:</span> {saved.score}
+                  <span className="font-black">{copy("Score:", "Diem:")}</span>{" "}
+                  {saved.score}
                 </div>
               )}
               {saved.feedback && (
                 <div>
-                  <span className="font-black">Feedback:</span> {saved.feedback}
+                  <span className="font-black">{copy("Feedback:", "Nhan xet:")}</span>{" "}
+                  {saved.feedback}
                 </div>
               )}
             </div>
@@ -1081,7 +1142,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         {currentQuestion.explanation && (
           <div className="rounded-[1.5rem] border border-[#cfe3ff] bg-[#f5f9ff] p-5 text-sm text-[#1e2e51]">
             <div className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
-              Explanation
+              {copy("Explanation", "Giai thich")}
             </div>
             {renderTextWithBreaks(currentQuestion.explanation)}
           </div>
@@ -1095,7 +1156,9 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
       <main className="mx-auto flex min-h-[60vh] max-w-7xl items-center justify-center px-6 py-10">
         <div className="space-y-4 text-center">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#155ca5]" />
-          <p className="font-medium text-slate-600">Loading packages...</p>
+          <p className="font-medium text-slate-600">
+            {copy("Loading packages...", "Dang tai goi bai tap...")}
+          </p>
         </div>
       </main>
     );
@@ -1171,7 +1234,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
             loadingQuestions ? (
               <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
                 <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-                Loading package...
+                {copy("Loading package...", "Dang tai goi bai tap...")}
               </div>
             ) : !hasStarted ? (
               <div className="space-y-6">
@@ -1181,7 +1244,8 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       {selectedItem.title}
                     </h2>
                     <p className="mt-2 text-sm text-slate-500">
-                      {getItemMeta(selectedItem)} - {questions.length} question(s)
+                      {getItemMeta(selectedItem)} - {questions.length}{" "}
+                      {copy("question(s)", "cau hoi")}
                     </p>
                   </div>
                   <div className="rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
@@ -1210,7 +1274,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="inline-flex items-center gap-2 rounded-full bg-[#27ae60]/10 px-4 py-2 text-sm font-bold text-[#27ae60]">
                         <CheckCircle2 className="h-4 w-4" />
-                        Attempt Submitted
+                        {copy("Attempt Submitted", "Da nop bai")}
                       </div>
                       <div className="flex flex-wrap gap-3">
                         <button
@@ -1218,14 +1282,14 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                           onClick={backToOverview}
                           className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-black text-slate-700 transition hover:bg-slate-50"
                         >
-                          Back to Packages
+                          {copy("Back to Packages", "Quay lai danh sach goi")}
                         </button>
                         <button
                           type="button"
                           onClick={startAttempt}
                           className="rounded-full bg-[#155ca5] px-5 py-2.5 text-sm font-black text-white transition hover:bg-[#0f4c88]"
                         >
-                          Retry This Package
+                          {copy("Retry This Package", "Lam lai goi nay")}
                         </button>
                       </div>
                     </div>
@@ -1233,7 +1297,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                     <div className="grid gap-4 md:grid-cols-4">
                       <div className="rounded-[1.5rem] border border-white/70 bg-white p-5">
                         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                          Answered
+                          {copy("Answered", "Da tra loi")}
                         </div>
                         <div className="mt-3 text-3xl font-black text-[#1e2e51]">
                           {result.answeredCount}
@@ -1241,7 +1305,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       </div>
                       <div className="rounded-[1.5rem] border border-white/70 bg-white p-5">
                         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                          Auto Graded
+                          {copy("Auto Graded", "Tu dong cham")}
                         </div>
                         <div className="mt-3 text-3xl font-black text-[#1e2e51]">
                           {result.gradedCount}
@@ -1249,7 +1313,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       </div>
                       <div className="rounded-[1.5rem] border border-white/70 bg-white p-5">
                         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                          Correct
+                          {copy("Correct", "Dung")}
                         </div>
                         <div className="mt-3 text-3xl font-black text-[#27ae60]">
                           {result.correctCount}
@@ -1257,7 +1321,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       </div>
                       <div className="rounded-[1.5rem] border border-white/70 bg-white p-5">
                         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                          Score
+                          {copy("Score", "Diem")}
                         </div>
                         <div className="mt-3 text-3xl font-black text-[#155ca5]">
                           {result.scorePercent}%
@@ -1271,7 +1335,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="text-xs font-black uppercase tracking-[0.25em] text-[#155ca5]">
-                        Question {currentQuestionIndex + 1} / {questions.length}
+                        {copy("Question", "Cau")} {currentQuestionIndex + 1} / {questions.length}
                       </div>
                       <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
                         {selectedItem.title}
@@ -1279,7 +1343,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                     </div>
                     <div className="min-w-[220px]">
                       <div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-                        <span>Progress</span>
+                        <span>{copy("Progress", "Tien do")}</span>
                         <span>{Math.round((answeredCount / Math.max(questions.length, 1)) * 100)}%</span>
                       </div>
                       <div className="h-3 overflow-hidden rounded-full bg-slate-200">
@@ -1312,7 +1376,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                 <div className="space-y-6 rounded-[2rem] border border-slate-200 p-6">
                   <div className="space-y-4">
                     <div className="text-xs font-black uppercase tracking-[0.25em] text-[#155ca5]">
-                      {getQuestionTypeLabel(currentQuestion.questionType)}
+                      {getLocalizedQuestionTypeLabel(currentQuestion.questionType)}
                     </div>
 
                     {(currentGroup?.title ||
@@ -1320,7 +1384,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       currentGroup?.sharedContent) && (
                       <div className="rounded-[1.5rem] border border-[#dbeafe] bg-[#f8fbff] p-5 text-[#1e2e51]">
                         <div className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
-                          Shared Prompt
+                          {copy("Shared Prompt", "De bai chung")}
                         </div>
                         {currentGroup?.title && (
                           <div className="font-bold">{currentGroup.title}</div>
@@ -1342,14 +1406,14 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
 
                     {currentQuestion.instruction && (
                       <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                        <div className="font-black">Instruction</div>
+                        <div className="font-black">{copy("Instruction", "Huong dan")}</div>
                         <div className="mt-2">{renderTextWithBreaks(currentQuestion.instruction)}</div>
                       </div>
                     )}
 
                     {currentHint && (
                       <div className="rounded-[1.5rem] border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900">
-                        <div className="font-black">Gợi ý</div>
+                        <div className="font-black">{copy("Hint", "Goi y")}</div>
                         <div className="mt-2">{renderTextWithBreaks(currentHint)}</div>
                       </div>
                     )}
@@ -1372,7 +1436,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <ArrowLeft className="h-4 w-4" />
-                      Previous
+                      {copy("Previous", "Cau truoc")}
                     </button>
                     <button
                       type="button"
@@ -1382,7 +1446,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       disabled={currentQuestionIndex === questions.length - 1}
                       className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Next
+                      {copy("Next", "Cau sau")}
                       <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
@@ -1394,7 +1458,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                       disabled={submitting || answeredCount === 0}
                       className="rounded-full bg-[#155ca5] px-6 py-3 text-sm font-black text-white transition hover:bg-[#0f4c88] disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {submitting ? "Submitting..." : "Submit"}
+                      {submitting ? copy("Submitting...", "Dang nop...") : copy("Submit", "Nop bai")}
                     </button>
                   ) : (
                     <div className="flex flex-wrap gap-3">
@@ -1403,14 +1467,14 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                         onClick={backToOverview}
                         className="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
                       >
-                        Back to Packages
+                        {copy("Back to Packages", "Quay lai danh sach goi")}
                       </button>
                       <button
                         type="button"
                         onClick={startAttempt}
                         className="rounded-full bg-[#155ca5] px-6 py-3 text-sm font-black text-white transition hover:bg-[#0f4c88]"
                       >
-                        Retry This Package
+                        {copy("Retry This Package", "Lam lai goi nay")}
                       </button>
                     </div>
                   )}

@@ -18,6 +18,7 @@ import com.ie303.uifive.repo.QuestionOptionRepo;
 import com.ie303.uifive.repo.UserQuestionHistoryRepo;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserQuestionHistoryService {
 
     private static final int QUESTION_CORRECT_COIN_REWARD = 1;
@@ -110,22 +112,44 @@ public class UserQuestionHistoryService {
 
         String normalizedAnswer = answerText.trim();
 
+        log.debug("=== Checking Answer ===");
+        log.debug("Question ID: {}, Type: {}", question.getId(), question.getQuestionType());
+        log.debug("User submitted: '{}'", normalizedAnswer);
+        log.debug("Stored correctAnswer: '{}'", question.getCorrectAnswer());
+
+        // First, check if user answer matches any option marked as correct
         boolean matchedCorrectOption = questionOptionRepo.findByQuestionId(question.getId()).stream()
-                .anyMatch(option -> option.isCorrect()
-                        && option.getContent() != null
-                        && normalizeComparableAnswer(option.getContent())
-                        .equals(normalizeComparableAnswer(normalizedAnswer)));
+                .anyMatch(option -> {
+                    if (option.isCorrect() && option.getContent() != null) {
+                        String normalized = normalizeComparableAnswer(option.getContent());
+                        String normalizedSubmitted = normalizeComparableAnswer(normalizedAnswer);
+                        log.debug("  Checking option {}: content='{}', normalized='{}' vs submitted='{}'", 
+                            option.getOptionKey(), option.getContent(), normalized, normalizedSubmitted);
+                        return normalized.equals(normalizedSubmitted);
+                    }
+                    return false;
+                });
+
         if (matchedCorrectOption) {
+            log.debug("✓ CORRECT - Matched correct option");
             return true;
         }
 
+        // Second, check against stored correctAnswer
         String correctAnswer = question.getCorrectAnswer();
         if (correctAnswer == null) {
+            log.debug("✗ INCORRECT - No correct answer stored");
             return false;
         }
 
-        return normalizeComparableAnswer(correctAnswer)
-                .equals(normalizeComparableAnswer(normalizedAnswer));
+        String normalizedCorrect = normalizeComparableAnswer(correctAnswer);
+        String normalizedSubmitted = normalizeComparableAnswer(normalizedAnswer);
+        boolean isMatch = normalizedCorrect.equals(normalizedSubmitted);
+        
+        log.debug("Comparing: normalized_correct='{}' vs normalized_submitted='{}'", normalizedCorrect, normalizedSubmitted);
+        log.debug(isMatch ? "✓ CORRECT - Matched correctAnswer field" : "✗ INCORRECT - Did not match");
+        
+        return isMatch;
     }
 
     private boolean isCorrectSpeakingAnswer(Question question, String answerText) {
@@ -305,6 +329,7 @@ public class UserQuestionHistoryService {
 
         return value.trim()
                 .replaceAll("[_-]+", " ")
+                .replaceAll("[^\\p{L}\\p{N}\\s]", " ")
                 .replaceAll("\\s+", " ")
                 .toLowerCase();
     }

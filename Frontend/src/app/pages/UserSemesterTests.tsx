@@ -2,6 +2,7 @@ import { getSemesterTestById, getSemesterTests } from "@/api";
 import { PracticePackageRunner } from "@/app/components/PracticePackageRunner";
 import type { SemesterTestResponse } from "@/api/types";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { hasVipAccess, loadQuestionBundle } from "./practicePackageData";
 import { useSearchParams } from "react-router";
 
@@ -44,27 +45,37 @@ async function loadSemesterTestPackage(
 
 export function UserSemesterTests() {
   const { user } = useAuth();
+  const { copy } = useLanguage();
   const [searchParams] = useSearchParams();
   const includeVipLessons = hasVipAccess(user);
   const preferredItemId = Number(searchParams.get("testId"));
 
   return (
     <PracticePackageRunner<SemesterTestResponse>
-      badgeLabel="VIP Semester Test"
-      pageTitle="Semester Test Packages"
-      pageDescription="Semester tests are larger mixed packages created by admin from question groups, standalone questions, and optional AI items."
-      packageKindLabel="Semester Test"
-      introText="Start a semester test package to work through the selected questions in one continuous runner. Review feedback will appear after you submit."
-      emptyListText="No semester tests available yet."
-      emptyQuestionsText="This semester test package has no questions yet."
-      startButtonLabel="Start Semester Test"
+      badgeLabel={copy("VIP Semester Test", "Bai kiem tra hoc ky VIP")}
+      pageTitle={copy("Semester Test Packages", "Goi kiem tra hoc ky")}
+      pageDescription={copy(
+        "Semester tests are larger mixed packages created by admin from question groups, standalone questions, and optional AI items.",
+        "Bai kiem tra hoc ky la goi lon hon do admin tao tu nhom cau hoi, cau hoi le va cau hoi AI neu co.",
+      )}
+      packageKindLabel={copy("Semester Test", "Kiem tra hoc ky")}
+      introText={copy(
+        "Start a semester test package to work through the selected questions in one continuous runner. Review feedback will appear after you submit.",
+        "Bat dau goi kiem tra hoc ky de lam cac cau hoi da chon trong mot runner lien tuc. Nhan xet se hien sau khi ban nop bai.",
+      )}
+      emptyListText={copy("No semester tests available yet.", "Chua co bai kiem tra hoc ky nao.")}
+      emptyQuestionsText={copy(
+        "This semester test package has no questions yet.",
+        "Goi kiem tra hoc ky nay chua co cau hoi.",
+      )}
+      startButtonLabel={copy("Start Semester Test", "Bat dau kiem tra hoc ky")}
       loadItems={loadSemesterTestItems}
       loadPackage={(item) => loadSemesterTestPackage(item, includeVipLessons)}
       getItemMeta={(item) =>
-        `Grade ${item.gradeId} - Units ${item.startUnit} to ${item.endUnit} - ${item.timeLimit} min`
+        `${copy("Grade", "Lop")} ${item.gradeId} - ${copy("Units", "Unit")} ${item.startUnit} ${copy("to", "den")} ${item.endUnit} - ${item.timeLimit} ${copy("min", "phut")}`
       }
       getResultMeta={(item) =>
-        `Question groups: ${item.questionGroupIds.length} - Single questions: ${item.questionIds.length}`
+        `${copy("Question groups:", "Nhom cau hoi:")} ${item.questionGroupIds.length} - ${copy("Single questions:", "Cau hoi le:")} ${item.questionIds.length}`
       }
       preferredItemId={Number.isFinite(preferredItemId) && preferredItemId > 0 ? preferredItemId : null}
     />

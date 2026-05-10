@@ -61,11 +61,11 @@ public enum ErrorCode {
     PAYMENT_PROVIDER_NOT_SUPPORTED(1046, "Payment provider is not supported", HttpStatus.BAD_REQUEST),
     PAYMENT_SIGNATURE_INVALID(1047, "Payment signature is invalid", HttpStatus.UNAUTHORIZED),
     VIP_REQUIRED(1048, "This feature requires an active VIP subscription", HttpStatus.FORBIDDEN),
-    NO_WRONG_QUESTIONS_FOUND(1049, "No wrong questions found for personalized practice", HttpStatus.BAD_REQUEST),
+    NO_WRONG_QUESTIONS_FOUND(1049, "No wrong-answer history available. Practice some questions and answer them incorrectly first.", HttpStatus.BAD_REQUEST),
 
-    AI_NOT_RESPONSE(1050, "AI provider is temporarily unavailable", HttpStatus.BAD_GATEWAY),
-    AI_INVALID_RESPONSE(1051, "AI provider returned invalid response", HttpStatus.BAD_GATEWAY),
-    AI_NOT_CONFIGURED(1052, "No AI provider is configured", HttpStatus.INTERNAL_SERVER_ERROR);
+    AI_NOT_RESPONSE(1050, "AI service is temporarily unavailable. Please try again later.", HttpStatus.BAD_GATEWAY),
+    AI_INVALID_RESPONSE(1051, "AI service returned unexpected results. Your wrong questions will be used instead.", HttpStatus.BAD_GATEWAY),
+    AI_NOT_CONFIGURED(1052, "AI service is not configured. System will use your wrong-answer history instead.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final int code;
     private final String message;

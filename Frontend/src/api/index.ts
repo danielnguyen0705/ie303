@@ -90,6 +90,7 @@ export {
   submitSpeaking,
   getPersonalizedQuestions,
   getMyLearningAnalysis,
+  refreshMyLearningAnalysis,
   getMyLearningAnalysisHistory,
 } from "./ai";
 
