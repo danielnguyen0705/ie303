@@ -103,6 +103,48 @@ class NotificationServiceTest {
     }
 
     @Test
+    void resetInactiveStreaks_ShouldConsumeFreezeAndPreserveStreak() {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        User frozenUser = new User();
+        frozenUser.setId(7L);
+        frozenUser.setUsername("frozen");
+        frozenUser.setEmail("frozen@example.com");
+        frozenUser.setRole(Role.USER);
+        frozenUser.setVerified(true);
+        frozenUser.setStreak(12);
+        frozenUser.setStreakItemPendingCount(1);
+        frozenUser.setLastStudyDate(today.minusDays(1));
+        frozenUser.setStreakCheckedAt(null);
+
+        User resetUser = new User();
+        resetUser.setId(8L);
+        resetUser.setUsername("reset");
+        resetUser.setEmail("reset@example.com");
+        resetUser.setRole(Role.USER);
+        resetUser.setVerified(true);
+        resetUser.setStreak(4);
+        resetUser.setStreakItemPendingCount(0);
+        resetUser.setLastStudyDate(today.minusDays(1));
+        resetUser.setStreakCheckedAt(null);
+
+        when(userRepo.findAll())
+                .thenReturn(List.of(frozenUser, resetUser));
+
+        notificationService.resetInactiveStreaks();
+
+        verify(userRepo).save(frozenUser);
+        verify(userRepo).save(resetUser);
+        org.junit.jupiter.api.Assertions.assertEquals(12, frozenUser.getStreak());
+        org.junit.jupiter.api.Assertions.assertEquals(0, frozenUser.getStreakItemPendingCount());
+        org.junit.jupiter.api.Assertions.assertEquals(today, frozenUser.getStreakCheckedAt());
+        org.junit.jupiter.api.Assertions.assertEquals(today.minusDays(1), frozenUser.getLastStudyDate());
+        org.junit.jupiter.api.Assertions.assertEquals(0, resetUser.getStreak());
+        org.junit.jupiter.api.Assertions.assertEquals(today, resetUser.getStreakCheckedAt());
+        org.junit.jupiter.api.Assertions.assertEquals(today.minusDays(1), resetUser.getLastStudyDate());
+    }
+
+    @Test
     void announceNewShopItem_ShouldNotifyAllVerifiedUsers() {
         User firstUser = new User();
         firstUser.setId(5L);

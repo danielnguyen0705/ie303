@@ -4,8 +4,10 @@ import com.ie303.uifive.dto.req.ChangePasswordRequest;
 import com.ie303.uifive.dto.req.UpdateUserProfileRequest;
 import com.ie303.uifive.dto.req.UserRequest;
 import com.ie303.uifive.dto.res.ApiResponse;
+import com.ie303.uifive.dto.res.UserActivityCalendarResponse;
 import com.ie303.uifive.dto.res.UserProfileResponse;
 import com.ie303.uifive.dto.res.UserResponse;
+import com.ie303.uifive.service.UserActivityService;
 import com.ie303.uifive.service.UserService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -22,6 +24,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final UserActivityService userActivityService;
 
     @GetMapping("/me")
     public ApiResponse<UserProfileResponse> getMyProfile(Authentication authentication) {
@@ -31,6 +34,18 @@ public class UserController {
         return ApiResponse.<UserProfileResponse>builder()
                 .code(1000)
                 .result(userService.getMyProfile(username))
+                .build();
+    }
+
+    @GetMapping("/me/activity-calendar")
+    public ApiResponse<UserActivityCalendarResponse> getMyActivityCalendar(@RequestParam(required = false) Integer year,
+                                                                           @RequestParam(required = false) Integer month,
+                                                                           Authentication authentication) {
+        String username = authentication.getName();
+
+        return ApiResponse.<UserActivityCalendarResponse>builder()
+                .code(1000)
+                .result(userActivityService.getMyActivityCalendar(username, year, month))
                 .build();
     }
 

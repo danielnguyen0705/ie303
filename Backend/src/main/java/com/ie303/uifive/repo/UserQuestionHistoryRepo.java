@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface UserQuestionHistoryRepo extends JpaRepository<UserQuestionHistory, Long> {
 
@@ -16,6 +17,12 @@ public interface UserQuestionHistoryRepo extends JpaRepository<UserQuestionHisto
     List<UserQuestionHistory> findByUserId(Long userId);
 
     List<UserQuestionHistory> findByQuestionId(Long questionId);
+
+    List<UserQuestionHistory> findByUserIdAndAnsweredAtGreaterThanEqualAndAnsweredAtLessThan(
+            Long userId,
+            LocalDateTime from,
+            LocalDateTime to
+    );
 
         @Query("""
                 select distinct h.question.id

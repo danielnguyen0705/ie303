@@ -55,6 +55,9 @@ public class User {
     @Column(name = "streak_item_pending_count")
     private int streakItemPendingCount;
 
+    @Column(name = "streak_checked_at")
+    private LocalDate streakCheckedAt;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

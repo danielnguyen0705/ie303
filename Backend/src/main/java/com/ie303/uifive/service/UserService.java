@@ -211,15 +211,7 @@ public class UserService implements UserDetailsService {
         if (dayGap == 1) {
             user.setStreak(user.getStreak() + 1);
         } else {
-            int missedDays = (int) dayGap - 1;
-
-            if (user.getStreakItemPendingCount() >= missedDays) {
-                user.setStreakItemPendingCount(user.getStreakItemPendingCount() - missedDays);
-                user.setStreak(user.getStreak() + 1);
-            } else {
-                user.setStreak(1);
-                user.setStreakItemPendingCount(0);
-            }
+            user.setStreak(1);
         }
 
         user.setLastStudyDate(today);
@@ -388,13 +380,15 @@ public class UserService implements UserDetailsService {
 
     public UserProfileResponse getMyProfile(String username) {
         User user = repo.findByUsername(username);
+        user = reconcileStreakState(user);
+        User finalUser = user;
 
-        List<Grade> grades = userLessonProgressRepo.findDistinctGradesByUser(user);
+        List<Grade> grades = userLessonProgressRepo.findDistinctGradesByUser(finalUser);
 
         List<StudyingGradeResponse> studyingGrades = grades.stream()
                 .map(grade -> {
                     int totalLessons = userLessonProgressRepo.countTotalLessonsByGradeId(grade.getId());
-                    int completedLessons = userLessonProgressRepo.countCompletedLessonsByUserAndGrade(user, grade.getId());
+                    int completedLessons = userLessonProgressRepo.countCompletedLessonsByUserAndGrade(finalUser, grade.getId());
 
                     double progressPercent = totalLessons == 0
                             ? 0
@@ -404,8 +398,37 @@ public class UserService implements UserDetailsService {
                 })
                 .toList();
 
-            boolean isVip = user.getVipExpiredAt() != null && user.getVipExpiredAt().isAfter(LocalDateTime.now());
+            boolean isVip = finalUser.getVipExpiredAt() != null && finalUser.getVipExpiredAt().isAfter(LocalDateTime.now());
 
-            return new UserProfileResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), user.getCoin(), user.getExp(), user.getScore(), user.getStreak(), user.getLastStudyDate(), user.getVipExpiredAt(), isVip, user.getCreatedAt(), studyingGrades, user.getStrongSkill(), user.getWeakSkill(), user.getTrendLabel());
+            return new UserProfileResponse(finalUser.getId(), finalUser.getUsername(), finalUser.getEmail(), finalUser.getRole(), finalUser.getCoin(), finalUser.getExp(), finalUser.getScore(), finalUser.getStreak(), finalUser.getLastStudyDate(), finalUser.getVipExpiredAt(), isVip, finalUser.getCreatedAt(), studyingGrades, finalUser.getStrongSkill(), finalUser.getWeakSkill(), finalUser.getTrendLabel());
+    }
+
+    private User reconcileStreakState(User user) {
+        if (user == null || user.getLastStudyDate() == null) {
+            return user;
+        }
+
+        LocalDate today = LocalDate.now(ZoneId.of(studyTimeZone));
+        LocalDate lastCheckedDate = user.getStreakCheckedAt();
+
+        if (lastCheckedDate != null && !lastCheckedDate.isBefore(today)) {
+            return user;
+        }
+
+        if (!user.getLastStudyDate().isBefore(today)) {
+            user.setStreakCheckedAt(today);
+            return repo.save(user);
+        }
+
+        if (user.getStreak() > 0) {
+            if (user.getStreakItemPendingCount() > 0) {
+                user.setStreakItemPendingCount(user.getStreakItemPendingCount() - 1);
+            } else {
+                user.setStreak(0);
+            }
+        }
+
+        user.setStreakCheckedAt(today);
+        return repo.save(user);
     }
 }

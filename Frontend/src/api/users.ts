@@ -45,6 +45,23 @@ type HistoryItem = {
   xpGained: number;
 };
 
+type ActivityCalendarDay = {
+  date: string;
+  studied: boolean;
+  skipUsed: boolean;
+  studyCount: number;
+  skipCount: number;
+};
+
+type ActivityCalendarResponse = {
+  year: number;
+  month: number;
+  monthLabel: string;
+  totalStudyDays: number;
+  totalSkipDays: number;
+  days: ActivityCalendarDay[];
+};
+
 function calculateLevel(exp: number): number {
   return Math.max(1, Math.floor(exp / 300) + 1);
 }
@@ -184,4 +201,30 @@ export async function getUserHistory(
     success: true,
     data: [],
   };
+}
+
+// =========================
+// GET USER ACTIVITY CALENDAR
+// =========================
+export async function getMyActivityCalendar(
+  year?: number,
+  month?: number,
+): Promise<ApiResponse<ActivityCalendarResponse>> {
+  const query = new URLSearchParams();
+
+  if (typeof year === "number") {
+    query.set("year", String(year));
+  }
+
+  if (typeof month === "number") {
+    query.set("month", String(month));
+  }
+
+  const path = query.toString()
+    ? `/users/me/activity-calendar?${query.toString()}`
+    : "/users/me/activity-calendar";
+
+  return request<ActivityCalendarResponse>(path, {
+    method: "GET",
+  });
 }

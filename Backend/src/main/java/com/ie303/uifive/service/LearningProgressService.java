@@ -97,11 +97,6 @@ public class LearningProgressService {
             user = userRepo.findById(user.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-            if (user.getStreakItemPendingCount() > 0) {
-                user.setStreak(user.getStreak() + 1);
-                user.setStreakItemPendingCount(user.getStreakItemPendingCount() - 1);
-            }
-
             user.setCoin(user.getCoin() + LESSON_COMPLETION_COIN_REWARD);
             expEarned = calculateLessonExpReward(user);
             user.setExp(user.getExp() + expEarned);

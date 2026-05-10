@@ -27,7 +27,7 @@ const TYPE_TO_ICON: Record<ShopItemType, string> = {
 };
 
 const TYPE_TO_EFFECT: Record<ShopItemType, string | undefined> = {
-  SKIP: "Skip one streak break",
+  SKIP: "Freeze your streak through the next midnight",
   VIP: "Premium benefits during subscription",
   AVATAR: "Unlock avatar cosmetic",
   BACKGROUND: "Unlock background cosmetic",
@@ -451,12 +451,15 @@ export async function getActivePowerups(): Promise<
   const powerups = ownedResponse.data
     .filter((item) => item.type === "SKIP" || item.type === "VIP")
     .map((item) => ({
-      itemId: String(item.shopItemId),
-      itemName: item.name,
-      effect: item.type === "SKIP" ? "Skip one streak break" : "VIP active",
-      expiresAt: new Date(now + 86400000).toISOString(),
-      timeRemaining: 86400,
-    }));
+    itemId: String(item.shopItemId),
+    itemName: item.name,
+    effect:
+      item.type === "SKIP"
+        ? "Freeze your streak through the next midnight"
+        : "VIP active",
+    expiresAt: new Date(now + 86400000).toISOString(),
+    timeRemaining: 86400,
+  }));
 
   return {
     success: true,

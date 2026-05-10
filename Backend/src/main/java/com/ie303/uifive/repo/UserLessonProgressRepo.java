@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface UserLessonProgressRepo extends JpaRepository<UserLessonProgress, Long> {
     Optional<UserLessonProgress> findByUserIdAndLessonId(Long userId, Long lessonId);
@@ -62,4 +63,10 @@ public interface UserLessonProgressRepo extends JpaRepository<UserLessonProgress
           and ulp.lesson.section.unit.grade.id = :gradeId
     """)
     java.util.Set<Long> findCompletedLessonIdsByUserAndGrade(User user, Long gradeId);
+
+    List<UserLessonProgress> findByUserIdAndCompletedTrueAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+            Long userId,
+            LocalDateTime from,
+            LocalDateTime to
+    );
 }

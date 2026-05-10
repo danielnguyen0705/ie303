@@ -36,14 +36,7 @@ const INITIAL_INVENTORY_ITEMS: InventoryItem[] = [
     id: "streak-freeze",
     name: "Streak Freeze",
     icon: "❄️",
-    description: "Protect your streak if you miss one day.",
-    quantity: 0,
-  },
-  {
-    id: "skip-lesson",
-    name: "Skip Lesson",
-    icon: "⏭️",
-    description: "Skip one lesson and keep your progress moving.",
+    description: "Freeze your streak through the next midnight.",
     quantity: 0,
   },
   {
@@ -68,15 +61,6 @@ function mapInventoryItemsFromApi(userItems: UserItemResponse[]): InventoryItem[
   const freezeItem =
     skipItems.find((item) => containsAny(item.name, ["freeze", "streak"])) ?? null;
 
-  const skipLessonItem =
-    skipItems.find(
-      (item) =>
-        item.userItemId !== freezeItem?.userItemId &&
-        containsAny(item.name, ["skip", "lesson"]),
-    ) ??
-    skipItems.find((item) => item.userItemId !== freezeItem?.userItemId) ??
-    null;
-
   const xpBoostItem =
     expItems.find((item) => containsAny(item.name, ["xp", "exp", "boost"])) ??
     expItems[0] ??
@@ -89,15 +73,6 @@ function mapInventoryItemsFromApi(userItems: UserItemResponse[]): InventoryItem[
         quantity: freezeItem?.quantity ?? 0,
         userItemId: freezeItem?.userItemId,
         useMode: freezeItem ? "skip" : undefined,
-      };
-    }
-
-    if (item.id === "skip-lesson") {
-      return {
-        ...item,
-        quantity: skipLessonItem?.quantity ?? 0,
-        userItemId: skipLessonItem?.userItemId,
-        useMode: skipLessonItem ? "skip" : undefined,
       };
     }
 
@@ -300,9 +275,7 @@ function NavbarContent() {
     setUsingItemId(null);
 
     showToast(
-      typeof response.data === "string"
-        ? response.data
-        : `${selectedItem.icon} ${selectedItem.name} ${copy("activated!", "đã được kích hoạt!")}`,
+      `${selectedItem.icon} ${selectedItem.name} ${copy("used successfully.", "đã được dùng thành công.")}`,
     );
   };
 
@@ -643,10 +616,10 @@ function NavbarContent() {
                       ) : isInventoryLoading ? (
                         "..."
                       ) : !hasUseApi ? (
-                        "N/A"
-                      ) : (
-                        copy("Use", "Dùng")
-                      )}
+                          copy("Not usable", "Không dùng được")
+                        ) : (
+                          copy("Use", "Dùng")
+                        )}
                     </button>
                   </div>
                 );

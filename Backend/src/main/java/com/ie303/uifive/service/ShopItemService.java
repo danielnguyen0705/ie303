@@ -8,11 +8,13 @@ import com.ie303.uifive.entity.ItemType;
 import com.ie303.uifive.entity.ShopItem;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.entity.UserItem;
+import com.ie303.uifive.entity.SkipUsageLog;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.ShopItemMapper;
 import com.ie303.uifive.mapper.UserItemMapper;
 import com.ie303.uifive.repo.ShopItemRepo;
+import com.ie303.uifive.repo.SkipUsageLogRepo;
 import com.ie303.uifive.repo.UserItemRepo;
 import com.ie303.uifive.repo.UserRepo;
 import jakarta.transaction.Transactional;
@@ -34,6 +36,7 @@ public class ShopItemService {
     private final UserRepo userRepo;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final SkipUsageLogRepo skipUsageLogRepo;
     private final ShopItemMapper mapper;
     private final UserItemMapper userItemMapper;
     private final CloudinaryService cloudinaryService;
@@ -155,6 +158,11 @@ public class ShopItemService {
 
         userItemRepo.save(userItem);
         userRepo.save(user);
+
+        SkipUsageLog usageLog = new SkipUsageLog();
+        usageLog.setUser(user);
+        usageLog.setUserItem(userItem);
+        skipUsageLogRepo.save(usageLog);
 
         return "Dùng SKIP thành công. Vật phẩm này sẽ bảo vệ 1 ngày streak bị bỏ lỡ";
     }

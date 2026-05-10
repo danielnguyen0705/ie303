@@ -1227,7 +1227,7 @@ export const systemSettings: SystemSettings[] = [
     key: 'streak_freeze_price',
     value: 30,
     displayName: 'Streak Freeze Price',
-    description: 'Cost in coins to buy streak freeze',
+    description: 'Cost in coins to buy a streak freeze token',
     dataType: 'number',
     isPublic: true,
     lastModified: '2024-02-01',

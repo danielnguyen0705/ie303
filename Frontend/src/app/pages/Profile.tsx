@@ -5,11 +5,10 @@ import {
   Flame,
   Coins,
   Zap,
+  BookOpen,
   Target,
   Trophy,
-  Calendar,
   Loader2,
-  BookOpen,
   Award,
   KeyRound,
   Lock,
@@ -32,6 +31,7 @@ import {
   getMyShopItems,
 } from "@/api";
 import { useAuth } from "@/context/AuthContext";
+import { ActivityCalendar } from "@/app/components/ActivityCalendar";
 
 type CurrentUserProfile = {
   id: number;
@@ -92,15 +92,6 @@ type UserStats = {
   currentStreak: number;
   longestStreak: number;
   accuracy: number;
-};
-
-type HistoryItem = {
-  id: string;
-  type: "lesson" | "test" | "exercise";
-  title: string;
-  completedAt: string;
-  score: number;
-  xpGained: number;
 };
 
 type StudyingGrade = {
@@ -172,7 +163,6 @@ export function Profile() {
   const { logout, loading: authLoading } = useAuth();
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [stats, setStats] = useState<UserStats>(initialStats);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [studyingGrades, setStudyingGrades] = useState<StudyingGrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -319,7 +309,6 @@ export function Profile() {
           accuracy: Number(studyProgress ?? 0),
           averageScore: Number(currentUser.score ?? 0),
         }));
-        setHistory([]);
       } else {
         setError("Failed to load profile data");
       }
@@ -800,50 +789,7 @@ export function Profile() {
 
       {/* Learning Overview */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Activity */}
-        <div className="bg-white p-8 rounded-lg shadow-sm">
-          <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
-            <Calendar className="w-7 h-7 text-[#155ca5]" />
-            Recent Activity
-          </h2>
-          <div className="space-y-4">
-            {history.map((item, index) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div
-                  className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                    item.type === "lesson"
-                      ? "bg-[#155ca5]/10"
-                      : item.type === "test"
-                        ? "bg-[#27ae60]/10"
-                        : "bg-[#f39c12]/10"
-                  }`}
-                >
-                  {item.type === "lesson" && (
-                    <BookOpen className="w-6 h-6 text-[#155ca5]" />
-                  )}
-                  {item.type === "test" && (
-                    <Trophy className="w-6 h-6 text-[#27ae60]" />
-                  )}
-                  {item.type === "exercise" && (
-                    <Target className="w-6 h-6 text-[#f39c12]" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold">{item.title}</h4>
-                  <p className="text-sm text-gray-600">
-                    Score: {item.score}% • +{item.xpGained} XP
-                  </p>
-                </div>
-                <div className="text-right text-xs text-gray-500">
-                  {formatDate(item.completedAt)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ActivityCalendar />
 
         {/* Account Info */}
         <div className="bg-white p-8 rounded-lg shadow-sm">

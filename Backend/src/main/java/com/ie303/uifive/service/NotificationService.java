@@ -60,7 +60,7 @@ public class NotificationService {
     @Scheduled(cron = "${notification.streak-reminder.cron:0 0 9 * * *}", zone = "${notification.time-zone:Asia/Ho_Chi_Minh}")
     public void sendStreakReminders() {
         LocalDate today = LocalDate.now(ZoneId.of(notificationTimeZone));
-        List<User> users = findNotificationCandidates();
+        List<User> users = findAllUsers();
 
         for (User user : users) {
             if (user.getLastStudyDate() == null) {
@@ -92,7 +92,10 @@ public class NotificationService {
     @Scheduled(cron = "${notification.streak-reset.cron:0 5 0 * * *}", zone = "${notification.time-zone:Asia/Ho_Chi_Minh}")
     public void resetInactiveStreaks() {
         LocalDate today = LocalDate.now(ZoneId.of(notificationTimeZone));
-        List<User> users = findNotificationCandidates();
+        List<User> users = findAllUsers();
+        int recheckedUsers = 0;
+        int resetUsers = 0;
+        int freezeConsumedUsers = 0;
 
         for (User user : users) {
             if (user.getLastStudyDate() == null) {
@@ -107,13 +110,35 @@ public class NotificationService {
                 continue;
             }
 
+            LocalDate lastCheckedDate = user.getStreakCheckedAt();
+            if (lastCheckedDate != null && !lastCheckedDate.isBefore(today)) {
+                continue;
+            }
+
+            recheckedUsers++;
+
             if (user.getStreakItemPendingCount() > 0) {
+                user.setStreakItemPendingCount(user.getStreakItemPendingCount() - 1);
+                user.setStreakCheckedAt(today);
+                userRepo.save(user);
+                freezeConsumedUsers++;
                 continue;
             }
 
             user.setStreak(0);
+            user.setStreakCheckedAt(today);
             userRepo.save(user);
+            resetUsers++;
         }
+
+        log.info(
+                "Streak reset job completed at {}: scanned {} users, rechecked {}, reset {}, consumed freeze for {}",
+                today,
+                users.size(),
+                recheckedUsers,
+                resetUsers,
+                freezeConsumedUsers
+        );
     }
 
     @Async
@@ -134,6 +159,13 @@ public class NotificationService {
                 .stream()
                 .filter(user -> Role.USER.equals(user.getRole()))
                 .filter(user -> user.getEmail() != null && !user.getEmail().isBlank())
+                .toList();
+    }
+
+    private List<User> findAllUsers() {
+        return userRepo.findAll()
+                .stream()
+                .filter(user -> Role.USER.equals(user.getRole()))
                 .toList();
     }
 

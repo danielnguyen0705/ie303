@@ -1054,11 +1054,11 @@ export const shopItems: ShopItem[] = [
   {
     id: "item-002",
     name: "Streak Freeze",
-    description: "Protect your streak for 1 day",
+    description: "Freeze your streak through the next midnight",
     type: "powerup",
     price: 30,
     icon: "🧊",
-    effect: "Prevents streak loss for 1 day",
+    effect: "Freezes streak loss through midnight",
     isPurchased: true,
   },
   {
