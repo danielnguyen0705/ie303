@@ -1,5 +1,18 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { Flame, Coins, User, LogOut, History, Backpack, X } from "lucide-react";
+import {
+  Flame,
+  Coins,
+  User,
+  LogOut,
+  History,
+  Backpack,
+  X,
+  BookOpen,
+  Target,
+  Trophy,
+  ShoppingBag,
+  CircleDollarSign,
+} from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
@@ -296,11 +309,11 @@ function NavbarContent() {
   return (
     <>
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-3 sm:px-6">
           {/* Logo */}
           <Link
             to="/"
-            className="text-2xl font-black italic text-[#155ca5] tracking-tighter"
+            className="shrink-0 text-2xl font-black italic tracking-tighter text-[#155ca5]"
           >
             UIFIVE
           </Link>
@@ -360,12 +373,12 @@ function NavbarContent() {
           </div>
 
           {/* User Stats & Avatar */}
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             <button
               type="button"
               aria-label="Open inventory"
               onClick={() => setIsInventoryModalOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[#155ca5] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-100 hover:text-[#124e8b]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#155ca5] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-100 hover:text-[#124e8b]"
             >
               <Backpack className="h-4 w-4" />
             </button>
@@ -379,9 +392,12 @@ function NavbarContent() {
             </div>
 
             {/* Coins */}
-            <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-full hover:scale-105 transition-all cursor-pointer">
-              <Coins className="w-4 h-4 text-[#f1c40f]" fill="#f1c40f" />
-              <span className="font-bold text-sm">
+            <div className="flex min-w-0 max-w-[142px] items-center gap-2 rounded-full bg-yellow-50 px-3 py-1.5 transition-all hover:scale-105 cursor-pointer sm:max-w-none">
+              <Coins
+                className="h-4 w-4 shrink-0 text-[#f1c40f]"
+                fill="#f1c40f"
+              />
+              <span className="truncate font-bold text-sm">
                 {isAuthenticated ? coinAmount.toLocaleString() : "0"}
               </span>
             </div>
@@ -397,7 +413,7 @@ function NavbarContent() {
                   <button
                     type="button"
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="relative group cursor-pointer hover:scale-105 transition-transform"
+                    className="relative group shrink-0 cursor-pointer transition-transform hover:scale-105"
                   >
                     <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 to-yellow-600 shadow-md">
                       <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
@@ -463,30 +479,35 @@ function NavbarContent() {
           to="/"
           className={`flex flex-col items-center gap-1 ${isActive("/") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
+          <BookOpen className="h-5 w-5" />
           <span className="text-xs font-bold">Learn</span>
         </Link>
         <Link
           to="/quests"
           className={`flex flex-col items-center gap-1 ${isActive("/quests") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
+          <Target className="h-5 w-5" />
           <span className="text-xs font-bold">Quests</span>
         </Link>
         <Link
           to="/leaderboard"
           className={`flex flex-col items-center gap-1 ${isActive("/leaderboard") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
+          <Trophy className="h-5 w-5" />
           <span className="text-xs font-bold">Ranks</span>
         </Link>
         <Link
           to="/shop"
           className={`flex flex-col items-center gap-1 ${isActive("/shop") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
+          <ShoppingBag className="h-5 w-5" />
           <span className="text-xs font-bold">Shop</span>
         </Link>
         <Link
           to="/topup"
           className={`flex flex-col items-center gap-1 ${isActive("/topup") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
+          <CircleDollarSign className="h-5 w-5" />
           <span className="text-xs font-bold">Topup</span>
         </Link>
       </div>
