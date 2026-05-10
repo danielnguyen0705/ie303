@@ -151,7 +151,16 @@ public class AiGenerationService {
         validateConfiguration();
         int safeCount = normalizeCount(count);
         String prompt = buildPersonalizedMixedQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
-        return normalizePersonalizedDrafts(readJsonArray(callChatModel(nvidiaTextModel, prompt, 1024),
+        
+        log.info("=== PERSONALIZED QUESTION GENERATION ===");
+        log.info("Prompt length: {} chars", prompt.length());
+        log.info("Requesting {} questions, max_tokens: 4096", safeCount);
+        
+        String rawResponse = callChatModel(nvidiaTextModel, prompt, 4096);  // Increased from 2048 to 4096
+        log.info("Raw response length: {} chars", rawResponse.length());
+        log.info("Raw response (first 500 chars): {}", rawResponse.substring(0, Math.min(500, rawResponse.length())) + "...");
+        
+        return normalizePersonalizedDrafts(readJsonArray(rawResponse,
                 new TypeReference<List<GeneratedPersonalizedQuestionDraft>>() {
                 }), safeCount);
     }
@@ -205,7 +214,7 @@ public class AiGenerationService {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(trimTrailingSlash(nvidiaBaseUrl) + "/chat/completions"))
-                    .timeout(Duration.ofSeconds(90))
+                    .timeout(Duration.ofSeconds(120))  // Increased from 90 to 120 seconds
                     .header("Authorization", "Bearer " + nvidiaApiKey)
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
@@ -250,15 +259,23 @@ public class AiGenerationService {
 
     private <T> T readJsonArray(String raw, TypeReference<T> typeReference) {
         try {
-            T parsed = objectMapper.readValue(extractJsonArray(raw), typeReference);
+            String extracted = extractJsonArray(raw);
+            log.debug("Extracted JSON array: {}", extracted.substring(0, Math.min(300, extracted.length())) + "...");
+            
+            T parsed = objectMapper.readValue(extracted, typeReference);
             if (parsed == null) {
                 throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
             }
+            log.debug("Successfully parsed {} items", parsed instanceof List ? ((List<?>) parsed).size() : 1);
             return parsed;
         } catch (AppException e) {
+            log.error("AppException in readJsonArray: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
+            log.error("Exception parsing JSON array: {}", e.getMessage());
+            log.error("Raw response (full): {}", raw);
+            log.error("Raw response length: {} chars", raw.length());
+            throw new AppException(ErrorCode.AI_INVALID_RESPONSE, "JSON Parse Error: " + e.getMessage());
         }
     }
 
@@ -289,13 +306,29 @@ public class AiGenerationService {
             int limit
     ) {
         if (drafts == null || drafts.isEmpty()) {
+            log.error("normalizePersonalizedDrafts: drafts is null or empty!");
             throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
         }
 
-        return drafts.stream()
-                .filter(draft -> draft != null && draft.content() != null && !draft.content().isBlank())
+        log.debug("Normalizing {} personalized drafts...", drafts.size());
+        List<GeneratedPersonalizedQuestionDraft> result = drafts.stream()
+                .filter(draft -> {
+                    if (draft == null) {
+                        log.debug("  - Skipped: null draft");
+                        return false;
+                    }
+                    if (draft.content() == null || draft.content().isBlank()) {
+                        log.debug("  - Skipped: empty content");
+                        return false;
+                    }
+                    log.debug("  ✓ Kept: {}", draft.content().substring(0, Math.min(50, draft.content().length())));
+                    return true;
+                })
                 .limit(limit)
                 .toList();
+        
+        log.debug("After normalization: {} valid drafts", result.size());
+        return result;
     }
 
     private WritingEvaluationResponse normalize(WritingEvaluationResponse response) {
@@ -303,8 +336,23 @@ public class AiGenerationService {
             throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
         }
 
+        String feedback = response.feedback().trim();
+        if (isPlaceholderEvaluation(feedback)) {
+            throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
+        }
+
         double score = Math.max(0, Math.min(10, response.score()));
-        return new WritingEvaluationResponse(score, response.feedback().trim());
+        return new WritingEvaluationResponse(score, feedback);
+    }
+
+    private boolean isPlaceholderEvaluation(String feedback) {
+        String normalized = feedback.toLowerCase();
+        return normalized.contains("tổng quan...")
+                || normalized.contains("task response...")
+                || normalized.contains("coherence and cohesion...")
+                || normalized.contains("lexical resource...")
+                || normalized.contains("grammatical range and accuracy...")
+                || normalized.contains("gợi ý cải thiện...");
     }
 
     private String buildEssayEvaluationPrompt(String topic, String explanation, String answerText) {
@@ -414,7 +462,7 @@ public class AiGenerationService {
                 Format bắt buộc:
                 [
                   {
-                    "content": "string",
+                    "content": "Choose the best answer to complete the sentence: She has been interested in science ____ she was a child.",
                     "explanation": "string",
                     "sampleAnswer": "string"
                   }
@@ -444,7 +492,7 @@ public class AiGenerationService {
                 Format bắt buộc:
                 [
                   {
-                    "content": "string",
+                    "content": "Choose the best answer to complete the sentence: She has been interested in science ____ she was a child.",
                     "explanation": "string",
                     "correctOptionKey": "A",
                     "options": [
@@ -502,66 +550,45 @@ public class AiGenerationService {
     }
 
     private String buildPersonalizedMixedQuestionsPrompt(String context, int count, String topicHint) {
+        // Truncate context if too long to avoid API cutoff
+        String truncatedContext = context.length() > 800 
+            ? context.substring(0, 800) + "..."
+            : context;
+            
         return """
-                Bạn là người tạo bộ câu hỏi tiếng Anh cá nhân hóa để học sinh luyện lại đúng các lỗi đã làm sai.
-
-                Hãy tạo đúng %d câu hỏi.
-                Bối cảnh: %s
-                Chủ đề gợi ý: %s
-
-                Bạn CHỈ được dùng các questionType có trong phần "Allowed personalized question types" của bối cảnh.
-
-                Yêu cầu cực kỳ quan trọng:
-                - Phải ưu tiên tạo bộ câu hỏi HỖN HỢP nhiều loại nếu bối cảnh cho phép, không dồn toàn bộ về 1 dạng
-                - Nhưng vẫn phải bám sát "target answer" hoặc điểm kiến thức gốc từ câu sai tham chiếu
-                - Không đổi sang kiến thức khác
-                - Nếu câu mới là dạng option-based thì đáp án đúng phải nằm đúng trong options
-                - Nếu câu mới là dạng fill/form thì correctAnswer phải là đáp án text cuối cùng học sinh cần điền
-
-                Các questionType được phép trong JSON:
-                - QUALITATIVE_MC
-                - CLOZE_MC
-                - LIMITED_FILL
-                - WORD_FORM
-                - VERB_FORM
-
-                Quy tắc format:
-                - Với QUALITATIVE_MC, CLOZE_MC:
-                  questionType phải đúng tên
-                  options phải có đúng 4 lựa chọn A, B, C, D
-                  correctAnswer phải là optionKey đúng: A/B/C/D
-                - Với LIMITED_FILL, WORD_FORM, VERB_FORM:
-                  options phải là [] hoặc null
-                  correctAnswer phải là text đáp án đúng
-
-                Chỉ trả về DUY NHẤT JSON hợp lệ là một ARRAY.
-                Không markdown.
-                Không dùng ```
-                Không viết thêm gì ngoài JSON.
-
-                Format bắt buộc:
+                Generate %d English multiple-choice practice questions to help a student overcome their mistakes.
+                
+                Student Error History & Context:
+                %s
+                
+                CRITICAL RULES:
+                1. EACH question "content" MUST be a COMPLETE English sentence or paragraph with a blank/choice point.
+                   Example: "My sister _____ to school every morning." or "Choose the correct word: 'She goes _____ work.'"
+                2. Do NOT generate questions with just the instruction "Choose the best answer."
+                3. Do NOT generate placeholder questions - all questions must be substantive English learning content.
+                4. All questions MUST target the student's specific weak areas based on their error history.
+                5. Question type: QUALITATIVE_MC only
+                6. Each question has exactly 4 options (A/B/C/D) with exactly 1 correct answer.
+                7. explanation: Brief English explanation of why the answer is correct.
+                8. correctAnswer: The option key (A, B, C, or D) that is correct.
+                9. Generate diverse question types: grammar, vocabulary, prepositions, articles, verb forms, etc.
+                
+                Return ONLY valid JSON array with NO markdown formatting:
                 [
                   {
                     "questionType": "QUALITATIVE_MC",
-                    "content": "string",
-                    "explanation": "string",
+                    "content": "Complete sentence or question with a blank/choice point in English",
+                    "explanation": "Why this answer is correct",
                     "correctAnswer": "A",
                     "options": [
-                      {"optionKey": "A", "content": "string"},
-                      {"optionKey": "B", "content": "string"},
-                      {"optionKey": "C", "content": "string"},
-                      {"optionKey": "D", "content": "string"}
+                      {"optionKey": "A", "content": "option content"},
+                      {"optionKey": "B", "content": "option content"},
+                      {"optionKey": "C", "content": "option content"},
+                      {"optionKey": "D", "content": "option content"}
                     ]
-                  },
-                  {
-                    "questionType": "WORD_FORM",
-                    "content": "string",
-                    "explanation": "string",
-                    "correctAnswer": "string",
-                    "options": []
                   }
                 ]
-                """.formatted(count, context, topicHint);
+                """.formatted(count, truncatedContext);
     }
 
     private String extractJsonObject(String raw) {
@@ -578,9 +605,27 @@ public class AiGenerationService {
         String cleaned = cleanJson(raw);
         int start = cleaned.indexOf('[');
         int end = cleaned.lastIndexOf(']');
-        if (start < 0 || end < start) {
+        
+        if (start < 0) {
             throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
         }
+        
+        if (end < start) {
+            // JSON array is incomplete, try to fix it
+            log.warn("JSON array is incomplete, attempting to close it");
+            String partial = cleaned.substring(start);
+            
+            // Find the last complete object by looking for the last '}'
+            int lastClose = partial.lastIndexOf('}');
+            if (lastClose > 0) {
+                log.debug("Found last complete object at position {}", lastClose);
+                partial = partial.substring(0, lastClose + 1) + "]";
+                return partial.trim();
+            }
+            
+            throw new AppException(ErrorCode.AI_INVALID_RESPONSE);
+        }
+        
         return cleaned.substring(start, end + 1).trim();
     }
 
@@ -604,7 +649,7 @@ public class AiGenerationService {
     }
 
     private int normalizeCount(int count) {
-        return Math.max(1, Math.min(20, count));
+        return Math.max(1, Math.min(15, count));  // Reduced from 20 to 15 to avoid API token limits
     }
 
     private String normalizeContext(String context) {

@@ -16,6 +16,7 @@ import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
 import getPagination from "@/utils/pagination";
 import scrollToTop from "@/utils/scrollToTop";
+import { useLanguage } from "@/context/LanguageContext";
 
 const isCosmeticShopType = (shopType: ShopItemType) =>
   shopType === "AVATAR" || shopType === "BACKGROUND";
@@ -31,6 +32,7 @@ const normalizeShopItems = (items: ShopItem[]): ShopItem[] =>
 type ShopFilterCategory = "ALL" | ShopItemType;
 
 export function Shop() {
+  const { copy } = useLanguage();
   const [items, setItems] = useState<ShopItem[]>([]);
   const [balance, setBalance] = useState(0);
   const [selectedCategory, setSelectedCategory] =
@@ -67,7 +69,7 @@ export function Shop() {
       }
     } catch (err) {
       console.error("Error loading shop:", err);
-      setError("Failed to load shop items");
+      setError(copy("Failed to load shop items", "Không thể tải vật phẩm cửa hàng"));
     } finally {
       setLoading(false);
     }
@@ -79,8 +81,8 @@ export function Shop() {
 
     if (balance < price) {
       popup.error({
-        title: "Insufficient coins",
-        message: "You do not have enough coins for this item.",
+        title: copy("Insufficient coins", "Không đủ xu"),
+        message: copy("You do not have enough coins for this item.", "Bạn không có đủ xu cho vật phẩm này."),
       });
       return;
     }
@@ -104,24 +106,24 @@ export function Shop() {
         }
 
         popup.success({
-          title: "Purchase successful",
-          message: `Successfully purchased ${item.name}.`,
+          title: copy("Purchase successful", "Mua thành công"),
+          message: copy(`Successfully purchased ${item.name}.`, `Đã mua ${item.name} thành công.`),
         });
       } else {
         popup.error({
-          title: "Purchase failed",
+          title: copy("Purchase failed", "Mua thất bại"),
           message:
-            response.error?.message || "Could not complete the purchase.",
+            response.error?.message || copy("Could not complete the purchase.", "Không thể hoàn tất giao dịch."),
         });
       }
     } catch (err: any) {
       console.error("Error purchasing item:", err);
       popup.error({
-        title: "Purchase failed",
+        title: copy("Purchase failed", "Mua thất bại"),
         message:
           err?.code === "INSUFFICIENT_FUNDS"
-            ? "You don't have enough coins."
-            : "Purchase failed. Please try again.",
+            ? copy("You don't have enough coins.", "Bạn không có đủ xu.")
+            : copy("Purchase failed. Please try again.", "Mua thất bại. Vui lòng thử lại."),
       });
     } finally {
       setPurchasing(null);
@@ -200,7 +202,7 @@ export function Shop() {
       <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Loading shop...</p>
+          <p className="text-gray-600 font-medium">{copy("Loading shop...", "Đang tải cửa hàng...")}</p>
         </div>
       </main>
     );
@@ -215,7 +217,7 @@ export function Shop() {
             onClick={loadShopData}
             className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md font-bold hover:bg-red-700 transition-colors"
           >
-            Retry
+            {copy("Retry", "Thử lại")}
           </button>
         </div>
       </main>
@@ -229,10 +231,13 @@ export function Shop() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#155ca5] tracking-tight mb-2">
-              Item Shop
+              {copy("Item Shop", "Cửa hàng vật phẩm")}
             </h1>
             <p className="text-base sm:text-lg lg:text-xl text-gray-600 font-medium">
-              Enhance your learning experience with powerful items!
+              {copy(
+                "Enhance your learning experience with powerful items!",
+                "Nâng cấp trải nghiệm học tập với các vật phẩm hữu ích!",
+              )}
             </p>
           </div>
 
@@ -244,7 +249,7 @@ export function Shop() {
             />
             <div>
               <div className="text-xs text-gray-500 font-bold uppercase">
-                Your Balance
+                {copy("Your Balance", "Số dư của bạn")}
               </div>
               <div className="text-xl sm:text-2xl font-black text-[#f1c40f]">
                 {balance.toLocaleString()}
@@ -264,7 +269,7 @@ export function Shop() {
             }`}
           >
             <ShoppingCart className="w-5 h-5" />
-            ALL
+            {copy("ALL", "TẤT CẢ")}
           </button>
           <button
             onClick={() => handleCategoryChange("SKIP")}
@@ -275,7 +280,7 @@ export function Shop() {
             }`}
           >
             <Zap className="w-5 h-5" />
-            SKIP
+            {copy("SKIP", "BỎ QUA")}
           </button>
           <button
             onClick={() => handleCategoryChange("VIP")}
@@ -297,7 +302,7 @@ export function Shop() {
             }`}
           >
             <Sparkles className="w-5 h-5" />
-            AVATAR
+            {copy("AVATAR", "AVATAR")}
           </button>
           <button
             onClick={() => handleCategoryChange("BACKGROUND")}
@@ -308,7 +313,7 @@ export function Shop() {
             }`}
           >
             <ShoppingCart className="w-5 h-5" />
-            BACKGROUND
+            {copy("BACKGROUND", "ẢNH NỀN")}
           </button>
           <button
             onClick={() => handleCategoryChange("EXP")}
@@ -419,8 +424,8 @@ export function Shop() {
                 {/* Duration */}
                 {item.duration && (
                   <p className="text-[11px] sm:text-xs text-gray-500">
-                    Duration: {item.duration}{" "}
-                    {item.duration === 1 ? "day" : "days"}
+                    {copy("Duration:", "Thời hạn:")} {item.duration}{" "}
+                    {item.duration === 1 ? copy("day", "ngày") : copy("days", "ngày")}
                   </p>
                 )}
 
@@ -438,7 +443,7 @@ export function Shop() {
 
                   {isOwned ? (
                     <span className="w-full text-center px-3 py-2 bg-[#27ae60]/10 text-[#27ae60] rounded-md font-bold text-xs sm:text-sm">
-                      Owned ✓
+                      {copy("Owned", "Đã sở hữu")} ✓
                     </span>
                   ) : (
                     <button
@@ -453,12 +458,12 @@ export function Shop() {
                       {isPurchasing ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Purchasing...
+                          {copy("Purchasing...", "Đang mua...")}
                         </>
                       ) : (
                         <>
                           <ShoppingCart className="w-4 h-4" />
-                          {canAfford ? "Buy Now" : "Not Enough Coins"}
+                          {canAfford ? copy("Buy Now", "Mua ngay") : copy("Not Enough Coins", "Không đủ xu")}
                         </>
                       )}
                     </button>
@@ -474,7 +479,7 @@ export function Shop() {
         <div className="text-center py-10 sm:py-12 bg-white rounded-lg">
           <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 text-base sm:text-lg">
-            No items in this category
+            {copy("No items in this category", "Không có vật phẩm trong danh mục này")}
           </p>
         </div>
       )}
@@ -487,7 +492,7 @@ export function Shop() {
               disabled={!pagination.hasPrev}
               className="px-4 py-2 rounded-md font-bold transition-colors bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Prev
+              {copy("Prev", "Trước")}
             </button>
 
             {pagination.pages.map((page) => (
@@ -511,7 +516,7 @@ export function Shop() {
               disabled={!pagination.hasNext}
               className="px-4 py-2 rounded-md font-bold transition-colors bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next
+              {copy("Next", "Sau")}
             </button>
           </div>
         </section>
@@ -522,17 +527,20 @@ export function Shop() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
           <div>
             <h3 className="text-xl sm:text-2xl font-black mb-2">
-              Need More Coins?
+              {copy("Need More Coins?", "Cần thêm xu?")}
             </h3>
             <p className="text-base sm:text-lg opacity-90">
-              Complete lessons, quests, and challenges to earn more coins!
+              {copy(
+                "Complete lessons, quests, and challenges to earn more coins!",
+                "Hoàn thành bài học, nhiệm vụ và thử thách để kiếm thêm xu!",
+              )}
             </p>
           </div>
           <Link
             to="/topup"
             className="w-full sm:w-auto text-center bg-white text-[#155ca5] px-6 py-3 rounded-md font-bold hover:bg-gray-100 transition-colors whitespace-nowrap"
           >
-            Top Up Coins →
+            {copy("Top Up Coins", "Nạp xu")} →
           </Link>
         </div>
       </section>

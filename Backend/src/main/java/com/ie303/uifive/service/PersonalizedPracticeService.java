@@ -14,6 +14,7 @@ import com.ie303.uifive.repo.QuestionOptionRepo;
 import com.ie303.uifive.repo.QuestionRepo;
 import com.ie303.uifive.repo.UserQuestionHistoryRepo;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,18 +30,19 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class PersonalizedPracticeService {
 
     private static final int MIN_AUTO_QUESTION_COUNT = 10;
     private static final int TARGET_AUTO_QUESTION_COUNT = 20;
     private static final int QUESTIONS_PER_WRONG_REFERENCE = 4;
-    private static final int MAX_QUESTION_COUNT = 20;
-    private static final Set<QuestionType> SUPPORTED_PERSONALIZED_TYPES = Set.of(
+    private static final int MAX_QUESTION_COUNT = 15;  // Reduced from 20 to avoid API token limits
+    private static final Set<QuestionType> REUSABLE_SOURCE_TYPES = Set.of(
             QuestionType.QUALITATIVE_MC,
-            QuestionType.CLOZE_MC,
-            QuestionType.LIMITED_FILL,
-            QuestionType.WORD_FORM,
-            QuestionType.VERB_FORM
+            QuestionType.CLOZE_MC
+    );
+    private static final Set<QuestionType> SUPPORTED_PERSONALIZED_TYPES = Set.of(
+            QuestionType.QUALITATIVE_MC
     );
 
     private final UserService userService;
@@ -55,32 +57,55 @@ public class PersonalizedPracticeService {
         ensureVip(currentUser);
 
         List<Question> wrongQuestions = resolveWrongQuestions(currentUser.getId(), request);
+        List<Question> supportedWrongQuestions = filterSupportedQuestions(wrongQuestions);
 
-        if (wrongQuestions.isEmpty()) {
-            throw new AppException(ErrorCode.NO_WRONG_QUESTIONS_FOUND);
+        if (supportedWrongQuestions.isEmpty()) {
+            throw new AppException(
+                    ErrorCode.NO_WRONG_QUESTIONS_FOUND,
+                    "No reusable multiple-choice wrong questions found for this unit"
+            );
         }
 
-        int count = normalizeCount(request.questionCount(), wrongQuestions.size());
-        List<String> allowedTargetAnswers = resolveAllowedTargetAnswers(wrongQuestions);
-        List<QuestionType> allowedQuestionTypes = resolveAllowedQuestionTypes(wrongQuestions);
-        String context = buildContext(currentUser, request, wrongQuestions, allowedTargetAnswers, allowedQuestionTypes, count);
+        int count = normalizeCount(request.questionCount(), supportedWrongQuestions.size());
+        List<String> allowedTargetAnswers = resolveAllowedTargetAnswers(supportedWrongQuestions);
+        List<QuestionType> allowedQuestionTypes = resolveAllowedQuestionTypes(supportedWrongQuestions);
+        String context = buildContext(currentUser, request, supportedWrongQuestions, allowedTargetAnswers, allowedQuestionTypes, count);
 
-        List<AiGenerationService.GeneratedPersonalizedQuestionDraft> drafts = aiGenerationService.generatePersonalizedQuestions(
-                context,
-                count,
-                null
-        );
-
-        List<AiGenerationService.GeneratedPersonalizedQuestionDraft> validDrafts = filterValidPersonalizedDrafts(
-                drafts,
-                allowedTargetAnswers,
-                allowedQuestionTypes
-        );
-        if (validDrafts.isEmpty()) {
-            throw new AppException(
-                    ErrorCode.AI_INVALID_RESPONSE,
-                    "Generated personalized questions did not stay on the target answers"
+        List<AiGenerationService.GeneratedPersonalizedQuestionDraft> validDrafts;
+        try {
+            List<AiGenerationService.GeneratedPersonalizedQuestionDraft> drafts = aiGenerationService.generatePersonalizedQuestions(
+                    context,
+                    count,
+                    null
             );
+
+            log.debug("AI generated {} personalized question drafts", drafts == null ? 0 : drafts.size());
+            if (drafts != null) {
+                drafts.forEach(d -> log.debug("  - Draft: type={}, content={}, correctAnswer={}, options count={}",
+                    d.questionType(), d.content(), d.correctAnswer(), d.options() == null ? 0 : d.options().size()));
+            }
+            log.debug("Target answers allowed: {}", allowedTargetAnswers);
+
+            validDrafts = filterValidPersonalizedDrafts(
+                    drafts,
+                    allowedTargetAnswers,
+                    allowedQuestionTypes
+            );
+            log.debug("After filtering: {} valid drafts remain", validDrafts.size());
+            
+            if (validDrafts.isEmpty()) {
+                throw new AppException(
+                        ErrorCode.AI_INVALID_RESPONSE,
+                        "Generated personalized questions did not stay on the target answers"
+                );
+            }
+        } catch (AppException exception) {
+            if (!shouldFallbackToRetrySet(exception)) {
+                throw exception;
+            }
+
+            log.warn("Falling back to retry-set personalized questions: {}", exception.getMessage());
+            return generateFallbackRetrySet(supportedWrongQuestions, count);
         }
 
         List<Question> generatedQuestions = validDrafts.stream()
@@ -139,11 +164,6 @@ public class PersonalizedPracticeService {
                 continue;
             }
 
-            if (SUPPORTED_PERSONALIZED_TYPES.contains(questionType)) {
-                resolved.add(questionType);
-                continue;
-            }
-
             resolved.add(QuestionType.QUALITATIVE_MC);
         }
 
@@ -152,6 +172,28 @@ public class PersonalizedPracticeService {
         }
 
         return new ArrayList<>(resolved);
+    }
+
+    private List<Question> filterSupportedQuestions(List<Question> questions) {
+        return questions.stream()
+                .filter(question -> question.getQuestionType() != null)
+                .filter(question -> REUSABLE_SOURCE_TYPES.contains(question.getQuestionType()))
+                .filter(question -> isQuestionReusableForPersonalizedSet(question))
+                .toList();
+    }
+
+    private boolean isQuestionReusableForPersonalizedSet(Question question) {
+        if (!isOptionBasedType(question.getQuestionType())) {
+            return false;
+        }
+
+        List<QuestionOption> options = questionOptionRepo.findByQuestionId(question.getId());
+        if (options.size() != 4) {
+            return false;
+        }
+
+        long correctCount = options.stream().filter(QuestionOption::isCorrect).count();
+        return correctCount == 1;
     }
 
     private List<AiGenerationService.GeneratedPersonalizedQuestionDraft> filterValidPersonalizedDrafts(
@@ -164,7 +206,23 @@ public class PersonalizedPracticeService {
                 .filter(value -> !value.isBlank())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
+        log.debug("Normalizing {} target answers: {}", allowedTargetAnswers.size(), normalizedTargets);
+
         return drafts.stream()
+                .peek(draft -> {
+                    boolean validStructure = hasValidPersonalizedStructure(draft, allowedQuestionTypes);
+                    if (!validStructure) {
+                        log.debug("  ✗ REJECTED: Invalid structure - {}", draft.content());
+                        return;
+                    }
+                    boolean matchesTarget = matchesAllowedTargetAnswer(draft, normalizedTargets);
+                    if (!matchesTarget) {
+                        log.debug("  ✗ REJECTED: Does not match target answers - content={}, correctAnswer={}, options={}", 
+                            draft.content(), draft.correctAnswer(), draft.options());
+                    } else {
+                        log.debug("  ✓ ACCEPTED: {}", draft.content());
+                    }
+                })
                 .filter(draft -> hasValidPersonalizedStructure(draft, allowedQuestionTypes))
                 .filter(draft -> matchesAllowedTargetAnswer(draft, normalizedTargets))
                 .toList();
@@ -175,6 +233,10 @@ public class PersonalizedPracticeService {
             List<QuestionType> allowedQuestionTypes
     ) {
         if (draft == null || draft.content() == null || draft.content().isBlank()) {
+            return false;
+        }
+
+        if (hasDetachedBlankPrompt(draft.content())) {
             return false;
         }
 
@@ -226,6 +288,13 @@ public class PersonalizedPracticeService {
 
         List<QuestionOption> options = new ArrayList<>();
         String correctKey = resolveCorrectOptionKey(draft);
+        String storedCorrectAnswer = resolveStoredCorrectAnswer(draft, question.getQuestionType());
+
+        log.debug("=== Building Options ===");
+        log.debug("Question: {}", question.getContent());
+        log.debug("AI correctAnswer from draft: {}", draft.correctAnswer());
+        log.debug("Resolved correctKey: {}", correctKey);
+        log.debug("Will store correctAnswer: {}", storedCorrectAnswer);
 
         for (AiGenerationService.GeneratedMcqOptionDraft draftOption : draftOptions) {
             if (draftOption == null || draftOption.content() == null || draftOption.content().isBlank()) {
@@ -234,15 +303,104 @@ public class PersonalizedPracticeService {
 
             QuestionOption option = new QuestionOption();
             String optionKey = normalizeOptionKey(draftOption.optionKey());
+            boolean isCorrect = optionKey.equals(correctKey);
 
             option.setQuestion(question);
             option.setOptionKey(optionKey);
             option.setContent(draftOption.content().trim());
-            option.setCorrect(optionKey.equals(correctKey));
+            option.setCorrect(isCorrect);
             options.add(option);
+
+            log.debug("  Option {}: content='{}', isCorrect={}", optionKey, draftOption.content().trim(), isCorrect);
         }
 
+        log.debug("Total options saved: {}", options.size());
         return options;
+    }
+
+    private List<QuestionResponse> generateFallbackRetrySet(List<Question> wrongQuestions, int count) {
+        if (wrongQuestions.isEmpty()) {
+            throw new AppException(
+                    ErrorCode.NO_WRONG_QUESTIONS_FOUND,
+                    "No wrong questions found. Please answer more questions incorrectly in this unit first"
+            );
+        }
+
+        Map<Long, List<QuestionOption>> optionsByQuestionId = wrongQuestions.stream()
+                .collect(Collectors.toMap(
+                        Question::getId,
+                        question -> questionOptionRepo.findByQuestionId(question.getId()),
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+
+        List<Question> generatedQuestions = new ArrayList<>();
+        List<List<QuestionOption>> generatedOptions = new ArrayList<>();
+
+        for (int index = 0; index < count; index += 1) {
+            Question source = wrongQuestions.get(index % wrongQuestions.size());
+            List<QuestionOption> sourceOptions = optionsByQuestionId.getOrDefault(source.getId(), List.of());
+
+            Question generated = new Question();
+            generated.setQuestionType(QuestionType.QUALITATIVE_MC);
+            generated.setContent(buildFallbackContent(source));
+            generated.setInstruction(source.getInstruction());
+            generated.setHint(source.getHint());
+            generated.setQuestionData(source.getQuestionData());
+            generated.setCorrectAnswer(source.getCorrectAnswer());
+            generated.setExplanation(buildFallbackExplanation(source.getExplanation()));
+            generatedQuestions.add(generated);
+
+            List<QuestionOption> clonedOptions = sourceOptions.stream()
+                    .map(option -> {
+                        QuestionOption clone = new QuestionOption();
+                        clone.setOptionKey(option.getOptionKey());
+                        clone.setContent(option.getContent());
+                        clone.setCorrect(option.isCorrect());
+                        return clone;
+                    })
+                    .toList();
+            generatedOptions.add(clonedOptions);
+        }
+
+        List<Question> savedQuestions = questionRepo.saveAll(generatedQuestions);
+        List<QuestionOption> optionsToSave = new ArrayList<>();
+
+        for (int index = 0; index < savedQuestions.size(); index += 1) {
+            Question savedQuestion = savedQuestions.get(index);
+            List<QuestionOption> clonedOptions = generatedOptions.get(index);
+
+            for (QuestionOption option : clonedOptions) {
+                option.setQuestion(savedQuestion);
+            }
+
+            savedQuestion.setOptions(clonedOptions);
+            optionsToSave.addAll(clonedOptions);
+        }
+
+        if (!optionsToSave.isEmpty()) {
+            questionOptionRepo.saveAll(optionsToSave);
+        }
+
+        return savedQuestions.stream()
+                .map(questionMapper::toResponse)
+                .toList();
+    }
+
+    private String buildFallbackExplanation(String originalExplanation) {
+        String base = nullToEmpty(originalExplanation);
+        if (base.isBlank()) {
+            return "Retry practice set generated from your wrong-answer history because the AI provider is temporarily unavailable.";
+        }
+
+        return base + "\n\nRetry practice set generated from your wrong-answer history because the AI provider is temporarily unavailable.";
+    }
+
+    private boolean shouldFallbackToRetrySet(AppException exception) {
+        ErrorCode errorCode = exception.getErrorCode();
+        return errorCode == ErrorCode.AI_NOT_RESPONSE
+                || errorCode == ErrorCode.AI_INVALID_RESPONSE
+                || errorCode == ErrorCode.AI_NOT_CONFIGURED;
     }
 
     private QuestionType normalizeGeneratedQuestionType(String rawType, List<QuestionType> allowedQuestionTypes) {
@@ -265,6 +423,29 @@ public class PersonalizedPracticeService {
                 || questionType == QuestionType.CLOZE_MC;
     }
 
+    private boolean hasDetachedBlankPrompt(String content) {
+        String normalized = normalizeComparableAnswer(content);
+        return normalized.matches(".*\\bblank\\s+\\d+\\b.*")
+                || (normalized.matches(".*\\bblank\\b.*")
+                && !content.contains("____")
+                && !content.contains("___")
+                && !content.contains("..."));
+    }
+
+    private String buildFallbackContent(Question source) {
+        String content = nullToEmpty(source.getContent()).trim();
+        if (!hasDetachedBlankPrompt(content)) {
+            return content;
+        }
+
+        String explanation = nullToEmpty(source.getExplanation()).trim();
+        if (!explanation.isBlank()) {
+            return "Choose the best answer based on this clue: " + explanation;
+        }
+
+        return "Choose the best answer.";
+    }
+
     private String resolveStoredCorrectAnswer(
             AiGenerationService.GeneratedPersonalizedQuestionDraft draft,
             QuestionType questionType
@@ -273,11 +454,24 @@ public class PersonalizedPracticeService {
             return nullToEmpty(draft.correctAnswer());
         }
 
-        return resolveCorrectOptionKey(draft);
+        // For multiple-choice questions, store only the content of the correct option
+        // This ensures proper matching when comparing user answers
+        String content = resolveCorrectOptionContent(draft);
+        if (!content.isBlank()) {
+            return content;  // e.g., "breathing" instead of "B. breathing"
+        }
+        
+        // Fallback to the key if content is not found
+        String key = resolveCorrectOptionKey(draft);
+        return key;
     }
 
     private String resolveCorrectOptionKey(AiGenerationService.GeneratedPersonalizedQuestionDraft draft) {
         String normalizedCorrectAnswer = normalizeComparableAnswer(draft.correctAnswer());
+
+        log.debug("Resolving correctKey from draft:");
+        log.debug("  Draft correctAnswer: '{}'", draft.correctAnswer());
+        log.debug("  Normalized: '{}'", normalizedCorrectAnswer);
 
         if (draft.options() != null) {
             for (AiGenerationService.GeneratedMcqOptionDraft option : draft.options()) {
@@ -286,18 +480,27 @@ public class PersonalizedPracticeService {
                 }
 
                 String optionKey = normalizeOptionKey(option.optionKey());
-                if (normalizedCorrectAnswer.equals(normalizeComparableAnswer(optionKey))) {
+                String normalizedKey = normalizeComparableAnswer(optionKey);
+                String normalizedContent = normalizeComparableAnswer(option.content());
+
+                log.debug("  Checking option {}: key='{}' (normalized='{}'), content='{}' (normalized='{}')", 
+                    option.optionKey(), optionKey, normalizedKey, option.content(), normalizedContent);
+
+                if (normalizedCorrectAnswer.equals(normalizedKey)) {
+                    log.debug("    ✓ Matched by key! Resolved correctKey = {}", optionKey);
                     return optionKey;
                 }
 
-                if (option.content() != null
-                        && normalizedCorrectAnswer.equals(normalizeComparableAnswer(option.content()))) {
+                if (option.content() != null && normalizedCorrectAnswer.equals(normalizedContent)) {
+                    log.debug("    ✓ Matched by content! Resolved correctKey = {}", optionKey);
                     return optionKey;
                 }
             }
         }
 
-        return normalizeOptionKey(draft.correctAnswer());
+        String fallback = normalizeOptionKey(draft.correctAnswer());
+        log.debug("  No match found, using fallback: {}", fallback);
+        return fallback;
     }
 
     private String resolveCorrectOptionContent(AiGenerationService.GeneratedPersonalizedQuestionDraft draft) {
@@ -379,73 +582,73 @@ public class PersonalizedPracticeService {
             int requestedCount
     ) {
         StringBuilder builder = new StringBuilder();
-        builder.append("Tao bo cau hoi ca nhan hoa cho hoc sinh dua tren cac cau lam sai.\n");
-        builder.append("Muc tieu: tao cau hoi moi de hoc sinh luyen lai DUNG tu/cum tu/cau truc da sai, khong doi sang kien thuc khac.\n");
-        builder.append("Neu tham chieu co target answer thi dap an dung cua cau moi phai giu nguyen target answer do, chi thay doi ngu canh va cach hoi.\n");
-        builder.append("UserId: ").append(user.getId()).append('\n');
-
+        builder.append("OBJECTIVE: Create personalized English practice questions based on the student's mistakes.\n");
+        builder.append("FOCUS: The student got these questions WRONG. Create new questions that practice the SAME grammar/vocabulary/structure patterns.\n");
+        builder.append("PRESERVE ANSWERS: If the student's correct answers are listed below (allowedTargetAnswers), the new questions MUST have those same correct answers.\n");
+        builder.append("NO PLACEHOLDER QUESTIONS: Each question must have a COMPLETE English sentence or context - not just 'Choose the best answer.'\n");
+        builder.append("QUESTION FORMAT: Simple multiple-choice with 4 options (A/B/C/D).\n\n");
+        
+        builder.append("Student ID: ").append(user.getId()).append("\n");
         if (request.gradeId() != null) {
-            builder.append("GradeId: ").append(request.gradeId()).append('\n');
+            builder.append("Grade ID: ").append(request.gradeId()).append("\n");
         }
-
         if (request.unitNumber() != null) {
-            builder.append("Unit number: ").append(request.unitNumber()).append('\n');
+            builder.append("Unit Number: ").append(request.unitNumber()).append("\n");
         }
-
-        builder.append("So cau can tao: ")
-                .append(requestedCount)
-                .append(" (tu dong can doi theo so cau sai tham chieu: ")
-                .append(wrongQuestions.size())
-                .append(")\n");
-
-        if (!allowedQuestionTypes.isEmpty()) {
-            builder.append("Allowed personalized question types:\n");
-            for (QuestionType questionType : allowedQuestionTypes) {
-                builder.append("- ").append(questionType.name()).append('\n');
-            }
-            if (allowedQuestionTypes.size() > 1) {
-                builder.append("Hay phan bo hon hop nhieu dang trong danh sach tren, khong don het ve mot dang.\n");
-            }
-        }
+        builder.append("Number of questions to create: ").append(requestedCount).append("\n\n");
 
         if (!allowedTargetAnswers.isEmpty()) {
-            builder.append("Allowed target answers:\n");
+            builder.append("IMPORTANT - Correct Answer Constraints:\n");
+            builder.append("The new questions MUST have one of these correct answers:\n");
             for (String targetAnswer : allowedTargetAnswers) {
-                builder.append("- ").append(targetAnswer).append('\n');
+                builder.append("  - ").append(targetAnswer).append("\n");
             }
-            builder.append("Bat buoc dap an dung cua moi cau moi phai trung MOT TRONG cac target answer o tren.\n");
+            builder.append("\n");
         }
 
-        builder.append("Cac cau sai tham chieu:\n");
-        for (Question question : wrongQuestions) {
+        builder.append("STUDENT'S WRONG QUESTIONS (learn from these patterns):\n");
+        builder.append("=".repeat(80)).append("\n");
+        
+        for (int i = 0; i < wrongQuestions.size(); i++) {
+            Question question = wrongQuestions.get(i);
             List<QuestionOption> options = questionOptionRepo.findByQuestionId(question.getId());
             String targetAnswer = resolveTargetAnswer(question, options);
 
-            builder.append("- Reference question id: ").append(question.getId()).append('\n');
-            builder.append("  type: ").append(question.getQuestionType()).append('\n');
-            builder.append("  content: ").append(nullToEmpty(question.getContent())).append('\n');
-            builder.append("  instruction: ").append(nullToEmpty(question.getInstruction())).append('\n');
-            builder.append("  questionData: ").append(nullToEmpty(question.getQuestionData())).append('\n');
-            builder.append("  explanation: ").append(nullToEmpty(question.getExplanation())).append('\n');
-            builder.append("  rawCorrectAnswer: ").append(nullToEmpty(question.getCorrectAnswer())).append('\n');
-            builder.append("  targetAnswer: ").append(targetAnswer).append('\n');
-
+            builder.append("\n[MISTAKE #").append(i + 1).append("]\n");
+            builder.append("Question ID: ").append(question.getId()).append("\n");
+            builder.append("Question Content: ").append(nullToEmpty(question.getContent())).append("\n");
+            
+            if (!nullToEmpty(question.getInstruction()).isBlank()) {
+                builder.append("Instruction: ").append(question.getInstruction()).append("\n");
+            }
+            
             if (!options.isEmpty()) {
-                builder.append("  options:\n");
+                builder.append("Options:\n");
                 for (QuestionOption option : options) {
-                    builder.append("    - ")
-                            .append(nullToEmpty(option.getOptionKey()))
-                            .append(": ")
-                            .append(nullToEmpty(option.getContent()));
+                    String optionKey = nullToEmpty(option.getOptionKey());
+                    String optionContent = nullToEmpty(option.getContent());
+                    builder.append("  ").append(optionKey).append(". ").append(optionContent);
                     if (option.isCorrect()) {
-                        builder.append(" [CORRECT]");
+                        builder.append(" [STUDENT GOT THIS WRONG]\n");
+                    } else {
+                        builder.append("\n");
                     }
-                    builder.append('\n');
                 }
             }
-
-            builder.append("  requirement: Tao cau hoi moi van kiem tra dung targetAnswer neu targetAnswer khong rong.\n");
+            
+            if (!nullToEmpty(question.getExplanation()).isBlank()) {
+                builder.append("Explanation: ").append(question.getExplanation()).append("\n");
+            }
+            builder.append("Correct Answer should be: ").append(targetAnswer).append("\n");
         }
+        
+        builder.append("\n");
+        builder.append("=".repeat(80)).append("\n");
+        builder.append("CREATE NEW QUESTIONS that test the SAME PATTERNS. Make sure each new question has:\n");
+        builder.append("  1. A complete English sentence or paragraph as the question\n");
+        builder.append("  2. A clear blank or choice point\n");
+        builder.append("  3. Four distinct options\n");
+        builder.append("  4. One obviously correct answer\n");
 
         return builder.toString();
     }
@@ -489,7 +692,10 @@ public class PersonalizedPracticeService {
         }
 
         if (user.getVipExpiredAt() == null || !user.getVipExpiredAt().isAfter(LocalDateTime.now())) {
-            throw new AppException(ErrorCode.VIP_REQUIRED);
+            throw new AppException(
+                    ErrorCode.VIP_REQUIRED,
+                    "This personalized question feature requires an active VIP subscription. Please upgrade your account to access this feature."
+            );
         }
     }
 

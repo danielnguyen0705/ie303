@@ -113,6 +113,13 @@ export async function getMyLearningAnalysis(): Promise<ApiResponse<AILearningAna
   });
 }
 
+export async function refreshMyLearningAnalysis(): Promise<ApiResponse<AILearningAnalysis | null>> {
+  return request<AILearningAnalysis | null>("/ai/learning-analysis/me/refresh", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export async function getMyLearningAnalysisHistory(): Promise<
   ApiResponse<AILearningAnalysis[]>
 > {

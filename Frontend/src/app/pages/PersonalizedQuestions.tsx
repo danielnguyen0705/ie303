@@ -1,23 +1,13 @@
-import { Link } from "react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle,
   Brain,
-  BrainCircuit,
   CheckCircle2,
-  Clock3,
   Loader2,
-  Minus,
   RefreshCcw,
   Sparkles,
-  Target,
-  TrendingDown,
-  TrendingUp,
   XCircle,
 } from "lucide-react";
 import {
-  getMyLearningAnalysis,
-  getMyLearningAnalysisHistory,
   getPersonalizedQuestions,
   getUnitsByGradeProgress,
   submitQuestionHistory,
@@ -25,86 +15,115 @@ import {
 import { getAllGrades } from "@/api/admin";
 import type { Grade } from "@/api/admin/types";
 import type { QuestionDto } from "@/api/questions";
-import type { AILearningAnalysis, PersonalizedQuestionsRequest } from "@/api/types";
+import type { PersonalizedQuestionsRequest } from "@/api/types";
 import type { UnitProgressItem } from "@/api/units";
+import { useLanguage } from "@/context/LanguageContext";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
 
 const initialForm: PersonalizedQuestionsRequest = {
-  questionCount: 20,
+  questionCount: 10,  // Reduced from 20 to 10 for better API stability
   gradeId: 0,
   unitNumber: 0,
 };
 
-type GradeProgressBundle = {
-  gradeId: number;
-  gradeName: string;
-  units: UnitProgressItem[];
-};
+type CopyFn = (english: string, vietnamese: string) => string;
 
-function formatAnalysisDate(value?: string | null) {
-  if (!value) return "No snapshot yet";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleString("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-function getTrendMeta(trendLabel?: string | null) {
-  switch (trendLabel) {
-    case "IMPROVING":
-      return {
-        icon: TrendingUp,
-        tone: "text-green-700 bg-green-50 border-green-200",
-        label: "Improving",
-      };
-    case "DECLINING":
-      return {
-        icon: TrendingDown,
-        tone: "text-red-700 bg-red-50 border-red-200",
-        label: "Declining",
-      };
-    default:
-      return {
-        icon: Minus,
-        tone: "text-slate-700 bg-slate-50 border-slate-200",
-        label: trendLabel || "Stable",
-      };
-  }
-}
-
-function getGenerationErrorMessage(message?: string) {
+function getGenerationErrorMessage(message: string | undefined, copy: CopyFn) {
   if (!message) {
-    return "Could not generate questions. You may need some wrong-answer history first.";
+    return copy(
+      "Could not generate questions. Please ensure you have wrong-answer history in this unit.",
+      "Khong the tao cau hoi. Hay dam bao ban co lich su tra loi sai trong unit nay.",
+    );
+  }
+
+  // Return messages from backend as-is (they're already in English)
+  if (message.includes("No wrong-answer history available")) {
+    return message;
+  }
+
+  if (message.includes("practice")) {
+    return message;
+  }
+
+  if (message.includes("VIP subscription") || message.includes("This personalized question feature requires")) {
+    return message;
+  }
+
+  if (message.includes("AI service is temporarily unavailable")) {
+    return message;
+  }
+
+  if (message.includes("AI service is not configured")) {
+    return message;
+  }
+
+  if (message.includes("AI service returned unexpected")) {
+    return message;
+  }
+
+  // Legacy message handling (keep for backwards compatibility)
+  if (message.includes("No wrong questions found")) {
+    return copy(
+      "No wrong-answer history available. Practice some questions and answer them incorrectly first.",
+      "Chua co lich su tra loi sai. Hay luyen mot vai cau va tra loi sai truoc.",
+    );
+  }
+
+  if (message.includes("No reusable multiple-choice wrong questions found")) {
+    return copy(
+      "This unit only has unsupported wrong-answer types. Please create wrong-answer history on multiple-choice questions first.",
+      "Unit nay chi co cac dang cau sai chua duoc ho tro. Hay tao lich su sai voi cau trac nghiem truoc.",
+    );
+  }
+
+  if (message.includes("No AI provider is configured")) {
+    return copy(
+      "AI service is not configured. System will use your wrong-answer history instead.",
+      "Dich vu AI chua duoc cau hinh. He thong se dung lich su cau sai cua ban thay the.",
+    );
   }
 
   if (message.includes("502")) {
-    return "AI generation is temporarily unavailable (502). Check backend/AI service, or try again after creating some wrong-answer history in this unit.";
+    return copy(
+      "AI service is temporarily unavailable. Please try again later.",
+      "Dich vu AI dang tam thoi gian doan. Vui long thu lai sau.",
+    );
   }
 
+  // If message doesn't match any pattern, return it as-is
   return message;
 }
 
+// Helper: Check if option is the correct answer by comparing with stored correctAnswer
+function isOptionCorrect(question: QuestionDto, option: QuestionDto["options"][0]) {
+  // First try comparing with stored correctAnswer field
+  if (question.correctAnswer && option.content) {
+    const normalizedCorrect = question.correctAnswer.trim().toLowerCase();
+    const normalizedOption = option.content.trim().toLowerCase();
+    if (normalizedCorrect === normalizedOption) {
+      return true;
+    }
+  }
+
+  // Fallback to isCorrect flag
+  return option.isCorrect ?? false;
+}
+
 export function PersonalizedQuestions() {
+  const { copy } = useLanguage();
   const [grades, setGrades] = useState<Grade[]>([]);
   const [units, setUnits] = useState<UnitProgressItem[]>([]);
-  const [progressByGrade, setProgressByGrade] = useState<GradeProgressBundle[]>([]);
   const [form, setForm] = useState<PersonalizedQuestionsRequest>(initialForm);
   const [questions, setQuestions] = useState<QuestionDto[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [flashcardMode, setFlashcardMode] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [loadingGrades, setLoadingGrades] = useState(true);
   const [loadingUnits, setLoadingUnits] = useState(false);
-  const [loadingEligibility, setLoadingEligibility] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [analysis, setAnalysis] = useState<AILearningAnalysis | null>(null);
-  const [analysisHistory, setAnalysisHistory] = useState<AILearningAnalysis[]>([]);
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const popup = useNotificationPopup({
     autoClose: true,
     autoCloseDuration: 2500,
@@ -119,13 +138,16 @@ export function PersonalizedQuestions() {
         const gradeList = response.data;
         setGrades(gradeList);
 
-        if (gradeList[0]?.id) {
-          setForm((prev) => ({ ...prev, gradeId: gradeList[0].id }));
+        const preferredGrade =
+          gradeList.find((grade) => /\b11\b/.test(grade.name)) ?? gradeList[0];
+
+        if (preferredGrade?.id) {
+          setForm((prev) => ({ ...prev, gradeId: preferredGrade.id }));
         }
       } else {
         popup.error({
-          title: "Load failed",
-          message: response.error?.message || "Could not load grades.",
+          title: copy("Load failed", "Tai that bai"),
+          message: response.error?.message || copy("Could not load grades.", "Khong the tai lop hoc."),
         });
       }
 
@@ -161,8 +183,11 @@ export function PersonalizedQuestions() {
       } else {
         setUnits([]);
         popup.error({
-          title: "Load failed",
-          message: response.error?.message || "Could not load units for this grade.",
+          title: copy("Load failed", "Tai that bai"),
+          message: response.error?.message || copy(
+            "Could not load units for this grade.",
+            "Khong the tai unit cho lop nay.",
+          ),
         });
       }
 
@@ -172,123 +197,20 @@ export function PersonalizedQuestions() {
     void loadUnits();
   }, [form.gradeId]);
 
-  useEffect(() => {
-    const loadEligibility = async () => {
-      if (grades.length === 0) {
-        setProgressByGrade([]);
-        return;
-      }
-
-      setLoadingEligibility(true);
-
-      const settled = await Promise.all(
-        grades.map(async (grade) => {
-          const response = await getUnitsByGradeProgress(grade.id);
-          if (!response.success || !response.data) {
-            return null;
-          }
-
-          return {
-            gradeId: grade.id,
-            gradeName: grade.name,
-            units: [...response.data].sort((a, b) => a.unitNumber - b.unitNumber),
-          } satisfies GradeProgressBundle;
-        }),
-      );
-
-      setProgressByGrade(settled.filter((item): item is GradeProgressBundle => Boolean(item)));
-      setLoadingEligibility(false);
-    };
-
-    void loadEligibility();
-  }, [grades]);
-
-  const completedUnits = useMemo(
-    () =>
-      progressByGrade.flatMap((grade) =>
-        grade.units
-          .filter((unit) => Number(unit.progressPercent || 0) >= 100)
-          .map((unit) => ({
-            gradeId: grade.gradeId,
-            gradeName: grade.gradeName,
-            unit,
-          })),
-      ),
-    [progressByGrade],
-  );
-
-  const hasUnlockedMlInsights = completedUnits.length > 0;
-
-  const quickQaTarget = useMemo(() => {
-    const bundles = [...progressByGrade].sort(
-      (left, right) =>
-        left.units.length - right.units.length || left.gradeName.localeCompare(right.gradeName),
-    );
-    const selectedBundle = bundles[0];
-    if (!selectedBundle || selectedBundle.units.length === 0) return null;
-
-    const completedUnit =
-      selectedBundle.units.find((unit) => Number(unit.progressPercent || 0) >= 100) ||
-      selectedBundle.units[0];
-
-    return {
-      gradeId: selectedBundle.gradeId,
-      gradeName: selectedBundle.gradeName,
-      unit: completedUnit,
-      alreadyCompleted: Number(completedUnit.progressPercent || 0) >= 100,
-      totalUnits: selectedBundle.units.length,
-    };
-  }, [progressByGrade]);
-
   const selectedUnitProgress = useMemo(
     () => units.find((unit) => unit.unitNumber === form.unitNumber) || null,
     [form.unitNumber, units],
   );
 
-  useEffect(() => {
-    const loadAnalysis = async () => {
-      if (!hasUnlockedMlInsights) {
-        setAnalysis(null);
-        setAnalysisHistory([]);
-        return;
-      }
-
-      setLoadingAnalysis(true);
-      const [latestResponse, historyResponse] = await Promise.all([
-        getMyLearningAnalysis(),
-        getMyLearningAnalysisHistory(),
-      ]);
-
-      if (latestResponse.success) {
-        setAnalysis(latestResponse.data ?? null);
-      } else {
-        popup.error({
-          title: "ML insights failed",
-          message: latestResponse.error?.message || "Could not load your latest ML analysis.",
-        });
-      }
-
-      if (historyResponse.success) {
-        setAnalysisHistory(historyResponse.data ?? []);
-      } else {
-        popup.error({
-          title: "ML history failed",
-          message: historyResponse.error?.message || "Could not load ML analysis history.",
-        });
-      }
-
-      setLoadingAnalysis(false);
-    };
-
-    void loadAnalysis();
-  }, [hasUnlockedMlInsights]);
-
   const correctCount = useMemo(
     () =>
       questions.filter((question) => {
         const answer = answers[question.id];
-        const selected = question.options?.find((option) => option.optionKey === answer);
-        return Boolean(selected?.isCorrect);
+        const selected = question.options?.find((option, idx) => {
+          const displayKey = option.optionKey || ["A","B","C","D"][idx] || String.fromCharCode(65 + idx);
+          return displayKey === answer;
+        });
+        return Boolean(selected && isOptionCorrect(question, selected));
       }).length,
     [answers, questions],
   );
@@ -298,19 +220,38 @@ export function PersonalizedQuestions() {
     [answers, questions],
   );
 
+  const formatCorrectAnswer = (q: QuestionDto) => {
+    const opt = q.options?.find((o) => isOptionCorrect(q, o));
+    if (opt) {
+      const key = opt.optionKey || (() => {
+        const idx = q.options?.indexOf(opt) ?? -1;
+        return idx >= 0 ? (["A","B","C","D"][idx] || String.fromCharCode(65 + idx)) : "";
+      })();
+      return `${key}${key ? ". " : ""}${opt.content || ""}`.trim();
+    }
+    if (q.correctAnswer) return q.correctAnswer;
+    return "N/A";
+  };
+
   const handleGenerate = async () => {
     if (!form.gradeId) {
       popup.warning({
-        title: "Missing grade",
-        message: "Please choose a grade before generating questions.",
+        title: copy("Missing grade", "Chua chon lop"),
+        message: copy(
+          "Please choose a grade before generating questions.",
+          "Vui long chon lop truoc khi tao cau hoi.",
+        ),
       });
       return;
     }
 
     if (!form.unitNumber) {
       popup.warning({
-        title: "Missing unit",
-        message: "Please choose a unit before generating questions.",
+        title: copy("Missing unit", "Chua chon unit"),
+        message: copy(
+          "Please choose a unit before generating questions.",
+          "Vui long chon unit truoc khi tao cau hoi.",
+        ),
       });
       return;
     }
@@ -321,15 +262,40 @@ export function PersonalizedQuestions() {
     if (response.success && response.data) {
       setQuestions(response.data);
       setAnswers({});
+      setCurrentIndex(0);
+      setFlashcardMode(true);
       setSubmitted(false);
+
+      // Log question data for debugging
+      console.log("[Questions Generated]", response.data.length, "questions");
+      response.data.forEach((q, idx) => {
+        console.log(`Question ${idx + 1}:`, {
+          id: q.id,
+          content: q.content,
+          correctAnswer: q.correctAnswer,
+          options: q.options?.map(o => ({
+            id: o.id,
+            optionKey: o.optionKey,
+            content: o.content,
+            isCorrect: o.isCorrect
+          }))
+        });
+
+        // Show raw full data
+        console.log(`Full question ${q.id} raw data:`, q);
+      });
+
       popup.success({
-        title: "Generated",
-        message: `Created ${response.data.length} personalized questions.`,
+        title: copy("Generated", "Da tao"),
+        message: copy(
+          `Created ${response.data.length} personalized questions.`,
+          `Da tao ${response.data.length} cau hoi ca nhan hoa.`,
+        ),
       });
     } else {
       popup.error({
-        title: "Generation failed",
-        message: getGenerationErrorMessage(response.error?.message),
+        title: copy("Generation failed", "Tao cau hoi that bai"),
+        message: getGenerationErrorMessage(response.error?.message, copy),
       });
     }
 
@@ -340,8 +306,11 @@ export function PersonalizedQuestions() {
     const answeredQuestions = questions.filter((question) => Boolean(answers[question.id]));
     if (answeredQuestions.length === 0) {
       popup.warning({
-        title: "No answers yet",
-        message: "Choose at least one answer before submitting the mini test.",
+        title: copy("No answers yet", "Chua co cau tra loi"),
+        message: copy(
+          "Choose at least one answer before submitting the mini test.",
+          "Hay chon it nhat mot cau tra loi truoc khi nop bai mini test.",
+        ),
       });
       return;
     }
@@ -350,7 +319,10 @@ export function PersonalizedQuestions() {
     await Promise.all(
       answeredQuestions.map(async (question) => {
         const selectedKey = answers[question.id];
-        const selectedOption = question.options?.find((option) => option.optionKey === selectedKey);
+        const selectedOption = question.options?.find((option, idx) => {
+          const displayKey = option.optionKey || ["A","B","C","D"][idx] || String.fromCharCode(65 + idx);
+          return displayKey === selectedKey;
+        });
         if (!selectedOption) return;
 
         await submitQuestionHistory({
@@ -363,42 +335,41 @@ export function PersonalizedQuestions() {
     setSubmitting(false);
   };
 
-  const latestTrendMeta = getTrendMeta(analysis?.trendLabel);
-  const LatestTrendIcon = latestTrendMeta.icon;
-
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-8 pb-24 md:pb-12">
+    <main className="mx-auto max-w-7xl space-y-8 px-6 py-10 pb-24 md:pb-12">
       <section className="space-y-3">
         <div className="inline-flex items-center gap-2 rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
-          <Sparkles className="w-4 h-4" />
-          AI Practice And ML Review
+          <Sparkles className="h-4 w-4" />
+          {copy("AI Practice", "Luyen tap AI")}
         </div>
-        <h1 className="text-4xl md:text-5xl font-black text-[#155ca5] tracking-tight">
-          Personalized Questions
+        <h1 className="text-4xl font-black tracking-tight text-[#155ca5] md:text-5xl">
+          {copy("Personalized Questions", "Cau hoi ca nhan hoa")}
         </h1>
-        <p className="text-gray-600 font-medium max-w-3xl">
-          Dùng AI để sinh bộ câu hỏi theo lịch sử sai của bạn, đồng thời xem ML snapshot
-          mới nhất khi bạn đã hoàn thành ít nhất 1 unit.
+        <p className="max-w-3xl font-medium text-gray-600">
+          {copy(
+            "Use AI to generate extra practice questions from your wrong-answer history in a selected unit.",
+            "Dung AI de tao cau hoi luyen tap them tu lich su tra loi sai cua ban trong unit da chon.",
+          )}
         </p>
       </section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_1fr]">
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl shadow-sm p-6 space-y-4">
-            <div className="flex items-center gap-2 text-[#155ca5] font-black text-lg">
-              <Brain className="w-5 h-5" />
-              Generate Set
+          <div className="space-y-4 rounded-3xl bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-lg font-black text-[#155ca5]">
+              <Brain className="h-5 w-5" />
+              {copy("Generate Set", "Tao bo cau hoi")}
             </div>
 
             {loadingGrades ? (
-              <div className="py-8 flex items-center justify-center text-gray-500">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Loading grades...
+              <div className="flex items-center justify-center py-8 text-gray-500">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                {copy("Loading grades...", "Dang tai lop...")}
               </div>
             ) : (
               <>
                 <label className="block space-y-2">
-                  <span className="text-sm font-bold text-gray-700">Grade</span>
+                  <span className="text-sm font-bold text-gray-700">{copy("Grade", "Lop")}</span>
                   <select
                     value={form.gradeId}
                     onChange={(e) =>
@@ -409,7 +380,9 @@ export function PersonalizedQuestions() {
                     }
                     className="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-[#155ca5]"
                   >
-                    {grades.length === 0 && <option value={0}>No grades available</option>}
+                    {grades.length === 0 && (
+                      <option value={0}>{copy("No grades available", "Khong co lop nao")}</option>
+                    )}
                     {grades.map((grade) => (
                       <option key={grade.id} value={grade.id}>
                         {grade.name}
@@ -432,9 +405,9 @@ export function PersonalizedQuestions() {
                     className="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-[#155ca5]"
                   >
                     {loadingUnits ? (
-                      <option value={form.unitNumber || 0}>Loading units...</option>
+                      <option value={form.unitNumber || 0}>{copy("Loading units...", "Dang tai unit...")}</option>
                     ) : units.length === 0 ? (
-                      <option value={form.unitNumber || 0}>No units found</option>
+                      <option value={form.unitNumber || 0}>{copy("No units found", "Khong tim thay unit")}</option>
                     ) : (
                       units.map((unit) => (
                         <option key={unit.unitId} value={unit.unitNumber}>
@@ -447,7 +420,7 @@ export function PersonalizedQuestions() {
 
                 {selectedUnitProgress && (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                    Current unit progress:{" "}
+                    {copy("Current unit progress:", "Tien do unit hien tai:")}{" "}
                     <span className="font-bold text-[#155ca5]">
                       {Math.round(selectedUnitProgress.progressPercent)}%
                     </span>
@@ -455,21 +428,31 @@ export function PersonalizedQuestions() {
                 )}
 
                 <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-sm text-[#1e2e51]">
-                  AI practice is generated from your wrong-question history. If you have not made
-                  mistakes yet in this unit, the backend may return no personalized set.
+                  {copy(
+                    "AI practice is generated from your wrong-question history. Question count defaults to 10 (max 15), and if the external AI provider is down the backend falls back to a retry set built from your own missed questions.",
+                    "Luyen tap AI duoc tao tu lich su cau sai cua ban. So cau mac dinh la 10 (toi da 15), va neu nha cung cap AI ben ngoai bi gian doan, backend se dung bo cau hoi lam lai tu cac cau ban da sai.",
+                  )}
                 </div>
 
                 <label className="block space-y-2">
-                  <span className="text-sm font-bold text-gray-700">Question Count</span>
+                  <span className="text-sm font-bold text-gray-700">
+                    {copy("Question Count", "So cau hoi")}
+                  </span>
                   <input
                     type="number"
                     min={1}
-                    max={50}
+                    max={15}
                     value={form.questionCount}
                     onChange={(e) =>
                       setForm((prev) => ({
                         ...prev,
-                        questionCount: Math.max(1, Number(e.target.value) || 1),
+                        questionCount: Math.min(15, Math.max(1, Number(e.target.value) || 10)),
+                      }))
+                    }
+                    onBlur={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        questionCount: Math.min(15, Math.max(1, prev.questionCount || 10)),
                       }))
                     }
                     className="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-[#155ca5]"
@@ -480,335 +463,300 @@ export function PersonalizedQuestions() {
                   type="button"
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="w-full rounded-2xl bg-[#155ca5] text-white py-3 font-bold hover:bg-[#0f4c88] disabled:opacity-60"
+                  className="w-full rounded-2xl bg-[#155ca5] py-3 font-bold text-white hover:bg-[#0f4c88] disabled:opacity-60"
                 >
-                  {generating ? "Generating..." : "Generate Questions"}
+                  {generating
+                    ? copy("Generating...", "Dang tao...")
+                    : copy("Generate Questions", "Tao cau hoi")}
                 </button>
               </>
             )}
           </div>
-
-          
         </div>
 
-        <div className="space-y-6">
-          <section className="bg-white rounded-3xl shadow-sm p-6 space-y-5">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-2xl font-black text-[#1e2e51]">
-                  AI Learning Insights
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Latest ML snapshot from `/api/ai/learning-analysis/me` and its history.
-                </p>
-              </div>
-              {hasUnlockedMlInsights && analysis && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">
-                  <Clock3 className="w-4 h-4" />
-                  {formatAnalysisDate(analysis.generatedAt)}
-                </div>
+        <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-6 text-[#1e2e51]">
+          <div className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
+            {copy("How it works", "Cach hoat dong")}
+          </div>
+          <div className="mt-3 space-y-3 text-sm leading-7 text-slate-700">
+            <p>
+              {copy(
+                "Pick a grade and a unit, then choose how many questions you want to generate.",
+                "Chon lop va unit, sau do chon so cau hoi ban muon tao.",
               )}
-            </div>
+            </p>
+            <p>
+              {copy(
+                "The system uses your wrong-answer history in that unit to create a focused mini test around the knowledge you missed.",
+                "He thong dung lich su tra loi sai trong unit do de tao mini test tap trung vao phan kien thuc ban con thieu.",
+              )}
+            </p>
+            <p>
+              {copy(
+                "This page is only for AI-generated practice. ML learning insights are now shown separately on the dashboard for VIP users.",
+                "Trang nay chi dung cho luyen tap do AI tao. Phan tich ML hien duoc hien rieng tren dashboard cho nguoi dung VIP.",
+              )}
+            </p>
+          </div>
+        </div>
+      </section>
 
-            {!hasUnlockedMlInsights ? (
-              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />
-                  <div>
-                    <div className="font-black text-amber-900">
-                      ML insights are locked
-                    </div>
-                    <p className="mt-2 text-sm text-amber-800">
-                      Hoàn thành ít nhất 1 unit rồi quay lại đây. Sau đó frontend mới mở quyền xem
-                      thống kê ML của bạn, dù backend có thể đã sinh snapshot sớm hơn.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : loadingAnalysis ? (
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-10 text-center text-slate-500">
-                <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                <div className="mt-3">Loading ML insights...</div>
-              </div>
-            ) : analysis ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="rounded-3xl border border-green-200 bg-green-50 p-5">
-                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-green-700">
-                      <BrainCircuit className="w-4 h-4" />
-                      Strongest Skill
-                    </div>
-                    <div className="mt-3 text-2xl font-black text-green-900">
-                      {analysis.strongSkill || "Not enough data"}
-                    </div>
-                  </div>
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-black text-[#1e2e51]">
+              {copy("Generated Result", "Ket qua da tao")}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {questions.length > 0
+                ? copy(
+                  `${questions.length} question(s) ready`,
+                  `${questions.length} cau hoi san sang`,
+                )
+                : copy("No personalized questions yet", "Chua co cau hoi ca nhan hoa")}
+            </p>
+          </div>
 
-                  <div className="rounded-3xl border border-red-200 bg-red-50 p-5">
-                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-red-700">
-                      <AlertTriangle className="w-4 h-4" />
-                      Needs Improvement
-                    </div>
-                    <div className="mt-3 text-2xl font-black text-red-900">
-                      {analysis.weakSkill || "Not enough data"}
-                    </div>
-                    {analysis.weakTopic && (
-                      <div className="mt-2 text-sm text-red-700">
-                        Weak topic: <span className="font-bold">{analysis.weakTopic}</span>
-                      </div>
+          {questions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setQuestions([])}
+              className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              {copy("Clear", "Xoa")}
+            </button>
+          )}
+        </div>
+
+        {questions.length === 0 ? (
+          <div className="rounded-3xl bg-white p-10 text-center text-gray-500 shadow-sm">
+            {copy(
+              "Generate a set to start a personalized mini-test from your wrong-answer history.",
+              "Tao mot bo cau hoi de bat dau mini test ca nhan hoa tu lich su cau sai cua ban.",
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-4 rounded-3xl bg-white p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-black text-[#1e2e51]">
+                    {copy("Personalized Mini Test", "Mini test ca nhan hoa")}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {copy(
+                      "Answer each generated question, then submit the whole test.",
+                      "Tra loi tung cau hoi da tao, sau do nop ca bai test.",
                     )}
-                  </div>
-
-                  <div className={`rounded-3xl border p-5 ${latestTrendMeta.tone}`}>
-                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em]">
-                      <LatestTrendIcon className="w-4 h-4" />
-                      Learning Trend
-                    </div>
-                    <div className="mt-3 text-2xl font-black">
-                      {latestTrendMeta.label}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-5">
-                  <div className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
-                    Recommendation
-                  </div>
-                  <p className="mt-3 text-sm leading-7 text-[#1e2e51]">
-                    {analysis.recommendation || "No recommendation available yet."}
                   </p>
                 </div>
-              </>
-            ) : (
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
-                Chưa có snapshot ML mới nhất. Hãy học thêm một chút rồi thử lại.
-              </div>
-            )}
-
-            {hasUnlockedMlInsights && analysisHistory.length > 0 && (
-              <div className="space-y-3">
-                <div className="text-lg font-black text-[#1e2e51]">History</div>
-                <div className="space-y-3">
-                  {analysisHistory.map((item) => {
-                    const trendMeta = getTrendMeta(item.trendLabel);
-                    const TrendIcon = trendMeta.icon;
-
-                    return (
-                      <article
-                        key={item.id}
-                        className="rounded-3xl border border-slate-200 bg-white p-5"
-                      >
-                        <div className="flex items-start justify-between gap-3 flex-wrap">
-                          <div>
-                            <div className="text-sm font-black text-[#1e2e51]">
-                              {formatAnalysisDate(item.generatedAt)}
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-2 text-xs font-bold">
-                              <span className="rounded-full bg-green-50 px-3 py-1 text-green-700">
-                                Strong: {item.strongSkill || "N/A"}
-                              </span>
-                              <span className="rounded-full bg-red-50 px-3 py-1 text-red-700">
-                                Weak: {item.weakSkill || "N/A"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <span
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-black ${trendMeta.tone}`}
-                          >
-                            <TrendIcon className="h-3.5 w-3.5" />
-                            {trendMeta.label}
-                          </span>
-                        </div>
-
-                        {(item.weakTopic || item.recommendation) && (
-                          <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-                            {item.weakTopic && (
-                              <div>
-                                Weak topic: <span className="font-bold">{item.weakTopic}</span>
-                              </div>
-                            )}
-                            {item.recommendation && (
-                              <div className={item.weakTopic ? "mt-2" : ""}>
-                                {item.recommendation}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </article>
-                    );
-                  })}
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-[#f8fbff] px-4 py-2 text-sm font-bold text-[#155ca5]">
+                    {copy("Answered", "Da tra loi")} {answeredCount}/{questions.length}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFlashcardMode((s) => !s)}
+                    className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                  >
+                    {flashcardMode ? copy("List view", "Dang danh sach") : copy("Flashcard", "The ghi nho")}
+                  </button>
                 </div>
               </div>
-            )}
-          </section>
-
-          <section className="space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-2xl font-black text-[#1e2e51]">
-                  Generated Result
-                </h2>
-                <p className="text-sm text-gray-500">
-                  {questions.length > 0
-                    ? `${questions.length} question(s) ready`
-                    : "No personalized questions yet"}
-                </p>
-              </div>
-
-              {questions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setQuestions([])}
-                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
-                >
-                  <RefreshCcw className="w-4 h-4" />
-                  Clear
-                </button>
-              )}
             </div>
 
-            {questions.length === 0 ? (
-              <div className="bg-white rounded-3xl shadow-sm p-10 text-center text-gray-500">
-                Generate a set to start a personalized mini-test from your wrong-answer history.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-white rounded-3xl shadow-sm p-6 space-y-4">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div>
-                      <h3 className="text-xl font-black text-[#1e2e51]">
-                        Personalized Mini Test
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        Answer each generated question, then submit the whole test.
-                      </p>
-                    </div>
-                    <div className="rounded-full bg-[#f8fbff] px-4 py-2 text-sm font-bold text-[#155ca5]">
-                      Answered {answeredCount}/{questions.length}
-                    </div>
-                  </div>
+            {flashcardMode ? (
+              (() => {
+                const question = questions[currentIndex];
+                if (!question) return null;
 
-                  {submitted && (
-                    <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-[#1e2e51]">
-                      <div className="font-black">Result</div>
-                      <div className="mt-2 text-sm">
-                        You got {correctCount}/{questions.length} correct.
-                      </div>
-                    </div>
-                  )}
-                </div>
+                const revealed = Boolean(answers[question.id]);
 
-                {questions.map((question, index) => (
-                  <article
-                    key={question.id}
-                    className="bg-white rounded-3xl shadow-sm p-6 space-y-4"
-                  >
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                return (
+                  <article key={question.id} className="space-y-4 rounded-3xl bg-white p-6 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <span className="inline-flex rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#155ca5]">
-                        Question {index + 1}
+                        {copy("Question", "Cau")} {currentIndex + 1} / {questions.length}
                       </span>
-                      <span className="text-xs font-bold text-gray-500">
-                        {question.questionType}
-                      </span>
+                      <span className="text-xs font-bold text-gray-500">{question.questionType}</span>
                     </div>
 
                     <h3 className="question-text-unified text-[#1e2e51]">
-                      {question.content}
+                      {question.content || copy("(No question text provided)", "(Chua co noi dung cau hoi)")}
                     </h3>
 
                     {question.options?.length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {question.options.map((option) => (
-                          <button
-                            key={option.id}
-                            type="button"
-                            disabled={submitted}
-                            onClick={() =>
-                              setAnswers((prev) => ({
-                                ...prev,
-                                [question.id]: option.optionKey,
-                              }))
-                            }
-                            className={`rounded-2xl border p-4 text-left transition ${
-                              answers[question.id] === option.optionKey
-                                ? "border-[#155ca5] bg-[#eef6ff]"
-                                : "border-gray-200 bg-gray-50 hover:border-[#155ca5]/40"
-                            }`}
-                          >
-                            <div className="text-sm font-bold text-gray-500">
-                              {option.optionKey}
-                            </div>
-                            <div className="font-semibold text-[#1e2e51]">
-                              {option.content}
-                            </div>
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {question.options.map((option, optIndex) => {
+                          const displayKey = option.optionKey || ["A","B","C","D"][optIndex] || String.fromCharCode(65 + optIndex);
+                          const selected = answers[question.id] === displayKey;
+                          const isCorrect = isOptionCorrect(question, option);
+                          const resultClass = revealed
+                            ? isCorrect
+                              ? "border-green-300 bg-green-50"
+                              : selected
+                                ? "border-red-300 bg-red-50"
+                                : "border-gray-200 bg-gray-50"
+                            : selected
+                              ? "border-[#155ca5] bg-[#eef6ff]"
+                              : "border-gray-200 bg-gray-50 hover:border-[#155ca5]/40";
+
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => {
+                                setAnswers((prev) => ({ ...prev, [question.id]: displayKey }));
+                                console.log(`[Option Clicked] optionKey='${option.optionKey}', displayKey='${displayKey}', isCorrect=${isCorrect}, content='${option.content}'`);
+                              }}
+                              className={`rounded-2xl border p-4 text-left transition ${resultClass}`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="text-sm font-bold text-gray-500">{displayKey}</div>
+                                {revealed && isCorrect && <CheckCircle2 className="h-4 w-4 text-green-700" />}
+                                {revealed && selected && !isCorrect && <XCircle className="h-4 w-4 text-red-700" />}
+                              </div>
+                              <div className="font-semibold text-[#1e2e51]">{option.content}</div>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
 
-                    {submitted && (
+                    {revealed && (
                       <div className="space-y-3">
-                        {question.options?.some(
-                          (option) =>
-                            option.optionKey === answers[question.id] && option.isCorrect,
-                        ) ? (
+                        {question.options?.some((option, idx) => {
+                          const displayKey = option.optionKey || ["A","B","C","D"][idx] || String.fromCharCode(65 + idx);
+                          const isCorrect = isOptionCorrect(question, option);
+                          const isMatch = displayKey === answers[question.id] && isCorrect;
+
+                          console.log(`[Answer Check] Question ${question.id}:`);
+                          console.log(`  displayKey='${displayKey}', userAnswer='${answers[question.id]}', isCorrect=${isCorrect}`);
+                          console.log(`  Match: ${isMatch}`);
+
+                          return isMatch;
+                        }) ? (
                           <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-green-800">
                             <div className="flex items-center gap-2 font-bold">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Correct
+                              <CheckCircle2 className="h-4 w-4" />
+                              {copy("Correct", "Dung")}
                             </div>
                           </div>
                         ) : (
                           <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-800">
                             <div className="flex items-center gap-2 font-bold">
-                              <XCircle className="w-4 h-4" />
-                              Incorrect
+                              <XCircle className="h-4 w-4" />
+                              {copy("Incorrect", "Sai")}
                             </div>
                             <div className="mt-2 text-sm">
-                              Correct answer:{" "}
-                              {question.options?.find((option) => option.isCorrect)?.optionKey}.{" "}
-                              {question.options?.find((option) => option.isCorrect)?.content}
+                              {copy("Correct answer:", "Dap an dung:")} {formatCorrectAnswer(question)}
                             </div>
                           </div>
                         )}
 
-                        {question.explanation && (
-                          <p className="rounded-2xl bg-[#f8fbff] border border-[#dbeafe] p-4 text-sm text-gray-700">
-                            {question.explanation}
-                          </p>
-                        )}
+                        {question.explanation && <p className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-sm text-gray-700">{question.explanation}</p>}
                       </div>
                     )}
-                  </article>
-                ))}
 
-                <div className="flex items-center justify-end gap-3">
-                  {submitted ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAnswers({});
-                        setSubmitted(false);
-                      }}
-                      className="rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 hover:bg-gray-50"
-                    >
-                      Retry Mini Test
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void handleSubmitTest()}
-                      disabled={submitting}
-                      className="rounded-2xl bg-[#155ca5] px-5 py-3 font-bold text-white hover:bg-[#0f4c88] disabled:opacity-60"
-                    >
-                      {submitting ? "Submitting..." : "Submit Mini Test"}
-                    </button>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} disabled={currentIndex === 0} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">{copy("Previous", "Cau truoc")}</button>
+                        <button type="button" onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))} disabled={currentIndex >= questions.length - 1} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">{copy("Next", "Cau sau")}</button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => { const nextAnswers = { ...answers }; delete nextAnswers[question.id]; setAnswers(nextAnswers); }} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">{copy("Clear Answer", "Xoa cau tra loi")}</button>
+                        <button type="button" onClick={() => setFlashcardMode(false)} className="rounded-2xl bg-[#155ca5] px-4 py-2 text-sm font-bold text-white hover:bg-[#0f4c88]">{copy("Finish & List", "Xong va xem danh sach")}</button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })()
+            ) : (
+              questions.map((question, index) => (
+                <article key={question.id} className="space-y-4 rounded-3xl bg-white p-6 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="inline-flex rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#155ca5]">
+                      {copy("Question", "Cau")} {index + 1}
+                    </span>
+                    <span className="text-xs font-bold text-gray-500">{question.questionType}</span>
+                  </div>
+
+                  <h3 className="question-text-unified text-[#1e2e51]">
+                    {question.content || copy("(No question text provided)", "(Chua co noi dung cau hoi)")}
+                  </h3>
+
+                  {question.options?.length > 0 && (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {question.options.map((option, optIndex) => {
+                        const displayKey = option.optionKey || ["A","B","C","D"][optIndex] || String.fromCharCode(65 + optIndex);
+                        const selected = answers[question.id] === displayKey;
+                        const isCorrect = isOptionCorrect(question, option);
+                        const resultClass = submitted
+                          ? isCorrect
+                            ? "border-green-300 bg-green-50"
+                            : selected
+                              ? "border-red-300 bg-red-50"
+                              : "border-gray-200 bg-gray-50"
+                          : selected
+                            ? "border-[#155ca5] bg-[#eef6ff]"
+                            : "border-gray-200 bg-gray-50 hover:border-[#155ca5]/40";
+
+                        return (
+                          <button key={option.id} type="button" disabled={submitted} onClick={() => setAnswers((prev) => ({ ...prev, [question.id]: displayKey }))} className={`rounded-2xl border p-4 text-left transition ${resultClass}`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-sm font-bold text-gray-500">{displayKey}</div>
+                              {submitted && isCorrect && <CheckCircle2 className="h-4 w-4 text-green-700" />}
+                              {submitted && selected && !isCorrect && <XCircle className="h-4 w-4 text-red-700" />}
+                            </div>
+                            <div className="font-semibold text-[#1e2e51]">{option.content}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
-                </div>
-              </div>
+
+                  {submitted && (
+                    <div className="space-y-3">
+                      {question.options?.some((option, idx) => {
+                        const displayKey = option.optionKey || ["A","B","C","D"][idx] || String.fromCharCode(65 + idx);
+                        return displayKey === answers[question.id] && isOptionCorrect(question, option);
+                      }) ? (
+                        <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-green-800">
+                          <div className="flex items-center gap-2 font-bold">
+                            <CheckCircle2 className="h-4 w-4" />
+                            {copy("Correct", "Dung")}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-800">
+                          <div className="flex items-center gap-2 font-bold">
+                            <XCircle className="h-4 w-4" />
+                            {copy("Incorrect", "Sai")}
+                          </div>
+                          <div className="mt-2 text-sm">
+                            {copy("Correct answer:", "Dap an dung:")} {formatCorrectAnswer(question)}
+                          </div>
+                        </div>
+                      )}
+
+                      {question.explanation && <p className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-sm text-gray-700">{question.explanation}</p>}
+                    </div>
+                  )}
+                </article>
+              ))
             )}
-          </section>
-        </div>
+
+            <div className="flex items-center justify-end gap-3">
+              {submitted ? (
+                <button type="button" onClick={() => { setAnswers({}); setSubmitted(false); }} className="rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 hover:bg-gray-50">{copy("Retry Mini Test", "Lam lai mini test")}</button>
+              ) : (
+                <button type="button" onClick={() => void handleSubmitTest()} disabled={submitting} className="rounded-2xl bg-[#155ca5] px-5 py-3 font-bold text-white hover:bg-[#0f4c88] disabled:opacity-60">{submitting ? copy("Submitting...", "Dang nop...") : copy("Submit Mini Test", "Nop mini test")}</button>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       <NotificationPopup {...popup.notification} onClose={popup.close} />

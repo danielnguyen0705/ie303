@@ -23,9 +23,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -153,7 +153,7 @@ class PersonalizedPracticeServiceTest {
     }
 
     @Test
-    void generateFromWrongQuestions_ShouldRejectDraftsThatDriftAwayFromTargetAnswer() {
+    void generateFromWrongQuestions_ShouldFallbackWhenDraftsDriftAwayFromTargetAnswer() {
         User vipUser = new User();
         vipUser.setId(11L);
         vipUser.setRole(Role.USER);
@@ -198,18 +198,17 @@ class PersonalizedPracticeServiceTest {
         when(questionOptionRepo.findByQuestionId(101L)).thenReturn(List.of(optionA, optionB));
         when(aiGenerationService.generatePersonalizedQuestions(any(), eq(1), eq((String) null)))
                 .thenReturn(List.of(driftedDraft));
+        stubSaveAndMapQuestions();
 
-        AppException exception = assertThrows(
-                AppException.class,
-                () -> personalizedPracticeService.generateFromWrongQuestions(request)
-        );
+        List<QuestionResponse> result = personalizedPracticeService.generateFromWrongQuestions(request);
 
-        assertTrue(exception.getMessage().contains("target answers"));
-        verify(questionRepo, never()).saveAll(any());
+        assertEquals(1, result.size());
+        assertEquals("Choose the correct word: She goes to the ___ every day.", result.get(0).content());
+        assertTrue(result.get(0).explanation().contains("Retry practice set generated"));
     }
 
     @Test
-    void generateFromWrongQuestions_ShouldAutoScaleQuestionCountFromWrongHistory() {
+    void generateFromWrongQuestions_ShouldAutoScaleQuestionCountFromWrongHistoryAndFallbackWhenAiFails() {
         User vipUser = new User();
         vipUser.setId(11L);
         vipUser.setRole(Role.USER);
@@ -244,12 +243,51 @@ class PersonalizedPracticeServiceTest {
         when(questionRepo.findAllById(wrongQuestionIds)).thenReturn(wrongQuestions);
         when(aiGenerationService.generatePersonalizedQuestions(any(), eq(20), eq((String) null)))
                 .thenThrow(new AppException(com.ie303.uifive.exception.ErrorCode.AI_NOT_RESPONSE));
+        stubSaveAndMapQuestions();
 
-        assertThrows(
-                AppException.class,
-                () -> personalizedPracticeService.generateFromWrongQuestions(request)
-        );
+        List<QuestionResponse> result = personalizedPracticeService.generateFromWrongQuestions(request);
 
         verify(aiGenerationService).generatePersonalizedQuestions(any(), eq(20), eq((String) null));
+        assertEquals(20, result.size());
+    }
+
+    private void stubSaveAndMapQuestions() {
+        AtomicLong ids = new AtomicLong(1000L);
+
+        when(questionRepo.saveAll(any())).thenAnswer(invocation -> {
+            List<Question> questions = invocation.getArgument(0);
+            questions.forEach(question -> question.setId(ids.incrementAndGet()));
+            return questions;
+        });
+
+        when(questionMapper.toResponse(any())).thenAnswer(invocation -> {
+            Question question = invocation.getArgument(0);
+            List<QuestionOptionResponse> options = question.getOptions() == null
+                    ? List.of()
+                    : question.getOptions().stream()
+                    .map(option -> new QuestionOptionResponse(
+                            option.getId(),
+                            option.getOptionKey(),
+                            option.getContent(),
+                            option.isCorrect()
+                    ))
+                    .toList();
+
+            return new QuestionResponse(
+                    question.getId(),
+                    question.getQuestionType(),
+                    question.getContent(),
+                    question.getInstruction(),
+                    question.getHint(),
+                    question.getAudioUrl(),
+                    question.getImageUrl(),
+                    question.getQuestionData(),
+                    question.getExplanation(),
+                    question.getCorrectAnswer(),
+                    null,
+                    null,
+                    options
+            );
+        });
     }
 }

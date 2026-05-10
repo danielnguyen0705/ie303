@@ -2,22 +2,30 @@
 import { Link } from "react-router";
 import {
   ArrowRight,
+  AlertTriangle,
   BookOpen,
   Brain,
+  BrainCircuit,
   Coins,
+  Clock3,
   Crown,
   Flame,
   GraduationCap,
   Loader2,
   Lock,
+  RefreshCw,
+  Minus,
   Star,
   Target,
+  TrendingDown,
+  TrendingUp,
   Trophy,
   Zap,
 } from "lucide-react";
-import { getCurrentUser, getUserStats } from "@/api";
+import { getCurrentUser, getMyLearningAnalysis, getUserStats, refreshMyLearningAnalysis } from "@/api";
 import { getAllGrades } from "@/api/admin";
 import type { Grade } from "@/api/admin/types";
+import type { AILearningAnalysis } from "@/api/types";
 import { useLanguage } from "@/context/LanguageContext";
 
 type UserProfile = {
@@ -80,17 +88,79 @@ function clampProgress(value?: number | null) {
   return Math.max(0, Math.min(100, Math.round(value ?? 0)));
 }
 
+function formatAnalysisDate(value?: string | null) {
+  if (!value) return "No snapshot yet";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString("vi-VN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function getTrendMeta(trendLabel?: string | null) {
+  switch (trendLabel) {
+    case "IMPROVING":
+      return {
+        icon: TrendingUp,
+        tone: "text-green-700 bg-green-50 border-green-200",
+        label: "Improving",
+      };
+    case "DECLINING":
+      return {
+        icon: TrendingDown,
+        tone: "text-red-700 bg-red-50 border-red-200",
+        label: "Declining",
+      };
+    default:
+      return {
+        icon: Minus,
+        tone: "text-slate-700 bg-slate-50 border-slate-200",
+        label: trendLabel || "Stable",
+      };
+  }
+}
+
 export function Dashboard() {
   const { copy } = useLanguage();
   const [grades, setGrades] = useState<Grade[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState(emptyStats);
+  const [analysis, setAnalysis] = useState<AILearningAnalysis | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [refreshingInsights, setRefreshingInsights] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    const loadInsights = async () => {
+      if (!user?.isVip) {
+        setAnalysis(null);
+        setLoadingInsights(false);
+        return;
+      }
+
+      setLoadingInsights(true);
+      const response = await getMyLearningAnalysis();
+      if (response.success) {
+        setAnalysis(response.data ?? null);
+        setInsightsError(null);
+      } else {
+        setAnalysis(null);
+        setInsightsError(response.error?.message || "Could not load ML insights.");
+      }
+      setLoadingInsights(false);
+    };
+
+    void loadInsights();
+  }, [user?.isVip]);
 
   const loadDashboardData = async () => {
     try {
@@ -116,6 +186,25 @@ export function Dashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefreshInsights = async () => {
+    if (!isVip || refreshingInsights) return;
+
+    setRefreshingInsights(true);
+    setInsightsError(null);
+
+    const response = await refreshMyLearningAnalysis();
+    if (response.success) {
+      setAnalysis(response.data ?? null);
+      if (!response.data) {
+        setInsightsError(copy("No ML snapshot was generated yet.", "Chưa tạo được snapshot ML."));
+      }
+    } else {
+      setInsightsError(response.error?.message || copy("Could not refresh ML insights.", "Không thể làm mới phân tích ML."));
+    }
+
+    setRefreshingInsights(false);
   };
 
   if (loading) {
@@ -154,6 +243,8 @@ export function Dashboard() {
     )[0] ?? null;
   const highlightedGradeId =
     currentStudyGrade?.gradeId ?? grades[0]?.id ?? null;
+  const latestTrendMeta = getTrendMeta(analysis?.trendLabel);
+  const LatestTrendIcon = latestTrendMeta.icon;
 
   const quickStats = [
     {
@@ -245,6 +336,122 @@ export function Dashboard() {
             );
           })}
         </div>
+      </section>
+
+      <section id="ml-insights" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
+              {copy("ML Insights", "Phân tích ML")}
+            </p>
+            <h2 className="mt-1 text-2xl font-black text-[#1e2e51]">
+              {copy("Learning signals from your study history", "Tín hiệu học tập từ lịch sử học")}
+            </h2>
+          </div>
+
+          {isVip && analysis && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">
+              <Clock3 className="h-4 w-4" />
+              {formatAnalysisDate(analysis.generatedAt)}
+            </div>
+          )}
+          {isVip && (
+            <button
+              type="button"
+              onClick={handleRefreshInsights}
+              disabled={refreshingInsights}
+              className="inline-flex items-center gap-2 rounded-full border border-[#bfd8ff] bg-white px-4 py-2 text-sm font-black text-[#155ca5] transition hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshingInsights ? "animate-spin" : ""}`} />
+              {copy("Refresh ML", "Làm mới ML")}
+            </button>
+          )}
+        </div>
+
+        {isVip && insightsError && (
+          <div className="rounded-[1.35rem] border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            {insightsError}
+          </div>
+        )}
+
+        {!isVip ? (
+          <div className="rounded-[1.35rem] border border-[#f5d39b] bg-[#fff8eb] p-6">
+            <div className="flex items-start gap-3">
+              <Lock className="mt-1 h-5 w-5 text-[#d29b2a]" />
+              <div>
+                <div className="font-black text-[#8d5c06]">
+                  {copy("VIP only", "Chỉ dành cho VIP")}
+                </div>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-[#8d5c06]">
+                  {copy(
+                    "Upgrade to VIP to see ML-based learning insights on your dashboard.",
+                    "Nâng cấp VIP để xem phân tích ML trên dashboard của bạn.",
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : loadingInsights ? (
+          <div className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-10 text-center text-slate-500">
+            <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+            <div className="mt-3">{copy("Loading ML insights...", "Đang tải phân tích ML...")}</div>
+          </div>
+        ) : analysis ? (
+          <div className="space-y-4 rounded-[1.35rem] border border-slate-100 bg-white p-6 shadow-sm">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-3xl border border-green-200 bg-green-50 p-5">
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-green-700">
+                  <BrainCircuit className="h-4 w-4" />
+                  {copy("Strongest Skill", "Điểm mạnh nhất")}
+                </div>
+                <div className="mt-3 text-2xl font-black text-green-900">
+                  {analysis.strongSkill || copy("Not enough data", "Chưa đủ dữ liệu")}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-red-200 bg-red-50 p-5">
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-red-700">
+                  <AlertTriangle className="h-4 w-4" />
+                  {copy("Needs Improvement", "Cần cải thiện")}
+                </div>
+                <div className="mt-3 text-2xl font-black text-red-900">
+                  {analysis.weakSkill || copy("Not enough data", "Chưa đủ dữ liệu")}
+                </div>
+                {analysis.weakTopic && (
+                  <div className="mt-2 text-sm text-red-700">
+                    {copy("Weak topic", "Mảng yếu")}:{" "}
+                    <span className="font-bold">{analysis.weakTopic}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className={`rounded-3xl border p-5 ${latestTrendMeta.tone}`}>
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em]">
+                  <LatestTrendIcon className="h-4 w-4" />
+                  {copy("Learning Trend", "Xu hướng học")}
+                </div>
+                <div className="mt-3 text-2xl font-black">{latestTrendMeta.label}</div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-5">
+              <div className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
+                {copy("Recommendation", "Gợi ý")}
+              </div>
+              <p className="mt-3 text-sm leading-7 text-[#1e2e51]">
+                {analysis.recommendation ||
+                  copy("No recommendation available yet.", "Chưa có gợi ý nào lúc này.")}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
+            {copy(
+              "No ML snapshot yet. Complete a few lessons and check back later.",
+              "Chưa có snapshot ML. Bạn học thêm vài bài rồi quay lại xem sau nhé.",
+            )}
+          </div>
+        )}
       </section>
 
       <section className="space-y-3">
@@ -370,6 +577,39 @@ export function Dashboard() {
               )}
             </div>
           </Link>
+
+          <div
+            className={`flex w-full min-w-0 flex-col rounded-[1.35rem] border p-4 shadow-sm ${
+              isVip
+                ? "border-slate-100 bg-white"
+                : "border-[#f5d39b] bg-[#fff8eb]"
+            }`}
+          >
+            <div className="flex w-full min-w-0 items-center justify-between gap-3">
+              <BrainCircuit
+                className={`h-6 w-6 shrink-0 sm:h-7 sm:w-7 ${isVip ? "text-[#155ca5]" : "text-[#d29b2a]"}`}
+              />
+              <span
+                className={`inline-flex shrink-0 max-w-[60%] items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider sm:px-3 sm:text-[11px] sm:tracking-[0.18em] ${
+                  isVip
+                    ? "bg-[#155ca5]/10 text-[#155ca5]"
+                    : "bg-[#f7e3b7] text-[#8d5c06]"
+                }`}
+              >
+                {!isVip && <Lock className="h-3 w-3" />}
+                {isVip ? "VIP" : copy("Locked", "Bị khóa")}
+              </span>
+            </div>
+            <div className="mt-4 text-lg font-black text-[#1e2e51]">
+              {copy("ML Insights", "Phân tích ML")}
+            </div>
+            <div className="mt-1 text-sm leading-6 text-gray-500">
+              {copy(
+                "View the latest learning signals and recommendations on your dashboard.",
+                "Xem tín hiệu học tập và gợi ý mới nhất ngay trên dashboard.",
+              )}
+            </div>
+          </div>
         </div>
       </section>
     </main>

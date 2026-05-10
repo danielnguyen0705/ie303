@@ -2,6 +2,7 @@ import { getUnitReviewById, getUnitReviews } from "@/api";
 import { PracticePackageRunner } from "@/app/components/PracticePackageRunner";
 import type { UnitReviewResponse } from "@/api/types";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { hasVipAccess, loadQuestionBundle } from "./practicePackageData";
 import { useSearchParams } from "react-router";
 
@@ -43,23 +44,35 @@ async function loadUnitReviewPackage(
 
 export function UserUnitReviews() {
   const { user } = useAuth();
+  const { copy } = useLanguage();
   const [searchParams] = useSearchParams();
   const includeVipLessons = hasVipAccess(user);
   const preferredItemId = Number(searchParams.get("reviewId"));
 
   return (
     <PracticePackageRunner<UnitReviewResponse>
-      badgeLabel="Review Retake"
-      pageTitle="Unit Review Packages"
-      pageDescription="Admin prepares a unit review package. You reopen it here and practice again with the same question styles used in lessons."
-      packageKindLabel="Review Pack"
-      introText="Start the package to retake questions in the same layout as the lesson runner. After you submit, each question will show its own correct or incorrect result."
-      emptyListText="No unit reviews available yet."
-      emptyQuestionsText="This unit review package has no questions yet."
-      startButtonLabel="Start Review Test"
+      badgeLabel={copy("Review Retake", "Lam lai on tap")}
+      pageTitle={copy("Unit Review Packages", "Goi on tap Unit")}
+      pageDescription={copy(
+        "Admin prepares a unit review package. You reopen it here and practice again with the same question styles used in lessons.",
+        "Admin chuan bi goi on tap unit. Ban co the mo lai tai day de luyen lai voi dung kieu cau hoi trong bai hoc.",
+      )}
+      packageKindLabel={copy("Review Pack", "Goi on tap")}
+      introText={copy(
+        "Start the package to retake questions in the same layout as the lesson runner. After you submit, each question will show its own correct or incorrect result.",
+        "Bat dau goi de lam lai cau hoi theo bo cuc giong lesson runner. Sau khi nop, tung cau se hien ket qua dung hoac sai.",
+      )}
+      emptyListText={copy("No unit reviews available yet.", "Chua co goi on tap unit nao.")}
+      emptyQuestionsText={copy(
+        "This unit review package has no questions yet.",
+        "Goi on tap unit nay chua co cau hoi.",
+      )}
+      startButtonLabel={copy("Start Review Test", "Bat dau bai on tap")}
       loadItems={loadUnitReviewItems}
       loadPackage={(item) => loadUnitReviewPackage(item, includeVipLessons)}
-      getItemMeta={(item) => `Unit ID ${item.unitId} - ${item.questionIds.length} question(s)`}
+      getItemMeta={(item) =>
+        `${copy("Unit ID", "Unit ID")} ${item.unitId} - ${item.questionIds.length} ${copy("question(s)", "cau hoi")}`
+      }
       preferredItemId={Number.isFinite(preferredItemId) && preferredItemId > 0 ? preferredItemId : null}
     />
   );
