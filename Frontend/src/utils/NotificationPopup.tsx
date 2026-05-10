@@ -9,11 +9,13 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
+import { useLanguage } from "@/context/LanguageContext";
 
 export type NotificationType = "success" | "error" | "warning" | "info";
 
@@ -81,15 +83,24 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
   description,
   onClose,
   onConfirm,
-  confirmText = "Xác nhận",
-  cancelText = "Hủy",
+  confirmText,
+  cancelText,
   showCancelButton = true,
   autoClose = false,
   autoCloseDuration = 3000,
   className,
 }) => {
+  const { copy } = useLanguage();
   const config = typeConfig[type];
   const Icon = config.icon;
+  const resolvedConfirmText = confirmText ?? copy("Confirm", "Xác nhận");
+  const resolvedCancelText = cancelText ?? copy("Cancel", "Hủy");
+  const accessibleDescription =
+    typeof description === "string"
+      ? description
+      : typeof message === "string"
+        ? message
+        : "Notification dialog";
 
   React.useEffect(() => {
     if (autoClose && isOpen) {
@@ -108,6 +119,9 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className={`sm:max-w-[425px] ${className}`}>
+        <DialogDescription className="sr-only">
+          {accessibleDescription}
+        </DialogDescription>
         <div
           className={`flex gap-4 p-4 rounded-lg border ${config.bgColor} ${config.borderColor}`}
         >
@@ -143,7 +157,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
           <DialogFooter className="mt-6">
             {showCancelButton && (
               <Button variant="outline" onClick={onClose}>
-                {cancelText}
+                {resolvedCancelText}
               </Button>
             )}
             {onConfirm && (
@@ -159,7 +173,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
                         : "bg-blue-600 hover:bg-blue-700"
                 }`}
               >
-                {confirmText}
+                {resolvedConfirmText}
               </Button>
             )}
           </DialogFooter>

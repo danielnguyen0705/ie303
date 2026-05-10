@@ -9,7 +9,15 @@ import java.util.List;
 
 @Repository
 public interface LessonRepo extends JpaRepository<Lesson, Long> {
-    List<Lesson> findBySectionIdOrderByLessonNumberAsc(Long sectionId);
+    @Query("""
+        select l
+        from Lesson l
+        where l.section.id = :sectionId
+        order by coalesce(l.orderIndex, l.lessonNumber) asc,
+                 l.lessonNumber asc,
+                 l.id asc
+    """)
+    List<Lesson> findBySectionIdOrdered(Long sectionId);
 
     @Query("""
         select l
@@ -17,7 +25,9 @@ public interface LessonRepo extends JpaRepository<Lesson, Long> {
         where l.section.unit.grade.id = :gradeId
         order by l.section.unit.unitNumber asc,
                  l.section.sectionNumber asc,
-                 l.lessonNumber asc
+                 coalesce(l.orderIndex, l.lessonNumber) asc,
+                 l.lessonNumber asc,
+                 l.id asc
     """)
     List<Lesson> findAllByGradeIdOrder(Long gradeId);
 
@@ -27,8 +37,10 @@ public interface LessonRepo extends JpaRepository<Lesson, Long> {
                 where l.section.unit.grade.id = :gradeId
                     and l.section.unit.unitNumber between :startUnit and :endUnit
                 order by l.section.unit.unitNumber asc,
-                                 l.section.sectionNumber asc,
-                                 l.lessonNumber asc
+                         l.section.sectionNumber asc,
+                         coalesce(l.orderIndex, l.lessonNumber) asc,
+                         l.lessonNumber asc,
+                         l.id asc
         """)
         List<Lesson> findAllByGradeIdAndUnitNumberBetweenOrder(Long gradeId, int startUnit, int endUnit);
 

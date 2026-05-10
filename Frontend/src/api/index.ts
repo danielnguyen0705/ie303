@@ -1,4 +1,4 @@
-// API Index - Central exports for all API modules
+﻿// API Index - Central exports for all API modules
 
 // Types
 export * from "./types";
@@ -88,8 +88,8 @@ export {
   submitEssayWithImage,
   submitSpeaking,
   getPersonalizedQuestions,
-  getLearningAnalysis,
-  getLearningAnalysisHistory,
+  getMyLearningAnalysis,
+  getMyLearningAnalysisHistory,
 } from "./ai";
 
 export {

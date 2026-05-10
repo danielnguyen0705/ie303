@@ -69,18 +69,18 @@ export function ShopManagement() {
     }
 
     if (!form.imageFile && !form.imageUrl) {
-      setError("imageFile hoặc imageUrl là bắt buộc");
+      setError("imageFile or imageUrl is required");
       return;
     }
 
     if (form.type === "EXP") {
       if (!form.durationDays || form.durationDays <= 0) {
-        setError("EXP item cần durationDays > 0");
+        setError("EXP item requires durationDays > 0");
         return;
       }
 
       if (!form.expMultiplier || form.expMultiplier <= 1) {
-        setError("EXP item cần expMultiplier > 1.0");
+        setError("EXP item requires expMultiplier > 1.0");
         return;
       }
     }
@@ -118,7 +118,7 @@ export function ShopManagement() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Ẩn item này? (soft delete active=false)")) {
+    if (!confirm("Hide this item? (soft delete active=false)")) {
       return;
     }
 
@@ -298,7 +298,7 @@ export function ShopManagement() {
             <p className="text-xs text-slate-500 truncate">
               {form.imageFile
                 ? `Selected file: ${form.imageFile.name}`
-                : "Chưa chọn file ảnh"}
+                : "No image file selected"}
             </p>
           </div>
           <textarea

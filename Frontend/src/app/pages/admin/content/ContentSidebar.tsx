@@ -67,7 +67,7 @@ function CompactStageCard({
           </p>
           <p className="text-sm font-semibold text-slate-900 truncate">{title}</p>
           <p className="text-xs text-slate-500 line-clamp-2">
-            {description || "Nhấn để mở lại danh sách"}
+            {description || "Click to reopen the list"}
           </p>
         </div>
         <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />

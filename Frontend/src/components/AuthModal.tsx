@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 type AuthModalProps = {
   isOpen: boolean;
@@ -10,6 +11,7 @@ type AuthMode = "login" | "register";
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { login, register, loginWithGoogle, loading, error } = useAuth();
+  const { copy } = useLanguage();
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState<string>("");
@@ -18,8 +20,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const title = useMemo(
-    () => (mode === "login" ? "Welcome back" : "Create your account"),
-    [mode],
+    () =>
+      mode === "login"
+        ? copy("Welcome back", "Chào mừng quay lại")
+        : copy("Create your account", "Tạo tài khoản"),
+    [copy, mode],
   );
 
   if (!isOpen) {
@@ -43,13 +48,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setFormError(null);
 
     if (!username.trim() || !password.trim()) {
-      setFormError("Username and password are required.");
+      setFormError(copy("Username and password are required.", "Tên đăng nhập và mật khẩu là bắt buộc."));
       return;
     }
 
     if (mode === "register") {
       if (!email.trim()) {
-        setFormError("Email is required.");
+        setFormError(copy("Email is required.", "Email là bắt buộc."));
         return;
       }
 
@@ -62,7 +67,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       if (registerResult.success) {
         if (registerResult.requiresEmailVerification) {
           window.alert(
-            "Đăng ký thành công. Vui lòng mở email để xác minh tài khoản trước khi đăng nhập.",
+            copy(
+              "Registration successful. Please verify your email before logging in.",
+              "Đăng ký thành công. Vui lòng mở email để xác minh tài khoản trước khi đăng nhập.",
+            ),
           );
         }
 
@@ -71,13 +79,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       }
 
       return;
-    } else {
-      const isSuccess = await login(username.trim(), password);
+    }
 
-      if (isSuccess) {
-        resetForm();
-        onClose();
-      }
+    const isSuccess = await login(username.trim(), password);
+
+    if (isSuccess) {
+      resetForm();
+      onClose();
     }
   };
 
@@ -89,8 +97,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <h2 className="text-xl font-bold text-slate-900">{title}</h2>
             <p className="mt-1 text-sm text-slate-500">
               {mode === "login"
-                ? "Sign in to continue your learning journey."
-                : "Join UIFIVE and start learning today."}
+                ? copy(
+                    "Sign in to continue your learning journey.",
+                    "Đăng nhập để tiếp tục hành trình học tập của bạn.",
+                  )
+                : copy(
+                    "Join UIFIVE and start learning today.",
+                    "Tham gia UIFIVE và bắt đầu học ngay hôm nay.",
+                  )}
             </p>
           </div>
 
@@ -98,7 +112,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             type="button"
             onClick={onClose}
             className="rounded-md px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Close auth modal"
+            aria-label={copy("Close auth modal", "Đóng hộp thoại đăng nhập")}
           >
             X
           </button>
@@ -114,7 +128,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            Login
+            {copy("Login", "Đăng nhập")}
           </button>
           <button
             type="button"
@@ -125,7 +139,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            Register
+            {copy("Register", "Đăng ký")}
           </button>
         </div>
 
@@ -135,7 +149,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               htmlFor="auth-username"
               className="mb-1 block text-sm font-medium text-slate-700"
             >
-              Username
+              {copy("Username", "Tên đăng nhập")}
             </label>
             <input
               id="auth-username"
@@ -143,7 +157,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[#155ca5] focus:ring-2 focus:ring-[#155ca5]/20"
-              placeholder="Enter your username"
+              placeholder={copy("Enter your username", "Nhập tên đăng nhập")}
               autoComplete="username"
             />
           </div>
@@ -173,7 +187,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               htmlFor="auth-password"
               className="mb-1 block text-sm font-medium text-slate-700"
             >
-              Password
+              {copy("Password", "Mật khẩu")}
             </label>
             <input
               id="auth-password"
@@ -181,7 +195,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[#155ca5] focus:ring-2 focus:ring-[#155ca5]/20"
-              placeholder="Enter your password"
+              placeholder={copy("Enter your password", "Nhập mật khẩu")}
               autoComplete={
                 mode === "login" ? "current-password" : "new-password"
               }
@@ -201,11 +215,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           >
             {loading
               ? mode === "login"
-                ? "Signing in..."
-                : "Creating account..."
+                ? copy("Signing in...", "Đang đăng nhập...")
+                : copy("Creating account...", "Đang tạo tài khoản...")
               : mode === "login"
-                ? "Login"
-                : "Register"}
+                ? copy("Login", "Đăng nhập")
+                : copy("Register", "Đăng ký")}
           </button>
 
           {mode === "login" && (
@@ -215,7 +229,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <span className="w-full border-t border-slate-200" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-slate-500">or</span>
+                  <span className="bg-white px-2 text-slate-500">{copy("or", "hoặc")}</span>
                 </div>
               </div>
 
@@ -248,7 +262,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     fill="#1976D2"
                   />
                 </svg>
-                <span>Continue with Google</span>
+                <span>{copy("Continue with Google", "Tiếp tục với Google")}</span>
               </button>
             </>
           )}

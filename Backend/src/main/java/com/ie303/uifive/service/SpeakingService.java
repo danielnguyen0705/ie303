@@ -77,7 +77,7 @@ public class SpeakingService {
         history.setUser(current);
         history.setQuestion(question);
         history.setAnswerText(transcriptText);
-        history.setCorrect(previouslyCorrect || currentlyCorrect);
+        history.setCorrect(currentlyCorrect);
         historyRepo.save(history);
 
         if (!previouslyCorrect && history.isCorrect()) {

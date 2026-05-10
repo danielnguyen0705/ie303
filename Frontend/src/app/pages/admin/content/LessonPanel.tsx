@@ -39,7 +39,7 @@ function CompactStageCard({
           </p>
           <p className="text-sm font-semibold text-slate-900 truncate">{title}</p>
           <p className="text-xs text-slate-500 line-clamp-2">
-            {description || "Nhấn để mở lại danh sách"}
+            {description || "Click to reopen the list"}
           </p>
         </div>
         <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
@@ -164,13 +164,13 @@ export default function LessonPanel({
               </div>
 
               <h2 className="text-xl font-bold text-slate-900">
-                {selectedLesson ? selectedLesson.name : "Chưa chọn lesson"}
+                {selectedLesson ? selectedLesson.name : "No lesson selected"}
               </h2>
 
               <p className="text-sm text-slate-500 mt-1">
                 {selectedLesson
-                  ? selectedLesson.description || "Không có mô tả"
-                  : "Hãy chọn section → lesson để xem chi tiết và câu hỏi"}
+                  ? selectedLesson.description || "No description"
+                  : "Select a section and lesson to view details and questions"}
               </p>
             </div>
 
@@ -187,10 +187,10 @@ export default function LessonPanel({
               <div className="max-w-md">
                 <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <p className="text-slate-700 font-semibold">
-                  Chưa có lesson nào được chọn
+                  No lesson selected
                 </p>
                 <p className="text-sm text-slate-500 mt-2">
-                  Sau khi chọn lesson, các question của bài sẽ hiện ở đây.
+                  After you select a lesson, the lesson questions will appear here.
                 </p>
               </div>
             </div>
@@ -223,15 +223,15 @@ export default function LessonPanel({
                   Questions ({questions.length})
                 </p>
                 <p className="text-sm text-slate-500 mb-3">
-                  Danh sách câu hỏi của lesson đang chọn
+                  Questions for the selected lesson
                 </p>
 
                 {questions.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
                     <HelpCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-700 font-semibold">Chưa có câu hỏi</p>
+                    <p className="text-slate-700 font-semibold">No questions yet</p>
                     <p className="text-sm text-slate-500 mt-1">
-                      Lesson này hiện chưa có question hoặc API chưa trả dữ liệu.
+                      This lesson does not have any questions yet, or the API has not returned data.
                     </p>
                   </div>
                 ) : (

@@ -167,7 +167,7 @@ export function PaymentOffers() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Ẩn gói này? (soft delete: active=false)")) {
+    if (!confirm("Hide this offer? (soft delete: active=false)")) {
       return;
     }
 
@@ -208,7 +208,7 @@ export function PaymentOffers() {
             Payment Offer Management
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Tạo và quản lý các gói nạp VIP / COIN.
+            Create and manage VIP / COIN payment offers.
           </p>
         </div>
 

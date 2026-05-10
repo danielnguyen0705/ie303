@@ -1,4 +1,5 @@
-import type {
+﻿import type {
+  AILearningAnalysis,
   ApiResponse,
   EssaySubmissionRequest,
   EssaySubmissionResult,
@@ -106,21 +107,16 @@ export async function getPersonalizedQuestions(
   });
 }
 
-export async function getLearningAnalysis(): Promise<
-  ApiResponse<LearningAnalysisResult | null>
-> {
-  return request<LearningAnalysisResult | null>("/ai/learning-analysis/me", {
+export async function getMyLearningAnalysis(): Promise<ApiResponse<AILearningAnalysis | null>> {
+  return request<AILearningAnalysis | null>("/ai/learning-analysis/me", {
     method: "GET",
   });
 }
 
-export async function getLearningAnalysisHistory(): Promise<
-  ApiResponse<LearningAnalysisResult[]>
+export async function getMyLearningAnalysisHistory(): Promise<
+  ApiResponse<AILearningAnalysis[]>
 > {
-  return request<LearningAnalysisResult[]>(
-    "/ai/learning-analysis/me/history",
-    {
-      method: "GET",
-    },
-  );
+  return request<AILearningAnalysis[]>("/ai/learning-analysis/me/history", {
+    method: "GET",
+  });
 }

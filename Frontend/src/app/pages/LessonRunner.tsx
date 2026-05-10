@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Bookmark,
   BookmarkCheck,
+  ChevronDown,
   ChevronLeft,
   CheckCircle2,
   Loader2,
@@ -67,6 +68,7 @@ type SectionLessonProgressItem = {
   lessonId: number;
   lessonTitle: string;
   lessonNumber: number;
+  orderIndex?: number | null;
   reviewLesson: boolean;
   completed: boolean;
   unlocked: boolean;
@@ -802,6 +804,10 @@ function LessonRunner() {
   const [speechSessionQuestionId, setSpeechSessionQuestionId] = useState<
     number | null
   >(null);
+  const [selectedMatchingAnswers, setSelectedMatchingAnswers] = useState<Record<number, string>>(
+    {},
+  );
+  const hasRestoredRunnerPositionRef = useRef(false);
   const answersRef = useRef<AnswerState>({});
   const speechRecognitionRef = useRef<{
     stop: () => void;
@@ -828,6 +834,7 @@ function LessonRunner() {
     setAnswers({});
     setFlaggedQuestions({});
     setEliminatedOptions({});
+    setSelectedMatchingAnswers({});
     setFinished(false);
     setSubmittingCurrent(false);
     setSubmitApiError(null);
@@ -839,6 +846,7 @@ function LessonRunner() {
     setSpeechPreview("");
     setSpeechSessionQuestionId(null);
     setSpeechError(null);
+    hasRestoredRunnerPositionRef.current = false;
   }, [lessonIdNumber]);
 
   useEffect(() => {
@@ -896,7 +904,10 @@ function LessonRunner() {
       if (res.success && res.data) {
         setSectionLessons(
           [...res.data].sort(
-            (a, b) => a.lessonNumber - b.lessonNumber || a.lessonId - b.lessonId,
+            (a, b) =>
+              (a.orderIndex ?? a.lessonNumber) - (b.orderIndex ?? b.lessonNumber) ||
+              a.lessonNumber - b.lessonNumber ||
+              a.lessonId - b.lessonId,
           ),
         );
       }
@@ -904,6 +915,29 @@ function LessonRunner() {
 
     void loadSectionLessons();
   }, [sectionId]);
+
+  useEffect(() => {
+    if (!lessonIdNumber || sectionLessons.length === 0) {
+      return;
+    }
+
+    const lessonExistsInPath = sectionLessons.some(
+      (lesson) => lesson.lessonId === lessonIdNumber,
+    );
+
+    if (lessonExistsInPath) {
+      return;
+    }
+
+    const fallbackLesson =
+      sectionLessons.find((lesson) => lesson.current) ??
+      sectionLessons.find((lesson) => lesson.unlocked) ??
+      sectionLessons[0];
+
+    if (fallbackLesson && fallbackLesson.lessonId !== lessonIdNumber) {
+      navigate(`/lessons/${fallbackLesson.lessonId}`, { replace: true });
+    }
+  }, [lessonIdNumber, navigate, sectionLessons]);
 
   const currentItem = items[currentIndex];
   const currentGroup = currentItem?.group ?? null;
@@ -961,6 +995,26 @@ function LessonRunner() {
     () => parsePassageInlineSegments(currentGroup?.sharedContent),
     [currentGroup?.sharedContent],
   );
+  const compactPassageBlankLabels = useMemo(
+    () =>
+      compactPassageSegments
+        .filter(
+          (segment): segment is Extract<PassageSegment, { type: "blank" }> =>
+            segment.type === "blank",
+        )
+        .map((segment) => segment.label),
+    [compactPassageSegments],
+  );
+  const compactPassageBlankLabelByQuestionId = useMemo(() => {
+    const mapping = new Map<number, string>();
+    currentQuestions.forEach((question, index) => {
+      const label = compactPassageBlankLabels[index];
+      if (label) {
+        mapping.set(question.id, label);
+      }
+    });
+    return mapping;
+  }, [compactPassageBlankLabels, currentQuestions]);
   const compactPassageBlankCount = useMemo(
     () => compactPassageSegments.filter((segment) => segment.type === "blank").length,
     [compactPassageSegments],
@@ -1043,6 +1097,14 @@ function LessonRunner() {
     isAdminPreview
       ? `/lessons/${targetLessonId}?preview=admin`
       : `/lessons/${targetLessonId}`;
+  useEffect(() => {
+    if (!items.length || hasRestoredRunnerPositionRef.current) return;
+
+    hasRestoredRunnerPositionRef.current = true;
+    setCurrentIndex(0);
+    setCurrentGroupQuestionIndex(0);
+    setPendingGroupQuestionIndex(null);
+  }, [items.length]);
 
   const evaluatePreviewState = (
     question: QuestionDto,
@@ -1143,7 +1205,10 @@ function LessonRunner() {
         return { submitted: false, correct: null };
       }
 
-      return evaluatePronunciationAttempt(question, transcript);
+      return {
+        submitted: true,
+        ...evaluatePronunciationAttempt(question, transcript),
+      };
     }
 
     return { submitted: true, correct: null };
@@ -1276,20 +1341,25 @@ function LessonRunner() {
             }
 
             return (
-              <select
+              <span
                 key={`fill-select-${index}`}
-                disabled={isAnswerLocked}
-                value={selectedValue}
-                onChange={(event) => setAnswer(question.id, event.target.value)}
-                className="mx-1 inline-block min-w-[180px] rounded-xl border border-[#bfd8ff] bg-white px-3 py-2 text-base font-bold text-[#155ca5] outline-none focus:border-[#155ca5]"
+                className="mx-1 inline-flex min-w-[210px] items-center rounded-2xl border border-[#bfd8ff] bg-white shadow-[0_8px_24px_rgba(21,92,165,0.08)]"
               >
+                <select
+                  disabled={isAnswerLocked}
+                  value={selectedValue}
+                  onChange={(event) => setAnswer(question.id, event.target.value)}
+                  className="w-full appearance-none bg-transparent px-4 py-3 pr-10 text-base font-bold text-[#155ca5] outline-none"
+                >
                 <option value="">Chọn đáp án</option>
                 {choices.map((choice) => (
                   <option key={`${question.id}-${choice}`} value={choice}>
                     {choice}
                   </option>
                 ))}
-              </select>
+                </select>
+                <ChevronDown className="mr-3 h-4 w-4 shrink-0 text-[#155ca5]" />
+              </span>
             );
           })}
         </div>
@@ -1662,6 +1732,25 @@ function LessonRunner() {
         : { [leftItem]: selectedRight };
 
     setAnswer(questionId, next);
+    setSelectedMatchingAnswers((prev) => {
+      const nextSelected = { ...prev };
+      delete nextSelected[questionId];
+      return nextSelected;
+    });
+  };
+
+  const selectMatchingAnswer = (questionId: number, rightItem: string) => {
+    setSelectedMatchingAnswers((prev) => ({
+      ...prev,
+      [questionId]: prev[questionId] === rightItem ? "" : rightItem,
+    }));
+  };
+
+  const applySelectedMatchingAnswer = (questionId: number, leftItem: string) => {
+    const selectedRight = selectedMatchingAnswers[questionId]?.trim();
+    if (!selectedRight) return;
+
+    updateMatchingAnswer(questionId, leftItem, selectedRight);
   };
 
   const removeMatchingAnswer = (questionId: number, leftItem: string) => {
@@ -1688,6 +1777,17 @@ function LessonRunner() {
     if (selected.includes(token)) return;
 
     setAnswer(questionId, [...selected, token]);
+  };
+
+  const removeReorderWord = (questionId: number, tokenIndex: number) => {
+    const current = answers[questionId]?.answer;
+    const selected = Array.isArray(current) ? current : [];
+    if (tokenIndex < 0 || tokenIndex >= selected.length) return;
+
+    setAnswer(
+      questionId,
+      selected.filter((_, index) => index !== tokenIndex),
+    );
   };
 
   const removeLastReorderWord = (questionId: number) => {
@@ -1842,7 +1942,6 @@ function LessonRunner() {
       });
 
       if (res.success && res.data) {
-        correct = isManualType(question.questionType) ? null : res.data.correct;
         submitted = true;
       } else if (!res.success) {
         setSubmitApiError(
@@ -2301,61 +2400,82 @@ function LessonRunner() {
       const selectedTokens = Array.isArray(currentAnswer?.answer)
         ? currentAnswer.answer
         : [];
+      const displayedSentence = getDisplayedReorderSentence(question.id);
 
       return (
         <div className="space-y-5">
           {isAdminPreview && reorderWords.length === 0 && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              Dạng này chưa có danh sách từ để sắp xếp. Admin cần nhập `questionData`
-              cho `SENTENCE_REORDER`.
+              This type does not have a word list for reordering yet. Admin needs to provide
+              `questionData` for `SENTENCE_REORDER`.
             </div>
           )}
 
           {isAdminPreview && reorderWords.length > 0 && (
             <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-sm text-[#155ca5]">
-              Admin preview: câu này đang có dữ liệu tách từ trong `questionData`, nhưng
-              phía user sẽ làm theo kiểu viết lại câu.
+              Admin preview: this question already contains split-word data in `questionData`,
+              but the learner view will still render it as sentence rewrite.
             </div>
           )}
 
-          <textarea
-            rows={4}
-            disabled={isAnswerLocked}
-            value={typeof currentAnswer?.answer === "string" ? currentAnswer.answer : ""}
-            onChange={(e) => setAnswer(question.id, e.target.value)}
-            placeholder="Viết lại câu đúng ở đây..."
-            className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5] resize-none"
-          />
+          <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-5 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
+                Câu đang ghép
+              </p>
 
-          <div className="hidden rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-5">
-            <p className="text-sm font-bold text-[#155ca5] mb-3">Your sentence</p>
-            <div className="min-h-[60px] rounded-2xl border border-dashed border-[#9bc2ff] bg-white p-4 text-lg font-semibold text-[#1e2e51]">
-              {getDisplayedReorderSentence(question.id) || "Chưa chọn từ nào"}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isAnswerLocked || selectedTokens.length === 0}
+                  onClick={() => removeLastReorderWord(question.id)}
+                  className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  disabled={isAnswerLocked || selectedTokens.length === 0}
+                  onClick={() => resetReorderAnswer(question.id)}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reset
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 mt-4">
-              <button
-                type="button"
-                disabled={isAnswerLocked || selectedTokens.length === 0}
-                onClick={() => removeLastReorderWord(question.id)}
-                className="px-4 py-2 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50 disabled:opacity-50"
-              >
-                Undo
-              </button>
-              <button
-                type="button"
-                disabled={isAnswerLocked || selectedTokens.length === 0}
-                onClick={() => resetReorderAnswer(question.id)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50 disabled:opacity-50"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reset
-              </button>
+            <div className="min-h-[76px] rounded-2xl border border-dashed border-[#9bc2ff] bg-white p-4 text-[#1e2e51]">
+              {displayedSentence ? (
+                <div className="flex flex-wrap gap-2">
+                  {selectedTokens.map((token, tokenIndex) => {
+                    const word = token.split("|||")[1] ?? token;
+
+                    return (
+                      <button
+                        key={`${token}-${tokenIndex}`}
+                        type="button"
+                        disabled={isAnswerLocked}
+                        onClick={() => removeReorderWord(question.id, tokenIndex)}
+                        className="rounded-full border border-[#bfd8ff] bg-[#eef6ff] px-4 py-2 text-sm font-bold text-[#155ca5] transition hover:bg-[#dfeeff] disabled:opacity-60"
+                      >
+                        {word}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <span className="text-sm text-slate-400">
+                  Chọn từ bên dưới để ghép câu ở đây...
+                </span>
+              )}
             </div>
           </div>
 
           <div>
-            <p className="text-sm font-bold text-gray-600 mb-3">Available words</p>
+            <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
+              Từ bên dưới
+            </p>
             <div className="flex flex-wrap gap-3">
               {reorderWords.map((word, index) => {
                 const token = `${index}|||${word}`;
@@ -2405,34 +2525,11 @@ function LessonRunner() {
 
       return (
         <div className="space-y-4">
-          {rightItems.length > 0 && (
-            <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
-              <p className="text-sm font-bold text-[#155ca5] mb-3">Đáp án để ghép</p>
-              <div className="flex flex-wrap gap-2">
-                {rightItems.map((rightItem) => {
-                  const isUsed = usedRightValues.has(String(rightItem).trim());
-                  return (
-                    <span
-                      key={`matching-bank-${rightItem}`}
-                      className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-                        isUsed
-                          ? "bg-gray-100 text-gray-400 line-through"
-                          : "border border-[#bfd8ff] bg-white text-[#155ca5]"
-                      }`}
-                    >
-                      {rightItem}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {leftItems.length > 0 && rightItems.length > 0 ? (
             <div className="space-y-5">
               <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
-                <p className="text-sm font-bold text-[#155ca5] mb-3">
-                  Kéo thẻ nghĩa bên dưới vào từng từ bên trái
+                <p className="mb-3 text-sm font-bold text-[#155ca5]">
+                  Chọn thẻ nghĩa bên trên, sau đó bấm vào ô bên dưới để ghép.
                 </p>
 
                 {availableRightItems.length > 0 ? (
@@ -2441,13 +2538,13 @@ function LessonRunner() {
                       <button
                         key={`matching-card-${rightItem}`}
                         type="button"
-                        draggable={!isAnswerLocked}
                         disabled={isAnswerLocked}
-                        onDragStart={(event) => {
-                          event.dataTransfer.setData("text/plain", rightItem);
-                          event.dataTransfer.effectAllowed = "move";
-                        }}
-                        className="px-4 py-2 rounded-xl border border-[#bfd8ff] bg-white text-[#155ca5] font-semibold hover:bg-[#eef6ff] disabled:opacity-60"
+                        onClick={() => selectMatchingAnswer(question.id, rightItem)}
+                        className={`px-4 py-2 rounded-xl border font-semibold transition-all disabled:opacity-60 ${
+                          selectedMatchingAnswers[question.id] === rightItem
+                            ? "border-[#155ca5] bg-[#eef6ff] text-[#155ca5]"
+                            : "border-[#bfd8ff] bg-white text-[#155ca5] hover:bg-[#eef6ff]"
+                        }`}
                       >
                         {rightItem}
                       </button>
@@ -2470,18 +2567,9 @@ function LessonRunner() {
                       <div className="font-semibold text-[#1e2e51]">{leftItem}</div>
 
                       <div
-                        onDragOver={(event) => {
+                        onClick={() => {
                           if (isAnswerLocked) return;
-                          event.preventDefault();
-                          event.dataTransfer.dropEffect = "move";
-                        }}
-                        onDrop={(event) => {
-                          if (isAnswerLocked) return;
-                          event.preventDefault();
-                          const dropped = event.dataTransfer.getData("text/plain");
-                          if (!dropped) return;
-                          if (!rightItems.includes(dropped)) return;
-                          updateMatchingAnswer(question.id, leftItem, dropped);
+                          applySelectedMatchingAnswer(question.id, leftItem);
                         }}
                         className={`min-h-[56px] rounded-xl border-2 border-dashed px-3 py-2 flex items-center justify-between gap-2 ${
                           selectedValue
@@ -2492,7 +2580,9 @@ function LessonRunner() {
                         {selectedValue ? (
                           <span className="text-[#155ca5] font-semibold">{selectedValue}</span>
                         ) : (
-                          <span className="text-gray-400 text-sm">Chọn hoặc kéo đáp án vào đây</span>
+                          <span className="text-gray-400 text-sm">
+                            Bấm để điền thẻ đang chọn vào đây
+                          </span>
                         )}
 
                         {selectedValue && !isAnswerLocked && (
@@ -3162,11 +3252,13 @@ function LessonRunner() {
   if (!currentItem || currentQuestions.length === 0) return null;
 
   return (
-    <main className={`${isListeningItem ? "max-w-7xl" : "max-w-6xl"} mx-auto px-4 md:px-6 py-6 md:py-8 pb-24`}>
+    <main
+      className={`${isListeningItem || usesInlineCompactPassage ? "max-w-7xl" : "max-w-6xl"} mx-auto px-4 md:px-6 py-6 md:py-8 pb-24`}
+    >
       <section className="mb-6">
         {isAdminPreview && (
           <div className="mb-4 rounded-2xl border border-[#cfe3ff] bg-[#f4f8ff] px-4 py-3 text-sm text-[#155ca5]">
-            <span className="font-bold">Admin Preview:</span> Làm thử lesson như học sinh, không lưu tiến độ và không chấm điểm.
+            <span className="font-bold">Admin Preview:</span> Try the lesson as a learner. Progress is not saved and grading is disabled.
           </div>
         )}
 
@@ -3218,16 +3310,22 @@ function LessonRunner() {
                   item.questionIndex === activeQuestionIndex;
                 const canJumpFromBoard = itemOrderIndex <= maxReachableNavigatorIndex;
                 const flagged = isQuestionFlagged(item.questionId);
+                const displayLabel =
+                  item.itemIndex === currentIndex && usesInlineCompactPassage
+                    ? compactPassageBlankLabelByQuestionId.get(item.questionId) ?? item.label
+                    : item.label;
 
-                const statusClass = !state?.submitted
-                  ? flagged
-                    ? "border-amber-300 bg-amber-50 text-amber-700"
-                    : "border-slate-300 bg-white text-slate-600"
-                  : state.correct === true
-                    ? "border-green-300 bg-green-50 text-green-700"
-                    : state.correct === false
-                      ? "border-red-300 bg-red-50 text-red-700"
-                      : "border-amber-300 bg-amber-50 text-amber-700";
+                const statusClass = isActive
+                  ? "border-amber-300 bg-amber-100 text-amber-900 shadow-[0_8px_18px_rgba(245,158,11,0.22)]"
+                  : !state?.submitted
+                    ? flagged
+                      ? "border-amber-300 bg-amber-50 text-amber-700"
+                      : "border-slate-300 bg-white text-slate-600"
+                    : state.correct === true
+                      ? "border-green-300 bg-green-50 text-green-700"
+                      : state.correct === false
+                        ? "border-red-300 bg-red-50 text-red-700"
+                        : "border-amber-300 bg-amber-50 text-amber-700";
 
                 return (
                   <button
@@ -3238,9 +3336,9 @@ function LessonRunner() {
                       jumpToQuestion(item.itemIndex, item.questionIndex);
                     }}
                     disabled={!canJumpFromBoard}
-                    className={`flex h-9 min-w-9 items-center justify-center rounded-full border text-sm font-black transition ${statusClass} ${isActive ? "ring-2 ring-[#155ca5]/40" : ""} ${canJumpFromBoard ? "cursor-pointer" : "cursor-default"}`}
+                    className={`flex h-9 min-w-9 items-center justify-center rounded-full border text-sm font-black transition ${statusClass} ${isActive ? "ring-2 ring-amber-200" : ""} ${canJumpFromBoard ? "cursor-pointer" : "cursor-default"}`}
                   >
-                    {item.label}
+                    {displayLabel}
                   </button>
                 );
               })}
@@ -3251,33 +3349,26 @@ function LessonRunner() {
 
       <section
         className={
-          isCompactPassageItem
+          isCompactPassageItem && !usesInlineCompactPassage
             ? "grid gap-4 lg:grid-cols-[minmax(420px,1.02fr)_minmax(0,0.98fr)] lg:items-start"
             : "space-y-4"
         }
       >
-        {usesInlineCompactPassage ? (
-          <div className="lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pr-2">
-            <GroupSharedContent
-              group={currentGroup}
-              compact
-            />
-          </div>
-        ) : isCompactPassageItem ? (
+        {isCompactPassageItem && !usesInlineCompactPassage ? (
           <div className="lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pr-2">
             <GroupSharedContent
               group={currentGroup}
               hideSharedContent={usesInlineCompactPassage}
             />
           </div>
-        ) : (
+        ) : !usesInlineCompactPassage ? (
           <GroupSharedContent group={currentGroup} hideSharedContent={usesInlineCompactPassage} />
-        )}
+        ) : null}
 
         <div
           className={
             isCompactPassageItem
-              ? "space-y-4 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto lg:pl-2"
+              ? `space-y-4 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto ${usesInlineCompactPassage ? "" : "lg:pl-2"}`
               : "space-y-4"
           }
         >
@@ -3303,7 +3394,7 @@ function LessonRunner() {
                   const active = index === activeQuestionIndex;
                   const canOpenQuestion = index <= maxReachableGroupQuestionIndex;
                   const buttonClass = active
-                    ? "border-[#155ca5] bg-[#155ca5] text-white"
+                    ? "border-amber-300 bg-amber-100 text-amber-900 shadow-[0_8px_18px_rgba(245,158,11,0.22)]"
                     : state?.submitted
                       ? state.correct === true
                         ? "border-green-300 bg-green-50 text-green-700"
@@ -3385,24 +3476,29 @@ function LessonRunner() {
                             key={`passage-blank-${mappedQuestion.id}`}
                             className="mx-1 inline-flex items-center gap-2 align-middle"
                           >
-                            <span className="text-sm font-bold text-slate-500">
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-sm font-black text-slate-600">
                               ({segment.label})
                             </span>
-                            <select
-                              disabled={isLocked}
-                              value={selectedValue}
-                              onChange={(event) =>
-                                setAnswer(mappedQuestion.id, event.target.value)
-                              }
-                              className={`inline-block min-w-[170px] rounded-xl border px-3 py-2 text-sm font-bold outline-none focus:border-[#155ca5] ${dropdownClass}`}
+                            <span
+                              className={`inline-flex min-w-[210px] items-center rounded-2xl border shadow-[0_8px_24px_rgba(21,92,165,0.08)] ${dropdownClass}`}
                             >
-                              <option value="">Select</option>
-                              {dropdownChoices.map((choice) => (
-                                <option key={`${mappedQuestion.id}-${choice}`} value={choice}>
-                                  {choice}
-                                </option>
-                              ))}
-                            </select>
+                              <select
+                                disabled={isLocked}
+                                value={selectedValue}
+                                onChange={(event) =>
+                                  setAnswer(mappedQuestion.id, event.target.value)
+                                }
+                                className="w-full appearance-none bg-transparent px-4 py-3 pr-10 text-sm font-bold outline-none"
+                              >
+                                <option value="">Blank {segment.label}</option>
+                                {dropdownChoices.map((choice) => (
+                                  <option key={`${mappedQuestion.id}-${choice}`} value={choice}>
+                                    {choice}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown className="mr-3 h-4 w-4 shrink-0 text-current" />
+                            </span>
                           </span>
                         );
                       })}
@@ -3426,7 +3522,7 @@ function LessonRunner() {
                           }`}
                         >
                           <p className="text-sm font-bold text-[#1e2e51]">
-                            Blank {index + 1}
+                            Blank {compactPassageBlankLabelByQuestionId.get(question.id) ?? index + 1}
                           </p>
                           {questionAnswer.correct === false && (
                             <p className="mt-1 text-sm text-gray-700">
@@ -3467,12 +3563,16 @@ function LessonRunner() {
                 <div className={isCompactPassageItem ? "space-y-2" : "space-y-3"}>
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <div className={`inline-flex items-center justify-center rounded-full bg-[#155ca5] px-3 font-black text-white ${isCompactPassageItem ? "h-8 min-w-8 text-xs" : "h-9 min-w-9 text-sm"}`}>
-                        {questionIndex + 1}
-                      </div>
-                      <div className="inline-block px-3 py-1 rounded-full bg-[#f3f7ff] text-[#155ca5] text-xs font-bold uppercase tracking-wider">
-                        {getQuestionTypeLabel(question.questionType)}
-                      </div>
+                        {(isAdminPreview || question.questionType !== "MATCHING") && (
+                          <div className={`inline-flex items-center justify-center rounded-full bg-[#155ca5] px-3 font-black text-white ${isCompactPassageItem ? "h-8 min-w-8 text-xs" : "h-9 min-w-9 text-sm"}`}>
+                            {questionIndex + 1}
+                          </div>
+                        )}
+                      {isAdminPreview && (
+                        <div className="inline-block px-3 py-1 rounded-full bg-[#f3f7ff] text-[#155ca5] text-xs font-bold uppercase tracking-wider">
+                          {getQuestionTypeLabel(question.questionType)}
+                        </div>
+                      )}
                     </div>
 
                     <button

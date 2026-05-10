@@ -5,6 +5,7 @@ export interface SectionLessonProgressItem {
   lessonId: number;
   lessonTitle: string;
   lessonNumber: number;
+  orderIndex?: number | null;
   reviewLesson: boolean;
   completed: boolean;
   unlocked: boolean;

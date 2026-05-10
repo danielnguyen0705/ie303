@@ -333,7 +333,7 @@ export function QuestionBank() {
           </div>
           <h1 className="text-2xl font-black text-slate-900">Question Bank</h1>
           <p className="max-w-3xl text-sm text-slate-500">
-            Xem câu hỏi theo cây content thật: lớp, unit, section, lesson, loại câu và nội dung câu hỏi.
+            Browse questions by the real content tree: grade, unit, section, lesson, question type, and question content.
           </p>
         </div>
 
@@ -342,7 +342,7 @@ export function QuestionBank() {
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Tìm theo tên lesson, loại câu, nội dung câu hỏi..."
+              placeholder="Search by lesson name, question type, or question content..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="w-full rounded-2xl border border-slate-200 py-3 pl-10 pr-4 outline-none transition focus:border-[#155ca5] focus:ring-2 focus:ring-[#155ca5]/10"
@@ -405,7 +405,7 @@ export function QuestionBank() {
                       </div>
                     ) : units.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
-                        Chưa có unit trong grade này.
+                        No units in this grade yet.
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -460,7 +460,7 @@ export function QuestionBank() {
                                       </div>
                                     ) : sections.length === 0 ? (
                                       <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
-                                        Chưa có section.
+                                        No sections yet.
                                       </div>
                                     ) : (
                                       <div className="space-y-3">
@@ -515,7 +515,7 @@ export function QuestionBank() {
                                                       </div>
                                                     ) : lessons.length === 0 ? (
                                                       <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
-                                                        Chưa có lesson.
+                                                        No lessons yet.
                                                       </div>
                                                     ) : (
                                                       <div className="space-y-3">
@@ -592,11 +592,11 @@ export function QuestionBank() {
                                                                       </div>
                                                                     ) : !questionPayload ? (
                                                                       <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
-                                                                        Chưa tải được dữ liệu câu hỏi cho lesson này.
+                                                                        Could not load question data for this lesson.
                                                                       </div>
                                                                     ) : stats.totalQuestions === 0 ? (
                                                                       <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
-                                                                        Lesson này chưa có câu hỏi.
+                                                                        This lesson does not have any questions yet.
                                                                       </div>
                                                                     ) : (
                                                                       <div className="space-y-4">
@@ -817,7 +817,7 @@ export function QuestionBank() {
         {grades.length === 0 && (
           <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center">
             <HelpCircle className="mx-auto mb-4 h-16 w-16 text-slate-300" />
-            <p className="text-slate-500">Không có grade nào để hiển thị.</p>
+            <p className="text-slate-500">No grades available to display.</p>
           </div>
         )}
       </div>

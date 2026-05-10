@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   ArrowRight,
@@ -18,6 +18,7 @@ import {
 import { getCurrentUser, getUserStats } from "@/api";
 import { getAllGrades } from "@/api/admin";
 import type { Grade } from "@/api/admin/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 type UserProfile = {
   id: number;
@@ -80,6 +81,7 @@ function clampProgress(value?: number | null) {
 }
 
 export function Dashboard() {
+  const { copy } = useLanguage();
   const [grades, setGrades] = useState<Grade[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState(emptyStats);
@@ -121,7 +123,9 @@ export function Dashboard() {
       <main className="mx-auto flex min-h-[60vh] max-w-7xl items-center justify-center px-4 py-10 md:px-6">
         <div className="space-y-4 text-center">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#155ca5]" />
-          <p className="font-medium text-gray-600">Loading dashboard...</p>
+          <p className="font-medium text-gray-600">
+            {copy("Loading dashboard...", "Đang tải bảng điều khiển...")}
+          </p>
         </div>
       </main>
     );
@@ -136,7 +140,7 @@ export function Dashboard() {
             onClick={loadDashboardData}
             className="mt-4 rounded-xl bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
           >
-            Retry
+            {copy("Retry", "Thử lại")}
           </button>
         </div>
       </main>
@@ -153,17 +157,17 @@ export function Dashboard() {
 
   const quickStats = [
     {
-      label: "Streak",
+      label: copy("Streak", "Chuỗi ngày học"),
       value: `${stats.currentStreak}`,
-      hint: "ngày liên tiếp",
+      hint: copy("days in a row", "ngày liên tiếp"),
       icon: Flame,
       accent: "text-[#f39c12]",
       bg: "bg-[#fff4e5]",
     },
     {
-      label: "Accuracy",
+      label: copy("Accuracy", "Độ chính xác"),
       value: `${stats.accuracy}%`,
-      hint: "độ chính xác",
+      hint: copy("correctness", "mức chính xác"),
       icon: Target,
       accent: "text-[#1f8b4d]",
       bg: "bg-[#edf9f1]",
@@ -171,15 +175,15 @@ export function Dashboard() {
     {
       label: "EXP",
       value: stats.totalXP.toLocaleString(),
-      hint: "kinh nghiệm",
+      hint: copy("experience", "kinh nghiệm"),
       icon: Zap,
       accent: "text-[#155ca5]",
       bg: "bg-[#eef6ff]",
     },
     {
-      label: "Coins",
+      label: copy("Coins", "Điểm thưởng"),
       value: stats.totalCoins.toLocaleString(),
-      hint: "điểm thưởng",
+      hint: copy("reward points", "điểm thưởng"),
       icon: Coins,
       accent: "text-[#b7791f]",
       bg: "bg-[#fff7df]",
@@ -187,17 +191,15 @@ export function Dashboard() {
   ];
 
   return (
-    // THÊM overflow-x-hidden ĐỂ TRỊ DỨT ĐIỂM LỖI RENDER PIXEL CỦA ANDROID
-    <main className="mx-auto w-full max-w-7xl overflow-x-hidden space-y-6 sm:space-y-8 px-4 py-5 pb-20 sm:px-6 sm:py-8 sm:pb-12">
-      {/* --- SECTION 1: STATS --- */}
-      <section className="flex w-full min-w-0 flex-col gap-4">
-        <div className="flex w-full min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-black uppercase tracking-wider text-[#155ca5] sm:text-xs sm:tracking-[0.2em]">
-              Momentum
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-5 pb-20 md:px-6 md:py-6 md:pb-12">
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
+              {copy("Momentum", "Nhịp học")}
             </p>
-            <h1 className="mt-1 truncate text-xl font-black text-[#1e2e51] sm:text-2xl">
-              Nhịp học hôm nay
+            <h1 className="mt-1 text-2xl font-black text-[#1e2e51]">
+              {copy("Your learning rhythm today", "Nhịp học hôm nay")}
             </h1>
           </div>
 
@@ -208,10 +210,8 @@ export function Dashboard() {
                 : "bg-[#eef2f7] text-[#42526d]"
             }`}
           >
-            <Crown className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">
-              {isVip ? "VIP Active" : "Free Plan"}
-            </span>
+            <Crown className="h-3.5 w-3.5" />
+            {isVip ? copy("VIP Active", "VIP đang hoạt động") : copy("Free Plan", "Gói miễn phí")}
           </span>
         </div>
 
@@ -247,14 +247,13 @@ export function Dashboard() {
         </div>
       </section>
 
-      {/* --- SECTION 2: LEARNING PATH --- */}
-      <section className="flex w-full min-w-0 flex-col gap-4">
-        <div className="min-w-0 w-full">
-          <p className="truncate text-[10px] font-black uppercase tracking-wider text-[#155ca5] sm:text-xs sm:tracking-[0.2em]">
-            Learning Path
+      <section className="space-y-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
+            {copy("Learning Path", "Lộ trình học")}
           </p>
-          <h2 className="mt-1 truncate text-xl font-black text-[#1e2e51] sm:text-2xl">
-            Chọn lớp để vào học
+          <h2 className="mt-1 text-2xl font-black text-[#1e2e51]">
+            {copy("Choose a grade to start learning", "Chọn lớp để vào học")}
           </h2>
         </div>
 
@@ -284,11 +283,8 @@ export function Dashboard() {
                   >
                     <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  {/* FIX: Thay shrink-0 truncate bằng shrink-0 whitespace-nowrap để không xung đột */}
-                  <span
-                    className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider sm:px-3 sm:text-[11px] sm:tracking-[0.18em] ${style.soft}`}
-                  >
-                    Grade {grade.id}
+                  <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${style.soft}`}>
+                    {copy("Grade", "Lớp")} {grade.id}
                   </span>
                 </div>
 
@@ -298,14 +294,20 @@ export function Dashboard() {
                   </div>
                   <div className="mt-1 line-clamp-2 text-[13px] leading-5 text-gray-500 sm:text-sm sm:leading-6">
                     {progress > 0
-                      ? "Vào tiếp để học các unit tiếp theo."
-                      : "Mở lộ trình học theo unit và section."}
+                      ? copy(
+                          "Continue with the next units in your path.",
+                          "Vào tiếp để học các unit tiếp theo.",
+                        )
+                      : copy(
+                          "Open the learning path by unit and section.",
+                          "Mở lộ trình học theo unit và section.",
+                        )}
                   </div>
                 </div>
 
-                <div className="mt-4 w-full space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-[#1e2e51] sm:text-sm">
-                    <span>Tiến độ</span>
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm font-bold text-[#1e2e51]">
+                    <span>{copy("Progress", "Tiến độ")}</span>
                     <span>{progress}%</span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 sm:h-2">
@@ -316,9 +318,9 @@ export function Dashboard() {
                   </div>
                 </div>
 
-                <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-[#155ca5] sm:gap-2 sm:text-sm">
-                  Vào danh sách unit
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 transition group-hover:translate-x-1 sm:h-4 sm:w-4" />
+                <div className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#155ca5]">
+                  {copy("Open unit list", "Vào danh sách unit")}
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </div>
               </Link>
             );
@@ -326,14 +328,13 @@ export function Dashboard() {
         </div>
       </section>
 
-      {/* --- SECTION 3: AI PRACTICE --- */}
-      <section className="flex w-full min-w-0 flex-col gap-4">
-        <div className="min-w-0 w-full">
-          <p className="truncate text-[10px] font-black uppercase tracking-wider text-[#155ca5] sm:text-xs sm:tracking-[0.2em]">
-            AI Practice
+      <section className="space-y-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
+            {copy("AI Practice", "Luyện tập AI")}
           </p>
-          <h2 className="mt-1 truncate text-xl font-black text-[#1e2e51] sm:text-2xl">
-            Công cụ luyện thêm
+          <h2 className="mt-1 text-2xl font-black text-[#1e2e51]">
+            {copy("Extra practice tools", "Công cụ luyện thêm")}
           </h2>
         </div>
 
@@ -357,19 +358,16 @@ export function Dashboard() {
                     : "bg-[#f7e3b7] text-[#8d5c06]"
                 }`}
               >
-                {!isVip && (
-                  <Lock className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
-                )}
-                <span className="truncate">{isVip ? "VIP" : "Locked"}</span>
+                {!isVip && <Lock className="h-3 w-3" />}
+                {isVip ? "VIP" : copy("Locked", "Bị khóa")}
               </span>
             </div>
-            <div className="mt-3 min-w-0 w-full sm:mt-4">
-              <div className="truncate text-base font-black text-[#1e2e51] sm:text-lg">
-                AI Questions
-              </div>
-              <div className="mt-1 line-clamp-2 text-[13px] leading-5 text-gray-500 sm:text-sm sm:leading-6">
-                Sinh nhanh bộ câu hỏi luyện thêm theo mục tiêu.
-              </div>
+            <div className="mt-4 text-lg font-black text-[#1e2e51]">AI Questions</div>
+            <div className="mt-1 text-sm leading-6 text-gray-500">
+              {copy(
+                "Generate a focused extra practice set in seconds.",
+                "Sinh nhanh bộ câu hỏi luyện thêm theo mục tiêu.",
+              )}
             </div>
           </Link>
         </div>
