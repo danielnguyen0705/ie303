@@ -1,9 +1,13 @@
-import type {
+﻿import type {
   AILearningAnalysis,
   ApiResponse,
   EssaySubmissionRequest,
   EssaySubmissionResult,
+  EssaySubmissionWithImageRequest,
+  LearningAnalysisResult,
   PersonalizedQuestionsRequest,
+  SpeakingSubmissionRequest,
+  SpeakingSubmissionResult,
 } from "./types";
 import type { QuestionDto } from "./questions";
 import { createError, request } from "./utils/http";
@@ -25,6 +29,60 @@ export async function submitEssay(
   return request<EssaySubmissionResult>("/ai/essay/submit", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function submitEssayWithImage(
+  payload: EssaySubmissionWithImageRequest,
+): Promise<ApiResponse<EssaySubmissionResult>> {
+  if (!hasPositiveNumber(payload.questionId)) {
+    return createError("Invalid question id", "VALIDATION_ERROR");
+  }
+
+  if (!payload.answerText.trim()) {
+    return createError("Answer text is required", "VALIDATION_ERROR");
+  }
+
+  const formData = new FormData();
+  formData.append("questionId", String(payload.questionId));
+  formData.append("answerText", payload.answerText);
+
+  if (payload.imageUrl?.trim()) {
+    formData.append("imageUrl", payload.imageUrl.trim());
+  }
+
+  if (payload.imageFile) {
+    formData.append("imageFile", payload.imageFile);
+  }
+
+  return request<EssaySubmissionResult>("/ai/essay/submit-image", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function submitSpeaking(
+  payload: SpeakingSubmissionRequest,
+): Promise<ApiResponse<SpeakingSubmissionResult>> {
+  if (!hasPositiveNumber(payload.questionId)) {
+    return createError("Invalid question id", "VALIDATION_ERROR");
+  }
+
+  if (!payload.transcriptText.trim()) {
+    return createError("Transcript text is required", "VALIDATION_ERROR");
+  }
+
+  const formData = new FormData();
+  formData.append("questionId", String(payload.questionId));
+  formData.append("transcriptText", payload.transcriptText);
+
+  if (payload.audioFile) {
+    formData.append("audioFile", payload.audioFile);
+  }
+
+  return request<SpeakingSubmissionResult>("/ai/speaking/submit", {
+    method: "POST",
+    body: formData,
   });
 }
 

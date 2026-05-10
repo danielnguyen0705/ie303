@@ -108,7 +108,7 @@ export function AdminDashboard() {
               +{((stats.activeUsers / stats.totalUsers) * 100).toFixed(1)}% ACTIVE
             </span>
           </div>
-          <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Tổng học sinh</h3>
+          <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Total Students</h3>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900 tracking-tight">
               {stats.totalUsers.toLocaleString()}
@@ -126,7 +126,7 @@ export function AdminDashboard() {
               {stats.vipUsers} VIP
             </span>
           </div>
-          <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Tài khoản VIP %</h3>
+          <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">VIP Accounts %</h3>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900 tracking-tight">
               {stats.vipPercentage.toFixed(1)}%
@@ -144,7 +144,7 @@ export function AdminDashboard() {
               ACTIVE
             </span>
           </div>
-          <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Tổng câu hỏi</h3>
+          <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Total Questions</h3>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900 tracking-tight">
               {stats.totalQuestions.toLocaleString()}
@@ -162,7 +162,7 @@ export function AdminDashboard() {
               TRENDING UP
             </span>
           </div>
-          <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Streak đang hoạt động</h3>
+          <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Active Streaks</h3>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900 tracking-tight">
               {stats.activeStreaks.toLocaleString()}
@@ -176,7 +176,7 @@ export function AdminDashboard() {
         {/* Active Students Chart */}
         <div className="col-span-8 bg-white p-6 rounded-lg shadow-sm border-b-2 border-[#155ca5]/10">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Số học sinh hoạt động (7 ngày)</h2>
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Active Students (7 Days)</h2>
             <span className="text-[10px] text-slate-400 font-bold uppercase">Last 7 days</span>
           </div>
           <div className="h-64 flex items-end justify-between gap-2 relative pt-10">
@@ -206,7 +206,7 @@ export function AdminDashboard() {
 
         {/* Recent Users */}
         <div className="col-span-4 bg-white p-6 rounded-lg shadow-sm">
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-6">Người dùng mới</h2>
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-6">New Users</h2>
           <div className="space-y-4">
             {recentUsers.map((user) => (
               <div key={user.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">

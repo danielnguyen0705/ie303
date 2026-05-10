@@ -14,6 +14,7 @@ type LessonProgressItem = {
   lessonId: number;
   lessonTitle: string;
   lessonNumber: number;
+  orderIndex?: number | null;
   reviewLesson: boolean;
   completed: boolean;
   unlocked: boolean;
@@ -167,7 +168,7 @@ function buildLessonPath(
 }
 
 function getReviewLessonMeta(lessons: LessonProgressItem[], lessonId: number) {
-  let normalCount = 0;
+  let regularLessonsSinceLastReview = 0;
   let reviewIndex = 0;
 
   for (const lesson of lessons) {
@@ -176,11 +177,12 @@ function getReviewLessonMeta(lessons: LessonProgressItem[], lessonId: number) {
       if (lesson.lessonId === lessonId) {
         return {
           reviewIndex,
-          coveredLessons: normalCount,
+          coveredLessons: regularLessonsSinceLastReview,
         };
       }
+      regularLessonsSinceLastReview = 0;
     } else {
-      normalCount += 1;
+      regularLessonsSinceLastReview += 1;
     }
   }
 
@@ -213,7 +215,10 @@ export function LessonSelection() {
 
         if (res.success) {
           const sorted = [...(res.data ?? [])].sort(
-            (a, b) => a.lessonNumber - b.lessonNumber || a.lessonId - b.lessonId,
+            (a, b) =>
+              (a.orderIndex ?? a.lessonNumber) - (b.orderIndex ?? b.lessonNumber) ||
+              a.lessonNumber - b.lessonNumber ||
+              a.lessonId - b.lessonId,
           );
           setLessons(sorted);
         } else {
@@ -363,8 +368,8 @@ export function LessonSelection() {
           </p>
           <p className="mt-2 text-sm font-semibold text-[#155ca5]">
             {copy(
-              "Every 4 regular lessons usually unlock 1 review lesson.",
-              "Cứ 4 bài thường sẽ có 1 bài review.",
+              "Review lessons appear in the learning path after the regular lessons arranged for this section.",
+              "Bài review sẽ xuất hiện trong lộ trình sau các bài thường đã được sắp cho section này.",
             )}
           </p>
         </div>

@@ -96,7 +96,7 @@ export function AdminLayout() {
             type="button"
             onClick={() => setIsSidebarCollapsed((prev) => !prev)}
             className={`mt-5 flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-300 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? "mx-auto justify-center" : "gap-2"}`}
-            title={isSidebarCollapsed ? "Mở sidebar" : "Thu gọn sidebar"}
+            title={isSidebarCollapsed ? "Open sidebar" : "Collapse sidebar"}
           >
             {isSidebarCollapsed ? (
               <PanelLeftOpen size={18} />
@@ -105,7 +105,7 @@ export function AdminLayout() {
             )}
             {!isSidebarCollapsed && (
               <span className="text-xs font-semibold uppercase tracking-[0.18em]">
-                Thu gọn
+                Collapse
               </span>
             )}
           </button>

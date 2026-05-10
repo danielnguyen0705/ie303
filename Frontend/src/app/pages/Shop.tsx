@@ -11,22 +11,31 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import { buyShopItem, getActiveShopItems, getCoinBalance } from "@/api";
-import type { ShopItem } from "@/api";
+import type { ShopItem, ShopItemType } from "@/api/types";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
+import getPagination from "@/utils/pagination";
+import scrollToTop from "@/utils/scrollToTop";
+
+const isCosmeticShopType = (shopType: ShopItemType) =>
+  shopType === "AVATAR" || shopType === "BACKGROUND";
 
 const normalizeShopItems = (items: ShopItem[]): ShopItem[] =>
   items.map((item) => ({
     ...item,
-    isPurchased: item.type === "cosmetic" ? item.isPurchased : false,
+    isPurchased: isCosmeticShopType(item.shopType ?? "SKIP")
+      ? item.isPurchased
+      : false,
   }));
+
+type ShopFilterCategory = "ALL" | ShopItemType;
 
 export function Shop() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [balance, setBalance] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<
-    "all" | "powerup" | "cosmetic" | "subscription" | "boost"
-  >("all");
+  const [selectedCategory, setSelectedCategory] =
+    useState<ShopFilterCategory>("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -65,7 +74,8 @@ export function Shop() {
   };
 
   const handlePurchase = async (item: ShopItem) => {
-    const { id: itemId, price, type } = item;
+    const { id: itemId, price } = item;
+    const shopType = getItemShopType(item);
 
     if (balance < price) {
       popup.error({
@@ -83,7 +93,7 @@ export function Shop() {
         // Update balance
         setBalance(response.data.remainingCoin);
 
-        if (type === "cosmetic") {
+        if (isCosmeticShopType(shopType)) {
           setItems((prev) =>
             prev.map((currentItem) =>
               currentItem.id === itemId
@@ -118,25 +128,72 @@ export function Shop() {
     }
   };
 
-  const getCategoryIcon = (category: string) => {
+  const getCategoryIcon = (category: ShopItemType) => {
     switch (category) {
-      case "powerup":
+      case "SKIP":
         return <Zap className="w-5 h-5" />;
-      case "cosmetic":
+      case "AVATAR":
         return <Sparkles className="w-5 h-5" />;
-      case "subscription":
+      case "VIP":
         return <Crown className="w-5 h-5" />;
-      case "boost":
+      case "EXP":
         return <Shield className="w-5 h-5" />;
+      case "BACKGROUND":
+        return <ShoppingCart className="w-5 h-5" />;
       default:
         return <ShoppingCart className="w-5 h-5" />;
     }
   };
 
+  const getItemShopType = (item: ShopItem): ShopItemType => {
+    if (item.shopType) return item.shopType;
+
+    const searchText =
+      `${item.name} ${item.description} ${item.effect ?? ""}`.toLowerCase();
+
+    if (searchText.includes("background")) return "BACKGROUND";
+    if (searchText.includes("avatar")) return "AVATAR";
+    if (searchText.includes("vip") || searchText.includes("subscription"))
+      return "VIP";
+    if (searchText.includes("exp") || searchText.includes("boost"))
+      return "EXP";
+    return "AVATAR";
+  };
+
+  const isAvatarItem = (item: ShopItem) => {
+    return getItemShopType(item) === "AVATAR";
+  };
+
+  const isBackgroundItem = (item: ShopItem) => {
+    return getItemShopType(item) === "BACKGROUND";
+  };
+
   const filteredItems =
-    selectedCategory === "all"
+    selectedCategory === "ALL"
       ? items
-      : items.filter((item) => item.type === selectedCategory);
+      : items.filter((item) => getItemShopType(item) === selectedCategory);
+
+  const itemsPerPage = 12;
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const pagination = getPagination(currentPage, totalPages);
+  const visibleItems =
+    totalPages > 0
+      ? filteredItems.slice(
+          (pagination.current - 1) * itemsPerPage,
+          pagination.current * itemsPerPage,
+        )
+      : [];
+
+  const handleCategoryChange = (category: ShopFilterCategory) => {
+    setSelectedCategory(category);
+    setCurrentPage(1);
+    scrollToTop();
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    scrollToTop();
+  };
 
   if (loading) {
     return (
@@ -166,27 +223,30 @@ export function Shop() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-8 pb-24 md:pb-12">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8 pb-24 md:pb-12">
       {/* Header */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between">
+      <section className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
           <div>
-            <h1 className="text-5xl font-black text-[#155ca5] tracking-tight mb-2">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#155ca5] tracking-tight mb-2">
               Item Shop
             </h1>
-            <p className="text-xl text-gray-600 font-medium">
+            <p className="text-base sm:text-lg lg:text-xl text-gray-600 font-medium">
               Enhance your learning experience with powerful items!
             </p>
           </div>
 
           {/* Coin Balance */}
-          <div className="bg-white px-6 py-4 rounded-lg shadow-sm flex items-center gap-3">
-            <Coins className="w-8 h-8 text-[#f1c40f]" fill="#f1c40f" />
+          <div className="w-full sm:w-auto bg-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg shadow-sm flex items-center gap-3">
+            <Coins
+              className="w-7 h-7 sm:w-8 sm:h-8 text-[#f1c40f]"
+              fill="#f1c40f"
+            />
             <div>
               <div className="text-xs text-gray-500 font-bold uppercase">
                 Your Balance
               </div>
-              <div className="text-2xl font-black text-[#f1c40f]">
+              <div className="text-xl sm:text-2xl font-black text-[#f1c40f]">
                 {balance.toLocaleString()}
               </div>
             </div>
@@ -194,116 +254,163 @@ export function Shop() {
         </div>
 
         {/* Category Filter */}
-        <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 bg-white p-2 sm:p-3 rounded-lg shadow-sm overflow-x-auto">
           <button
-            onClick={() => setSelectedCategory("all")}
-            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === "all"
+            onClick={() => handleCategoryChange("ALL")}
+            className={`shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-md font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
+              selectedCategory === "ALL"
                 ? "bg-[#155ca5] text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <ShoppingCart className="w-5 h-5" />
-            All Items
+            ALL
           </button>
           <button
-            onClick={() => setSelectedCategory("powerup")}
-            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === "powerup"
+            onClick={() => handleCategoryChange("SKIP")}
+            className={`shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-md font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
+              selectedCategory === "SKIP"
                 ? "bg-[#155ca5] text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <Zap className="w-5 h-5" />
-            Power-ups
+            SKIP
           </button>
           <button
-            onClick={() => setSelectedCategory("cosmetic")}
-            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === "cosmetic"
-                ? "bg-[#155ca5] text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            <Sparkles className="w-5 h-5" />
-            Cosmetics
-          </button>
-          <button
-            onClick={() => setSelectedCategory("subscription")}
-            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === "subscription"
+            onClick={() => handleCategoryChange("VIP")}
+            className={`shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-md font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
+              selectedCategory === "VIP"
                 ? "bg-[#155ca5] text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <Crown className="w-5 h-5" />
-            Subscriptions
+            VIP
           </button>
           <button
-            onClick={() => setSelectedCategory("boost")}
-            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedCategory === "boost"
+            onClick={() => handleCategoryChange("AVATAR")}
+            className={`shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-md font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
+              selectedCategory === "AVATAR"
+                ? "bg-[#155ca5] text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <Sparkles className="w-5 h-5" />
+            AVATAR
+          </button>
+          <button
+            onClick={() => handleCategoryChange("BACKGROUND")}
+            className={`shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-md font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
+              selectedCategory === "BACKGROUND"
+                ? "bg-[#155ca5] text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <ShoppingCart className="w-5 h-5" />
+            BACKGROUND
+          </button>
+          <button
+            onClick={() => handleCategoryChange("EXP")}
+            className={`shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-md font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${
+              selectedCategory === "EXP"
                 ? "bg-[#155ca5] text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <Shield className="w-5 h-5" />
-            EXP Boosts
+            EXP
           </button>
         </div>
       </section>
 
       {/* Items Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredItems.map((item) => {
+      <section className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
+        {visibleItems.map((item) => {
           const canAfford = balance >= item.price;
           const isPurchasing = purchasing === item.id;
-          const isOwned = item.type === "cosmetic" && item.isPurchased;
+          const itemShopType = getItemShopType(item);
+          const isOwned = isCosmeticShopType(itemShopType) && item.isPurchased;
+          const isBackground = isBackgroundItem(item);
 
           return (
             <div
               key={item.id}
-              className={`bg-white rounded-lg shadow-sm overflow-hidden border-2 transition-all ${
+              className={`min-w-0 bg-white rounded-lg shadow-sm overflow-hidden border-2 transition-all ${
                 isOwned
                   ? "border-[#27ae60]"
                   : canAfford
-                    ? "border-transparent hover:shadow-lg"
-                    : "border-transparent opacity-75"
+                    ? "border-gray-200 hover:border-[#155ca5]/40 hover:shadow-lg"
+                    : "border-gray-200 opacity-75"
               }`}
             >
               {/* Item Header */}
-              <div className="bg-gradient-to-br from-[#155ca5] to-[#005095] p-6 text-white relative">
-                <div className="absolute top-4 right-4">
-                  {isOwned ? (
-                    <CheckCircle className="w-6 h-6 text-[#27ae60]" />
-                  ) : (
-                    getCategoryIcon(item.type)
-                  )}
+              {isBackground ? (
+                <div className="relative p-0 text-white">
+                  <div
+                    className="h-28 sm:h-40 lg:h-48 w-full bg-center bg-cover"
+                    style={{
+                      backgroundImage: item.imageUrl
+                        ? `linear-gradient(rgba(16, 35, 63, 0.25), rgba(16, 35, 63, 0.5)), url(${item.imageUrl})`
+                        : "linear-gradient(135deg, #155ca5, #005095)",
+                    }}
+                  />
+                  <div className="absolute top-2 right-2 sm:top-4 sm:right-4">
+                    {isOwned ? (
+                      <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-[#27ae60]" />
+                    ) : (
+                      getCategoryIcon(itemShopType)
+                    )}
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
+                    <h3 className="font-bold text-sm sm:text-lg lg:text-xl mb-0.5 sm:mb-1 truncate">
+                      {item.name}
+                    </h3>
+                    <p className="text-[10px] sm:text-xs lg:text-sm text-white/85 truncate">
+                      {itemShopType}
+                    </p>
+                  </div>
                 </div>
-                <div className="w-20 h-20 bg-white/20 rounded-xl flex items-center justify-center mb-4 overflow-hidden border border-white/20">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    getCategoryIcon(item.type)
-                  )}
+              ) : (
+                <div className="bg-gradient-to-br from-[#155ca5] to-[#005095] p-3 sm:p-4 lg:p-6 text-white relative text-center">
+                  <div className="absolute top-2 right-2 sm:top-4 sm:right-4">
+                    {isOwned ? (
+                      <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-[#27ae60]" />
+                    ) : (
+                      getCategoryIcon(itemShopType)
+                    )}
+                  </div>
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-4 overflow-hidden border-2 border-white/45 mx-auto">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      getCategoryIcon(itemShopType)
+                    )}
+                  </div>
+                  <h3 className="font-bold text-sm sm:text-lg lg:text-xl mb-0.5 sm:mb-1 truncate">
+                    {item.name}
+                  </h3>
+                  <p className="text-[10px] sm:text-xs lg:text-sm opacity-90 truncate">
+                    {itemShopType}
+                  </p>
                 </div>
-                <h3 className="font-bold text-xl mb-1">{item.name}</h3>
-                <p className="text-sm opacity-90 capitalize">{item.type}</p>
-              </div>
+              )}
 
               {/* Item Body */}
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-gray-600">{item.description}</p>
+              <div className="p-3 sm:p-4 lg:p-6 space-y-2 sm:space-y-4">
+                <p className="text-xs sm:text-sm text-gray-600 leading-snug max-h-10 sm:max-h-none overflow-hidden">
+                  {item.description}
+                </p>
 
                 {/* Features */}
                 {item.effect && (
-                  <div className="bg-[#155ca5]/5 p-3 rounded-md">
-                    <p className="text-sm font-bold text-[#155ca5]">
+                  <div className="bg-[#155ca5]/5 p-2 sm:p-3 rounded-md">
+                    <p className="text-[11px] sm:text-sm font-bold text-[#155ca5]">
                       ⚡ {item.effect}
                     </p>
                   </div>
@@ -311,30 +418,33 @@ export function Shop() {
 
                 {/* Duration */}
                 {item.duration && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-[11px] sm:text-xs text-gray-500">
                     Duration: {item.duration}{" "}
                     {item.duration === 1 ? "day" : "days"}
                   </p>
                 )}
 
                 {/* Price & Purchase */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Coins className="w-6 h-6 text-[#f1c40f]" fill="#f1c40f" />
-                    <span className="text-2xl font-black">
+                <div className="flex flex-col gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Coins
+                      className="w-4 h-4 sm:w-6 sm:h-6 text-[#f1c40f]"
+                      fill="#f1c40f"
+                    />
+                    <span className="text-base sm:text-2xl font-black truncate">
                       {item.price.toLocaleString()}
                     </span>
                   </div>
 
                   {isOwned ? (
-                    <span className="px-4 py-2 bg-[#27ae60]/10 text-[#27ae60] rounded-md font-bold text-sm">
+                    <span className="w-full text-center px-3 py-2 bg-[#27ae60]/10 text-[#27ae60] rounded-md font-bold text-xs sm:text-sm">
                       Owned ✓
                     </span>
                   ) : (
                     <button
                       onClick={() => handlePurchase(item)}
                       disabled={!canAfford || isPurchasing}
-                      className={`px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 ${
+                      className={`w-full justify-center px-3 py-2 rounded-md font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5 sm:gap-2 ${
                         canAfford
                           ? "bg-[#155ca5] text-white hover:bg-[#005095]"
                           : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -361,24 +471,66 @@ export function Shop() {
       </section>
 
       {filteredItems.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg">
+        <div className="text-center py-10 sm:py-12 bg-white rounded-lg">
           <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">No items in this category</p>
+          <p className="text-gray-500 text-base sm:text-lg">
+            No items in this category
+          </p>
         </div>
       )}
 
+      {totalPages > 1 && (
+        <section className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <button
+              onClick={() => handlePageChange(pagination.prevPage ?? 1)}
+              disabled={!pagination.hasPrev}
+              className="px-4 py-2 rounded-md font-bold transition-colors bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+
+            {pagination.pages.map((page) => (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`w-11 h-11 rounded-md font-bold transition-colors ${
+                  page === pagination.current
+                    ? "bg-[#155ca5] text-white"
+                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              onClick={() =>
+                handlePageChange(pagination.nextPage ?? totalPages)
+              }
+              disabled={!pagination.hasNext}
+              className="px-4 py-2 rounded-md font-bold transition-colors bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* Earn More Coins Banner */}
-      <section className="bg-gradient-to-r from-[#155ca5] to-[#005095] text-white rounded-lg p-8">
-        <div className="flex items-center justify-between">
+      <section className="bg-gradient-to-r from-[#155ca5] to-[#005095] text-white rounded-lg p-5 sm:p-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
           <div>
-            <h3 className="text-2xl font-black mb-2">Need More Coins?</h3>
-            <p className="text-lg opacity-90">
+            <h3 className="text-xl sm:text-2xl font-black mb-2">
+              Need More Coins?
+            </h3>
+            <p className="text-base sm:text-lg opacity-90">
               Complete lessons, quests, and challenges to earn more coins!
             </p>
           </div>
           <Link
             to="/topup"
-            className="bg-white text-[#155ca5] px-6 py-3 rounded-md font-bold hover:bg-gray-100 transition-colors whitespace-nowrap"
+            className="w-full sm:w-auto text-center bg-white text-[#155ca5] px-6 py-3 rounded-md font-bold hover:bg-gray-100 transition-colors whitespace-nowrap"
           >
             Top Up Coins →
           </Link>

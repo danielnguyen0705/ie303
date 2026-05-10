@@ -109,6 +109,12 @@ type StudyingGrade = {
   progressPercent: number;
 };
 
+type StreakStatus = {
+  label: string;
+  description: string;
+  className: string;
+};
+
 const initialStats: UserStats = {
   totalLessonsCompleted: 0,
   totalTestsTaken: 0,
@@ -131,6 +137,36 @@ const sortCosmeticOptions = (options: CosmeticOption[]): CosmeticOption[] => {
     return a.name.localeCompare(b.name);
   });
 };
+
+function getStreakStatus(user: ProfileUser | null): StreakStatus {
+  if (!user) {
+    return {
+      label: "Unknown",
+      description: "No profile loaded yet.",
+      className: "bg-gray-100 text-gray-600",
+    };
+  }
+
+  if (user.streak <= 0) {
+    return user.lastStudyDate
+      ? {
+          label: "Reset",
+          description: "No active streak right now.",
+          className: "bg-red-50 text-red-700",
+        }
+      : {
+          label: "New User",
+          description: "Has not started a streak yet.",
+          className: "bg-slate-100 text-slate-600",
+        };
+  }
+
+  return {
+    label: "Active",
+    description: "Streak is currently active.",
+    className: "bg-green-50 text-green-700",
+  };
+}
 
 export function Profile() {
   const { logout, loading: authLoading } = useAuth();
@@ -521,6 +557,7 @@ export function Profile() {
     backgroundOptions.find((item) => item.id === selectedBackgroundId) ||
     backgroundOptions.find((item) => item.equipped) ||
     null;
+  const streakStatus = getStreakStatus(user);
 
   return (
     <main className="pt-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8 pb-24 md:pb-12">
@@ -583,6 +620,14 @@ export function Profile() {
                 <Flame className="w-5 h-5 text-[#f39c12]" fill="#f39c12" />
                 <span className="font-mono font-bold">
                   {stats.currentStreak}-day Streak
+                </span>
+              </div>
+              <div
+                className={`flex items-center gap-2 px-6 py-3 rounded-full hover:scale-105 transition-transform cursor-pointer ${streakStatus.className}`}
+                title={streakStatus.description}
+              >
+                <span className="font-black uppercase tracking-wider text-xs">
+                  {streakStatus.label}
                 </span>
               </div>
             </div>
@@ -833,6 +878,15 @@ export function Profile() {
               <span className="text-gray-600 font-medium">Last Study Date</span>
               <span className="font-bold">
                 {user.lastStudyDate ? formatDate(user.lastStudyDate) : "N/A"}
+              </span>
+            </div>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-600 font-medium">Streak Status</span>
+              <span
+                className={`font-bold rounded-full px-3 py-1 text-xs uppercase tracking-widest ${streakStatus.className}`}
+                title={streakStatus.description}
+              >
+                {streakStatus.label}
               </span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">

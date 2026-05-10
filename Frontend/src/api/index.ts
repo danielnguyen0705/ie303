@@ -1,4 +1,4 @@
-// API Index - Central exports for all API modules
+﻿// API Index - Central exports for all API modules
 
 // Types
 export * from "./types";
@@ -24,9 +24,6 @@ export * as lessonApi from "./lessons";
 
 // Exercises API
 export * as exerciseApi from "./exercises";
-
-// Tests API
-export * as testApi from "./tests";
 
 // Quests & Achievements API
 export * as questApi from "./quests";
@@ -88,6 +85,8 @@ export {
 
 export {
   submitEssay,
+  submitEssayWithImage,
+  submitSpeaking,
   getPersonalizedQuestions,
   getMyLearningAnalysis,
   getMyLearningAnalysisHistory,
@@ -121,19 +120,22 @@ export {
 } from "./exercises";
 
 export {
-  // Tests
-  getTest,
-  submitTest,
-  getTestResults,
-  getTestReview,
-} from "./tests";
-
-export {
   // Quests
   getAllQuests,
   getActiveQuestsApi,
+  getDailyQuests,
+  getWeeklyQuests,
+  getQuest,
+  updateQuestProgress,
   claimQuestReward,
+  getQuestStats,
   getAllAchievements,
+  getUnlockedAchievementsApi,
+  getAchievementsByCategory,
+  getAchievement,
+  unlockAchievement,
+  getAchievementProgress,
+  getAchievementStats,
 } from "./quests";
 
 export {

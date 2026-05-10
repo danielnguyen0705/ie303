@@ -68,6 +68,7 @@ type SectionLessonProgressItem = {
   lessonId: number;
   lessonTitle: string;
   lessonNumber: number;
+  orderIndex?: number | null;
   reviewLesson: boolean;
   completed: boolean;
   unlocked: boolean;
@@ -903,7 +904,10 @@ function LessonRunner() {
       if (res.success && res.data) {
         setSectionLessons(
           [...res.data].sort(
-            (a, b) => a.lessonNumber - b.lessonNumber || a.lessonId - b.lessonId,
+            (a, b) =>
+              (a.orderIndex ?? a.lessonNumber) - (b.orderIndex ?? b.lessonNumber) ||
+              a.lessonNumber - b.lessonNumber ||
+              a.lessonId - b.lessonId,
           ),
         );
       }
@@ -911,6 +915,29 @@ function LessonRunner() {
 
     void loadSectionLessons();
   }, [sectionId]);
+
+  useEffect(() => {
+    if (!lessonIdNumber || sectionLessons.length === 0) {
+      return;
+    }
+
+    const lessonExistsInPath = sectionLessons.some(
+      (lesson) => lesson.lessonId === lessonIdNumber,
+    );
+
+    if (lessonExistsInPath) {
+      return;
+    }
+
+    const fallbackLesson =
+      sectionLessons.find((lesson) => lesson.current) ??
+      sectionLessons.find((lesson) => lesson.unlocked) ??
+      sectionLessons[0];
+
+    if (fallbackLesson && fallbackLesson.lessonId !== lessonIdNumber) {
+      navigate(`/lessons/${fallbackLesson.lessonId}`, { replace: true });
+    }
+  }, [lessonIdNumber, navigate, sectionLessons]);
 
   const currentItem = items[currentIndex];
   const currentGroup = currentItem?.group ?? null;
@@ -2379,15 +2406,15 @@ function LessonRunner() {
         <div className="space-y-5">
           {isAdminPreview && reorderWords.length === 0 && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              Dạng này chưa có danh sách từ để sắp xếp. Admin cần nhập `questionData`
-              cho `SENTENCE_REORDER`.
+              This type does not have a word list for reordering yet. Admin needs to provide
+              `questionData` for `SENTENCE_REORDER`.
             </div>
           )}
 
           {isAdminPreview && reorderWords.length > 0 && (
             <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-sm text-[#155ca5]">
-              Admin preview: câu này đang có dữ liệu tách từ trong `questionData`, nhưng
-              phía user sẽ làm theo kiểu viết lại câu.
+              Admin preview: this question already contains split-word data in `questionData`,
+              but the learner view will still render it as sentence rewrite.
             </div>
           )}
 
@@ -3231,7 +3258,7 @@ function LessonRunner() {
       <section className="mb-6">
         {isAdminPreview && (
           <div className="mb-4 rounded-2xl border border-[#cfe3ff] bg-[#f4f8ff] px-4 py-3 text-sm text-[#155ca5]">
-            <span className="font-bold">Admin Preview:</span> Làm thử lesson như học sinh, không lưu tiến độ và không chấm điểm.
+            <span className="font-bold">Admin Preview:</span> Try the lesson as a learner. Progress is not saved and grading is disabled.
           </div>
         )}
 

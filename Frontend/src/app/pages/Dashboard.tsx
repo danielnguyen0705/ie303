@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   ArrowRight,
@@ -152,7 +152,8 @@ export function Dashboard() {
     [...(user?.studyingGrades ?? [])].sort(
       (left, right) => right.progressPercent - left.progressPercent,
     )[0] ?? null;
-  const highlightedGradeId = currentStudyGrade?.gradeId ?? grades[0]?.id ?? null;
+  const highlightedGradeId =
+    currentStudyGrade?.gradeId ?? grades[0]?.id ?? null;
 
   const quickStats = [
     {
@@ -203,7 +204,7 @@ export function Dashboard() {
           </div>
 
           <span
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.18em] ${
+            className={`inline-flex shrink-0 max-w-full items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider sm:px-4 sm:py-2 sm:text-xs sm:tracking-[0.18em] ${
               isVip
                 ? "bg-[#fed023] text-[#5d4700]"
                 : "bg-[#eef2f7] text-[#42526d]"
@@ -214,23 +215,31 @@ export function Dashboard() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           {quickStats.map((item) => {
             const Icon = item.icon;
             return (
               <div
                 key={item.label}
-                className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
+                className="flex w-full min-w-0 items-center gap-2.5 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:gap-3 sm:p-4"
               >
-                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${item.bg}`}>
-                  <Icon className={`h-5 w-5 ${item.accent}`} />
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 sm:rounded-2xl ${item.bg}`}
+                >
+                  <Icon
+                    className={`h-4.5 w-4.5 sm:h-5 sm:w-5 ${item.accent}`}
+                  />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-[11px] font-black uppercase tracking-[0.18em] text-gray-400">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[9px] font-black uppercase tracking-wider text-gray-400 sm:text-[11px] sm:tracking-[0.18em]">
                     {item.label}
                   </div>
-                  <div className="text-lg font-black text-[#1e2e51]">{item.value}</div>
-                  <div className="text-xs text-gray-500">{item.hint}</div>
+                  <div className="truncate text-[15px] font-black text-[#1e2e51] sm:text-lg">
+                    {item.value}
+                  </div>
+                  <div className="truncate text-[9px] text-gray-500 sm:text-xs">
+                    {item.hint}
+                  </div>
                 </div>
               </div>
             );
@@ -248,7 +257,7 @@ export function Dashboard() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {grades.map((grade, index) => {
             const style = gradeStyles[index % gradeStyles.length];
             const Icon = style.icon;
@@ -262,26 +271,28 @@ export function Dashboard() {
               <Link
                 key={grade.id}
                 to={`/grades/${grade.id}/units`}
-                className={`group rounded-[1.35rem] border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                className={`group flex w-full min-w-0 flex-col rounded-[1.35rem] border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
                   isHighlighted
                     ? `${style.border} ring-2 ring-[#155ca5]/10`
                     : "border-slate-100"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex w-full min-w-0 items-start justify-between gap-3">
                   <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${style.accent} text-white shadow-sm`}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${style.accent} text-white shadow-sm sm:h-12 sm:w-12 sm:rounded-2xl`}
                   >
-                    <Icon className="h-6 w-6" />
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
                   <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${style.soft}`}>
                     {copy("Grade", "Lớp")} {grade.id}
                   </span>
                 </div>
 
-                <div className="mt-4">
-                  <div className="text-lg font-black text-[#1e2e51]">{grade.name}</div>
-                  <div className="mt-1 text-sm leading-6 text-gray-500">
+                <div className="mt-3 min-w-0 flex-1 sm:mt-4">
+                  <div className="truncate text-base font-black text-[#1e2e51] sm:text-lg">
+                    {grade.name}
+                  </div>
+                  <div className="mt-1 line-clamp-2 text-[13px] leading-5 text-gray-500 sm:text-sm sm:leading-6">
                     {progress > 0
                       ? copy(
                           "Continue with the next units in your path.",
@@ -299,7 +310,7 @@ export function Dashboard() {
                     <span>{copy("Progress", "Tiến độ")}</span>
                     <span>{progress}%</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 sm:h-2">
                     <div
                       className={`h-full rounded-full bg-gradient-to-r ${style.accent}`}
                       style={{ width: `${progress}%` }}
@@ -327,17 +338,21 @@ export function Dashboard() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Link
             to={isVip ? "/ai/personalized-questions" : "/topup"}
-            className={`rounded-[1.35rem] border p-4 shadow-sm transition hover:shadow-md ${
-              isVip ? "border-slate-100 bg-white" : "border-[#f5d39b] bg-[#fff8eb]"
+            className={`flex w-full min-w-0 flex-col rounded-[1.35rem] border p-4 shadow-sm transition hover:shadow-md ${
+              isVip
+                ? "border-slate-100 bg-white"
+                : "border-[#f5d39b] bg-[#fff8eb]"
             }`}
           >
-            <div className="flex items-center justify-between gap-3">
-              <Brain className={`h-7 w-7 ${isVip ? "text-[#155ca5]" : "text-[#d29b2a]"}`} />
+            <div className="flex w-full min-w-0 items-center justify-between gap-3">
+              <Brain
+                className={`h-6 w-6 shrink-0 sm:h-7 sm:w-7 ${isVip ? "text-[#155ca5]" : "text-[#d29b2a]"}`}
+              />
               <span
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${
+                className={`inline-flex shrink-0 max-w-[60%] items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider sm:px-3 sm:text-[11px] sm:tracking-[0.18em] ${
                   isVip
                     ? "bg-[#155ca5]/10 text-[#155ca5]"
                     : "bg-[#f7e3b7] text-[#8d5c06]"

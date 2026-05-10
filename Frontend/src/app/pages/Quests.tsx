@@ -1,12 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Target, Trophy, Star, Gift, Lock, CheckCircle, Loader2, Zap, Coins } from 'lucide-react';
-import { getAllQuests, claimQuestReward, getAllAchievements } from '@/api';
-import type { Quest, Achievement } from '@/data/mockData';
+import { useState, useEffect } from "react";
+import {
+  Target,
+  Trophy,
+  Star,
+  Gift,
+  Lock,
+  CheckCircle,
+  Loader2,
+  Zap,
+  Coins,
+} from "lucide-react";
+import { getAllQuests, claimQuestReward, getAllAchievements } from "@/api";
+import type { Quest, Achievement } from "@/api/quests";
 
 export function Quests() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [selectedTab, setSelectedTab] = useState<'daily' | 'weekly' | 'achievements'>('daily');
+  const [selectedTab, setSelectedTab] = useState<
+    "daily" | "weekly" | "achievements"
+  >("daily");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [claimingQuest, setClaimingQuest] = useState<string | null>(null);
@@ -25,16 +37,12 @@ export function Quests() {
         getAllAchievements(),
       ]);
 
-      if (questsResponse.success) {
-        setQuests(questsResponse.data);
-      }
-
-      if (achievementsResponse.success) {
-        setAchievements(achievementsResponse.data);
-      }
+      if (questsResponse.success) setQuests(questsResponse.data ?? []);
+      if (achievementsResponse.success)
+        setAchievements(achievementsResponse.data ?? []);
     } catch (err) {
-      console.error('Error loading quests:', err);
-      setError('Failed to load quests and achievements');
+      console.error("Error loading quests:", err);
+      setError("Failed to load quests and achievements");
     } finally {
       setLoading(false);
     }
@@ -45,44 +53,46 @@ export function Quests() {
       setClaimingQuest(questId);
       const response = await claimQuestReward({ questId });
 
-      if (response.success) {
-        // Update quest status
-        setQuests(prev =>
-          prev.map(q =>
-            q.id === questId ? { ...q, status: 'claimed' as const } : q
-          )
+      if (response.success && response.data) {
+        setQuests((prev) =>
+          prev.map((q) =>
+            q.id === questId ? { ...q, status: "claimed" as const } : q,
+          ),
         );
 
-        // Show success notification (could be a toast)
-        alert(`🎉 Claimed ${response.data.rewards.xp} XP and ${response.data.rewards.coins} coins!`);
+        alert(
+          `🎉 Claimed ${response.data.rewards.xp} XP and ${response.data.rewards.coins} coins!`,
+        );
+      } else {
+        alert("Quests are currently under development. Check back soon!");
       }
     } catch (err) {
-      console.error('Error claiming reward:', err);
-      alert('Failed to claim reward. Please try again.');
+      console.error("Error claiming reward:", err);
+      alert("Quests are currently under development. Check back soon!");
     } finally {
       setClaimingQuest(null);
     }
   };
 
-  const filteredQuests = quests.filter(q => {
-    if (selectedTab === 'daily') return q.type === 'daily';
-    if (selectedTab === 'weekly') return q.type === 'weekly';
+  const filteredQuests = quests.filter((q) => {
+    if (selectedTab === "daily") return q.type === "daily";
+    if (selectedTab === "weekly") return q.type === "weekly";
     return false;
   });
 
   const getProgressColor = (progress: number, target: number) => {
     const percentage = (progress / target) * 100;
-    if (percentage >= 100) return 'bg-[#27ae60]';
-    if (percentage >= 50) return 'bg-[#f39c12]';
-    return 'bg-[#155ca5]';
+    if (percentage >= 100) return "bg-[#27ae60]";
+    if (percentage >= 50) return "bg-[#f39c12]";
+    return "bg-[#155ca5]";
   };
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">Loading quests...</p>
+      <main className="flex min-h-[70vh] items-center justify-center px-4">
+        <div className="space-y-4 text-center">
+          <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#155ca5]" />
+          <p className="font-medium text-gray-600">Loading quests...</p>
         </div>
       </main>
     );
@@ -90,12 +100,12 @@ export function Quests() {
 
   if (error) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-600 font-bold">{error}</p>
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="font-bold text-red-600">{error}</p>
           <button
             onClick={loadQuestsAndAchievements}
-            className="mt-4 px-6 py-2 bg-red-600 text-white rounded-md font-bold hover:bg-red-700 transition-colors"
+            className="mt-4 rounded-xl bg-red-600 px-6 py-2 font-bold text-white transition-colors hover:bg-red-700"
           >
             Retry
           </button>
@@ -105,165 +115,181 @@ export function Quests() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-8 pb-24 md:pb-12">
-      {/* Header */}
-      <section className="space-y-6">
-        <div>
-          <h1 className="text-5xl font-black text-[#155ca5] tracking-tight mb-2">
+    <main className="mx-auto min-h-screen w-full max-w-7xl space-y-6 overflow-x-hidden px-4 py-5 pb-24 sm:space-y-8 sm:px-6 sm:py-8 md:pb-12">
+      <section className="space-y-5">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#155ca5] sm:text-xs">
+            Challenges
+          </p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-[#155ca5] sm:text-4xl lg:text-5xl">
             Quests & Achievements
           </h1>
-          <p className="text-xl text-gray-600 font-medium">
-            Complete daily challenges and unlock special achievements!
+          <p className="mt-2 text-sm font-medium leading-6 text-gray-600 sm:text-lg">
+            This area is currently under development.
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm">
-          <button
-            onClick={() => setSelectedTab('daily')}
-            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedTab === 'daily'
-                ? 'bg-[#155ca5] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium leading-5 text-amber-900 sm:text-sm">
+          Quests and achievements are not wired to backend data yet. We keep
+          this page visible so the route remains ready for production work.
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 rounded-2xl bg-white p-2 shadow-sm sm:inline-grid sm:w-auto">
+          <TabButton
+            active={selectedTab === "daily"}
+            onClick={() => setSelectedTab("daily")}
+            icon={<Target className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
-            <Target className="w-5 h-5" />
-            Daily Quests
-          </button>
-          <button
-            onClick={() => setSelectedTab('weekly')}
-            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedTab === 'weekly'
-                ? 'bg-[#155ca5] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            Daily
+          </TabButton>
+
+          <TabButton
+            active={selectedTab === "weekly"}
+            onClick={() => setSelectedTab("weekly")}
+            icon={<Star className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
-            <Star className="w-5 h-5" />
-            Weekly Quests
-          </button>
-          <button
-            onClick={() => setSelectedTab('achievements')}
-            className={`px-6 py-3 rounded-md font-bold transition-all flex items-center gap-2 ${
-              selectedTab === 'achievements'
-                ? 'bg-[#155ca5] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            Weekly
+          </TabButton>
+
+          <TabButton
+            active={selectedTab === "achievements"}
+            onClick={() => setSelectedTab("achievements")}
+            icon={<Trophy className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
-            <Trophy className="w-5 h-5" />
-            Achievements
-          </button>
+            Badges
+          </TabButton>
         </div>
       </section>
 
-      {/* Quests */}
-      {selectedTab !== 'achievements' && (
-        <section className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {selectedTab !== "achievements" && (
+        <section className="space-y-5">
+          {filteredQuests.length === 0 && (
+            <EmptyState
+              icon={
+                <Target className="mx-auto mb-4 h-14 w-14 text-gray-300 sm:h-16 sm:w-16" />
+              }
+              text="Quests are currently under development"
+            />
+          )}
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             {filteredQuests.map((quest) => {
-              const isCompleted = quest.status === 'completed';
-              const isClaimed = quest.status === 'claimed';
+              const isCompleted = quest.status === "completed";
+              const isClaimed = quest.status === "claimed";
               const isClaiming = claimingQuest === quest.id;
 
               return (
-                <div
+                <article
                   key={quest.id}
-                  className={`bg-white p-6 rounded-lg shadow-sm border-2 transition-all ${
+                  className={`min-w-0 rounded-3xl bg-white p-4 shadow-sm transition-all sm:p-6 ${
                     isCompleted && !isClaimed
-                      ? 'border-[#27ae60] shadow-lg'
-                      : 'border-transparent'
+                      ? "border-2 border-[#27ae60] shadow-lg"
+                      : "border border-transparent"
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                        isClaimed ? 'bg-gray-200' : 'bg-[#155ca5]/10'
-                      }`}>
-                        {isClaimed ? (
-                          <CheckCircle className="w-6 h-6 text-gray-400" />
-                        ) : (
-                          <Target className={`w-6 h-6 ${isCompleted ? 'text-[#27ae60]' : 'text-[#155ca5]'}`} />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg">{quest.title}</h3>
-                        <p className="text-sm text-gray-600">{quest.description}</p>
-                      </div>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div
+                      className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${
+                        isClaimed ? "bg-gray-200" : "bg-[#155ca5]/10"
+                      }`}
+                    >
+                      {isClaimed ? (
+                        <CheckCircle className="h-6 w-6 text-gray-400" />
+                      ) : (
+                        <Target
+                          className={`h-6 w-6 ${
+                            isCompleted ? "text-[#27ae60]" : "text-[#155ca5]"
+                          }`}
+                        />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-base font-black text-slate-900 sm:text-lg">
+                        {quest.title}
+                      </h3>
+                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-600">
+                        {quest.description}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className="space-y-2 mb-4">
+                  <div className="mt-5 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Progress</span>
-                      <span className="font-bold">
+                      <span className="font-black">
                         {quest.progress}/{quest.target}
                       </span>
                     </div>
-                    <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200">
                       <div
-                        className={`h-full rounded-full transition-all ${getProgressColor(quest.progress, quest.target)}`}
-                        style={{ width: `${Math.min((quest.progress / quest.target) * 100, 100)}%` }}
+                        className={`h-full rounded-full transition-all ${getProgressColor(
+                          quest.progress,
+                          quest.target,
+                        )}`}
+                        style={{
+                          width: `${Math.min((quest.progress / quest.target) * 100, 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
 
-                  {/* Rewards & Action */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-sm font-bold">
-                      <div className="flex items-center gap-1 text-[#155ca5]">
-                        <Zap className="w-4 h-4" fill="#155ca5" />
-                        <span>+{quest.xpReward} XP</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-[#f1c40f]">
-                        <Coins className="w-4 h-4" fill="#f1c40f" />
-                        <span>+{quest.coinsReward}</span>
-                      </div>
+                  <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-3 text-sm font-black">
+                      <Reward
+                        icon={<Zap className="h-4 w-4" fill="#155ca5" />}
+                        className="text-[#155ca5]"
+                      >
+                        +{quest.xpReward} XP
+                      </Reward>
+
+                      <Reward
+                        icon={<Coins className="h-4 w-4" fill="#f1c40f" />}
+                        className="text-[#f1c40f]"
+                      >
+                        +{quest.coinsReward}
+                      </Reward>
                     </div>
 
                     {isClaimed ? (
-                      <span className="text-sm text-gray-500 font-bold">Claimed ✓</span>
+                      <span className="text-sm font-black text-gray-500">
+                        Claimed ✓
+                      </span>
                     ) : isCompleted ? (
                       <button
                         onClick={() => handleClaimReward(quest.id)}
                         disabled={isClaiming}
-                        className="px-4 py-2 bg-[#27ae60] text-white rounded-md font-bold hover:bg-[#229954] transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#27ae60] px-4 py-3 text-sm font-black text-white transition-colors hover:bg-[#229954] disabled:opacity-50 sm:w-auto sm:py-2"
                       >
                         {isClaiming ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                             Claiming...
                           </>
                         ) : (
                           <>
-                            <Gift className="w-4 h-4" />
+                            <Gift className="h-4 w-4" />
                             Claim Reward
                           </>
                         )}
                       </button>
                     ) : (
-                      <span className="text-sm text-gray-500 font-bold">
+                      <span className="text-sm font-black text-gray-500">
                         {quest.target - quest.progress} more to go
                       </span>
                     )}
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
-
-          {filteredQuests.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-lg">
-              <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No {selectedTab} quests available</p>
-            </div>
-          )}
         </section>
       )}
 
-      {/* Achievements */}
-      {selectedTab === 'achievements' && (
-        <section className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {selectedTab === "achievements" && (
+        <section className="space-y-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             {achievements.map((achievement) => {
               const isUnlocked = !achievement.isLocked;
               const progressPercentage = achievement.requirement
@@ -271,65 +297,127 @@ export function Quests() {
                 : 0;
 
               return (
-                <div
+                <article
                   key={achievement.id}
-                  className={`bg-white p-6 rounded-lg shadow-sm border-2 transition-all ${
+                  className={`min-w-0 rounded-3xl bg-white p-5 text-center shadow-sm transition-all sm:p-6 ${
                     isUnlocked
-                      ? 'border-[#ffd700]'
-                      : 'border-transparent opacity-75'
+                      ? "border-2 border-[#ffd700]"
+                      : "border border-transparent opacity-75"
                   }`}
                 >
-                  <div className="text-center mb-4">
-                    <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-3 ${
-                      isUnlocked ? 'bg-[#ffd700]/20' : 'bg-gray-200'
-                    }`}>
-                      {isUnlocked ? (
-                        <Trophy className="w-10 h-10 text-[#ffd700]" />
-                      ) : (
-                        <Lock className="w-10 h-10 text-gray-400" />
-                      )}
-                    </div>
-                    <h3 className="font-bold text-lg mb-1">{achievement.title}</h3>
-                    <p className="text-sm text-gray-600">{achievement.description}</p>
+                  <div
+                    className={`mx-auto mb-4 grid h-20 w-20 place-items-center rounded-full ${
+                      isUnlocked ? "bg-[#ffd700]/20" : "bg-gray-200"
+                    }`}
+                  >
+                    {isUnlocked ? (
+                      <Trophy className="h-10 w-10 text-[#ffd700]" />
+                    ) : (
+                      <Lock className="h-10 w-10 text-gray-400" />
+                    )}
                   </div>
 
+                  <h3 className="truncate text-lg font-black text-slate-900">
+                    {achievement.title}
+                  </h3>
+                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-600">
+                    {achievement.description}
+                  </p>
+
                   {!isUnlocked && achievement.requirement && (
-                    <div className="space-y-2">
+                    <div className="mt-5 space-y-2 text-left">
                       <div className="flex justify-between text-xs text-gray-600">
                         <span>Progress</span>
-                        <span className="font-bold">
+                        <span className="font-black">
                           {achievement.progress || 0}/{achievement.requirement}
                         </span>
                       </div>
-                      <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200">
                         <div
-                          className="h-full bg-[#155ca5] rounded-full transition-all"
-                          style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                          className="h-full rounded-full bg-[#155ca5] transition-all"
+                          style={{
+                            width: `${Math.min(progressPercentage, 100)}%`,
+                          }}
                         />
                       </div>
                     </div>
                   )}
 
                   {isUnlocked && achievement.unlockedAt && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-xs text-gray-500 text-center">
-                        Unlocked on {new Date(achievement.unlockedAt).toLocaleDateString()}
+                    <div className="mt-5 border-t border-gray-200 pt-4">
+                      <p className="text-xs text-gray-500">
+                        Unlocked on{" "}
+                        {new Date(achievement.unlockedAt).toLocaleDateString()}
                       </p>
                     </div>
                   )}
-                </div>
+                </article>
               );
             })}
           </div>
 
           {achievements.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-lg">
-              <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No achievements available</p>
-            </div>
+            <EmptyState
+              icon={
+                <Trophy className="mx-auto mb-4 h-14 w-14 text-gray-300 sm:h-16 sm:w-16" />
+              }
+              text="Achievements are currently under development"
+            />
           )}
         </section>
       )}
     </main>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-xs font-black transition-all sm:gap-2 sm:px-5 sm:text-sm ${
+        active
+          ? "bg-[#155ca5] text-white shadow-md"
+          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+      }`}
+    >
+      {icon}
+      <span className="truncate">{children}</span>
+    </button>
+  );
+}
+
+function Reward({
+  icon,
+  children,
+  className = "",
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`inline-flex items-center gap-1 ${className}`}>
+      {icon}
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="rounded-3xl bg-white px-4 py-12 text-center shadow-sm">
+      {icon}
+      <p className="text-base text-gray-500 sm:text-lg">{text}</p>
+    </div>
   );
 }

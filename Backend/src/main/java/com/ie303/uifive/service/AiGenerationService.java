@@ -308,27 +308,260 @@ public class AiGenerationService {
     }
 
     private String buildEssayEvaluationPrompt(String topic, String explanation, String answerText) {
-        return "PROMPT";
+        String normalizedTopic = normalizeTopic(topic);
+        return """
+                Bạn là một giáo viên tiếng Anh chuyên nghiệp và khắt khe, có nhiều năm kinh nghiệm chấm bài Writing.
+
+                Nhiệm vụ của bạn:
+                - Chấm bài theo 4 tiêu chí: task response, coherence and cohesion, lexical resource, grammatical range and accuracy.
+                - Dựa trên đề bài, phần giải thích/gợi ý tham chiếu và bài làm của học sinh.
+                - Nhận xét phải công tâm, rõ ràng, có tính xây dựng nhưng không quá khắt khe.
+                - Chỉ trả về DUY NHẤT JSON hợp lệ.
+                - Không markdown.
+                - Không dùng ```
+                - Không viết thêm bất kỳ văn bản nào ngoài JSON.
+
+                Quy ước chấm điểm:
+                - score là điểm tổng thể trên thang 10.
+                - score phải là số thập phân, kết thúc bằng .0 hoặc .5.
+                - Hãy làm tròn về mức 0.5 gần nhất.
+                - Trong feedback, hãy tóm tắt ngắn gọn 4 tiêu chí và chỉ ra lỗi quan trọng nhất.
+
+                Gợi ý nội dung feedback:
+                - Mở đầu bằng tổng quan 1-2 câu.
+                - Nêu điểm mạnh và điểm yếu theo từng tiêu chí.
+                - Kết thúc bằng 2-4 gợi ý hành động cụ thể để cải thiện.
+                - Nếu có lỗi sai đáng chú ý, hãy nhắc lại nguyên văn một phần ngắn trong câu sai để học sinh nhận ra lỗi.
+
+                Đề bài:
+                %s
+
+                Giải thích tham chiếu:
+                %s
+
+                Bài làm của học sinh:
+                %s
+
+                Trả về đúng JSON theo format:
+                {
+                  "score": 0.0,
+                  "feedback": "Tổng quan...\\nTask response...\\nCoherence and cohesion...\\nLexical resource...\\nGrammatical range and accuracy...\\nGợi ý cải thiện..."
+                }
+                """.formatted(normalizedTopic, explanation, answerText);
     }
 
     private String buildSpeakingEvaluationPrompt(String topic, String explanation, String transcriptText) {
-        return "PROMPT";
+        String normalizedTopic = normalizeTopic(topic);
+        return """
+                Bạn là một giáo viên tiếng Anh chuyên nghiệp và khắt khe, có nhiều năm kinh nghiệm chấm bài Speaking.
+
+                Nhiệm vụ của bạn:
+                - Chấm bài theo 4 tiêu chí: fluency and coherence, lexical resources, grammatical range and accuracy, pronunciation.
+                - Dựa trên đề bài, phần giải thích/gợi ý tham chiếu và transcript của học sinh.
+                - Nhận xét phải công tâm, rõ ràng, có tính xây dựng nhưng không quá khắt khe.
+                - Chỉ trả về DUY NHẤT JSON hợp lệ.
+                - Không markdown.
+                - Không dùng ```
+                - Không viết thêm bất kỳ văn bản nào ngoài JSON.
+
+                Quy ước chấm điểm:
+                - score là điểm tổng thể trên thang 10.
+                - score phải là số thập phân, kết thúc bằng .0 hoặc .5.
+                - Hãy làm tròn về mức 0.5 gần nhất.
+                - Trong feedback, hãy tóm tắt ngắn gọn 4 tiêu chí và chỉ ra lỗi quan trọng nhất.
+
+                Gợi ý nội dung feedback:
+                - Mở đầu bằng tổng quan 1-2 câu.
+                - Nêu điểm mạnh và điểm yếu theo từng tiêu chí.
+                - Nếu transcript có câu sai rõ ràng, hãy nhắc lại nguyên văn một phần ngắn trong câu sai.
+                - Kết thúc bằng 2-4 gợi ý hành động cụ thể để luyện speaking tốt hơn.
+
+                Đề bài:
+                %s
+
+                Giải thích tham chiếu:
+                %s
+
+                Transcript:
+                %s
+
+                Trả về đúng JSON theo format:
+                {
+                  "score": 0.0,
+                  "feedback": "Tổng quan...\\nFluency and coherence...\\nLexical resources...\\nGrammatical range and accuracy...\\nPronunciation...\\nGợi ý cải thiện..."
+                }
+                """.formatted(normalizedTopic, explanation, transcriptText);
     }
 
     private String buildEssayQuestionsPrompt(String context, int count, String topicHint) {
-        return "PROMPT";
+        return """
+                Bạn là người tạo câu hỏi tiếng Anh cho học sinh.
+
+                Hãy tạo đúng %d câu hỏi dạng ESSAY WRITING.
+                Bối cảnh: %s
+                Chủ đề gợi ý: %s
+
+                Yêu cầu cho mỗi câu hỏi:
+                - content: đề bài cụ thể, rõ ràng
+                - explanation: gợi ý ngắn để học sinh biết hướng làm
+                - sampleAnswer: một đoạn trả lời mẫu ngắn
+
+                Chỉ trả về DUY NHẤT JSON hợp lệ là một ARRAY.
+                Không markdown.
+                Không dùng ```
+                Không viết thêm gì ngoài JSON.
+
+                Format bắt buộc:
+                [
+                  {
+                    "content": "string",
+                    "explanation": "string",
+                    "sampleAnswer": "string"
+                  }
+                ]
+                """.formatted(count, context, topicHint);
     }
 
     private String buildMcqQuestionsPrompt(String context, int count, String topicHint) {
-        return "PROMPT";
+        return """
+                Bạn là người tạo câu hỏi trắc nghiệm tiếng Anh cho học sinh.
+
+                Hãy tạo đúng %d câu hỏi dạng multiple-choice.
+                Bối cảnh: %s
+                Chủ đề gợi ý: %s
+
+                Yêu cầu cho mỗi câu hỏi:
+                - content: nội dung câu hỏi
+                - explanation: giải thích ngắn
+                - options: đúng 4 lựa chọn A, B, C, D
+                - correctOptionKey: chỉ được là A/B/C/D
+
+                Chỉ trả về DUY NHẤT JSON hợp lệ là một ARRAY.
+                Không markdown.
+                Không dùng ```
+                Không viết thêm gì ngoài JSON.
+
+                Format bắt buộc:
+                [
+                  {
+                    "content": "string",
+                    "explanation": "string",
+                    "correctOptionKey": "A",
+                    "options": [
+                      {"optionKey": "A", "content": "string"},
+                      {"optionKey": "B", "content": "string"},
+                      {"optionKey": "C", "content": "string"},
+                      {"optionKey": "D", "content": "string"}
+                    ]
+                  }
+                ]
+                """.formatted(count, context, topicHint);
     }
 
     private String buildPersonalizedMcqQuestionsPrompt(String context, int count, String topicHint) {
-        return "PROMPT";
+        return """
+                Bạn là người tạo câu hỏi trắc nghiệm tiếng Anh để học sinh luyện lại các câu đã làm sai.
+
+                Hãy tạo đúng %d câu hỏi dạng multiple-choice.
+                Bối cảnh: %s
+                Chủ đề gợi ý: %s
+
+                Yêu cầu cực kỳ quan trọng:
+                - Mỗi câu hỏi mới phải bám sát các "target answer", "target word", "target phrase" hoặc "target grammar point" có trong bối cảnh tham chiếu
+                - Có thể đổi ngữ cảnh, ví dụ và cách hỏi, nhưng KHÔNG được đổi đáp án mục tiêu sang từ/cụm từ/kiến thức khác
+                - Nếu tham chiếu ghi rõ target answer thì đáp án đúng của câu mới phải chính là target answer đó, hoặc kiểm tra trực tiếp đúng điểm kiến thức đó
+                - Không tạo câu hỏi chung chung, không lạc sang từ vựng khác
+                - Ưu tiên giúp học sinh luyện lại đúng lỗi cũ bằng một câu mới dễ hiểu hơn
+
+                Yêu cầu cho mỗi câu hỏi:
+                - content: nội dung câu hỏi
+                - explanation: giải thích ngắn, nêu rõ vì sao đáp án đúng khớp với target cần luyện
+                - options: đúng 4 lựa chọn A, B, C, D
+                - correctOptionKey: chỉ được là A/B/C/D
+
+                Chỉ trả về DUY NHẤT JSON hợp lệ là một ARRAY.
+                Không markdown.
+                Không dùng ```
+                Không viết thêm gì ngoài JSON.
+
+                Format bắt buộc:
+                [
+                  {
+                    "content": "string",
+                    "explanation": "string",
+                    "correctOptionKey": "A",
+                    "options": [
+                      {"optionKey": "A", "content": "string"},
+                      {"optionKey": "B", "content": "string"},
+                      {"optionKey": "C", "content": "string"},
+                      {"optionKey": "D", "content": "string"}
+                    ]
+                  }
+                ]
+                """.formatted(count, context, topicHint);
     }
 
     private String buildPersonalizedMixedQuestionsPrompt(String context, int count, String topicHint) {
-        return "PROMPT";
+        return """
+                Bạn là người tạo bộ câu hỏi tiếng Anh cá nhân hóa để học sinh luyện lại đúng các lỗi đã làm sai.
+
+                Hãy tạo đúng %d câu hỏi.
+                Bối cảnh: %s
+                Chủ đề gợi ý: %s
+
+                Bạn CHỈ được dùng các questionType có trong phần "Allowed personalized question types" của bối cảnh.
+
+                Yêu cầu cực kỳ quan trọng:
+                - Phải ưu tiên tạo bộ câu hỏi HỖN HỢP nhiều loại nếu bối cảnh cho phép, không dồn toàn bộ về 1 dạng
+                - Nhưng vẫn phải bám sát "target answer" hoặc điểm kiến thức gốc từ câu sai tham chiếu
+                - Không đổi sang kiến thức khác
+                - Nếu câu mới là dạng option-based thì đáp án đúng phải nằm đúng trong options
+                - Nếu câu mới là dạng fill/form thì correctAnswer phải là đáp án text cuối cùng học sinh cần điền
+
+                Các questionType được phép trong JSON:
+                - QUALITATIVE_MC
+                - CLOZE_MC
+                - LIMITED_FILL
+                - WORD_FORM
+                - VERB_FORM
+
+                Quy tắc format:
+                - Với QUALITATIVE_MC, CLOZE_MC:
+                  questionType phải đúng tên
+                  options phải có đúng 4 lựa chọn A, B, C, D
+                  correctAnswer phải là optionKey đúng: A/B/C/D
+                - Với LIMITED_FILL, WORD_FORM, VERB_FORM:
+                  options phải là [] hoặc null
+                  correctAnswer phải là text đáp án đúng
+
+                Chỉ trả về DUY NHẤT JSON hợp lệ là một ARRAY.
+                Không markdown.
+                Không dùng ```
+                Không viết thêm gì ngoài JSON.
+
+                Format bắt buộc:
+                [
+                  {
+                    "questionType": "QUALITATIVE_MC",
+                    "content": "string",
+                    "explanation": "string",
+                    "correctAnswer": "A",
+                    "options": [
+                      {"optionKey": "A", "content": "string"},
+                      {"optionKey": "B", "content": "string"},
+                      {"optionKey": "C", "content": "string"},
+                      {"optionKey": "D", "content": "string"}
+                    ]
+                  },
+                  {
+                    "questionType": "WORD_FORM",
+                    "content": "string",
+                    "explanation": "string",
+                    "correctAnswer": "string",
+                    "options": []
+                  }
+                ]
+                """.formatted(count, context, topicHint);
     }
 
     private String extractJsonObject(String raw) {

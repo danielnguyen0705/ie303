@@ -15,6 +15,7 @@ import com.ie303.uifive.mapper.UserMapper;
 import com.ie303.uifive.repo.UserLessonProgressRepo;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,12 +29,22 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserService implements UserDetailsService {
+
+    @Value("${user.default-avatar-base-url:https://api.dicebear.com/7.x/avataaars/svg?seed=}")
+    private String defaultAvatarBaseUrl;
+
+    @Value("${user.default-background-url:https://images.unsplash.com/photo-1522542550221-31fd19575a2d?auto=format&fit=crop&w=1600&q=80}")
+    private String defaultBackgroundUrl;
+
+    @Value("${notification.time-zone:Asia/Ho_Chi_Minh}")
+    private String studyTimeZone;
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepo repo;
@@ -52,6 +63,7 @@ public class UserService implements UserDetailsService {
 
         User user = mapper.toEntity(request);
 
+        applyDefaultCosmetics(user, request.username());
         user.setRole(Role.USER);
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
@@ -183,7 +195,7 @@ public class UserService implements UserDetailsService {
     }
 
     private void updateStreak(User user) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of(studyTimeZone));
 
         if (user.getLastStudyDate() == null) {
             user.setStreak(1);
@@ -262,6 +274,7 @@ public class UserService implements UserDetailsService {
         user.setEmail(email);
         user.setUsername(email);
         user.setPassword("");
+        applyDefaultCosmetics(user, name != null && !name.isBlank() ? name : email);
         user.setRole(Role.USER);
         user.setCoin(0);
         user.setExp(0);
@@ -279,6 +292,18 @@ public class UserService implements UserDetailsService {
     public User findOrCreateOAuth2User(String email, String name) {
         User user = findByEmailOrNull(email);
         return user != null ? user : createOAuth2User(email, name);
+    }
+
+    private void applyDefaultCosmetics(User user, String seedSource) {
+        String seed = (seedSource == null || seedSource.isBlank()) ? "user" : seedSource.trim();
+
+        if (user.getAvatar() == null || user.getAvatar().isBlank()) {
+            user.setAvatar(defaultAvatarBaseUrl + seed);
+        }
+
+        if (user.getBackground() == null || user.getBackground().isBlank()) {
+            user.setBackground(defaultBackgroundUrl);
+        }
     }
 
     public void changePassword(String username, ChangePasswordRequest request) {

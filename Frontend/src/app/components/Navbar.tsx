@@ -1,5 +1,18 @@
-import { Link, useLocation, useNavigate } from "react-router";
-import { Flame, Coins, User, LogOut, History, Backpack, X } from "lucide-react";
+﻿import { Link, useLocation, useNavigate } from "react-router";
+import {
+  Flame,
+  Coins,
+  User,
+  LogOut,
+  History,
+  Backpack,
+  X,
+  BookOpen,
+  Target,
+  Trophy,
+  ShoppingBag,
+  CircleDollarSign,
+} from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
@@ -299,7 +312,7 @@ function NavbarContent() {
         <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
           <Link
             to="/"
-            className="text-2xl font-black italic text-[#155ca5] tracking-tighter"
+            className="shrink-0 text-2xl font-black italic tracking-tighter text-[#155ca5]"
           >
             UIFIVE
           </Link>
@@ -389,7 +402,7 @@ function NavbarContent() {
               type="button"
               aria-label={copy("Open inventory", "Mở túi đồ")}
               onClick={() => setIsInventoryModalOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[#155ca5] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-100 hover:text-[#124e8b]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#155ca5] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-100 hover:text-[#124e8b]"
             >
               <Backpack className="h-4 w-4" />
             </button>
@@ -413,14 +426,14 @@ function NavbarContent() {
             {isAuthenticated && user ? (
               <>
                 <span className="hidden lg:block text-sm font-semibold text-slate-700">
-                  {copy("Hello", "Xin chào")}, {user.username}
+                  {copy("Hello", "Xin chào")}
                 </span>
 
                 <div className="relative" ref={dropdownRef}>
                   <button
                     type="button"
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="relative group cursor-pointer hover:scale-105 transition-transform"
+                    className="relative group shrink-0 cursor-pointer transition-transform hover:scale-105"
                   >
                     <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 to-yellow-600 shadow-md">
                       <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">

@@ -90,7 +90,7 @@ public class ContentDeletionService {
 
     @Transactional
     public void deleteSection(Long sectionId) {
-        lessonRepo.findBySectionIdOrderByLessonNumberAsc(sectionId)
+        lessonRepo.findBySectionIdOrdered(sectionId)
                 .forEach(lesson -> deleteLesson(lesson.getId()));
 
         sectionRepo.deleteById(sectionId);

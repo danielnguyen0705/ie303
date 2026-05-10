@@ -484,12 +484,12 @@ function validateMatchingQuestionData(
       : parsedCorrectAnswer?.answers || {};
 
   if (left.length === 0 || right.length === 0 || Object.keys(answers).length === 0) {
-    return "MATCHING cần questionData/correctAnswer dạng JSON hợp lệ";
+    return "MATCHING requires questionData/correctAnswer in valid JSON format";
   }
 
   const missingLeftAnswers = left.filter((item) => !answers[item]);
   if (missingLeftAnswers.length > 0) {
-    return `MATCHING thiếu đáp án cho: ${missingLeftAnswers.join(", ")}`;
+    return `MATCHING is missing answers for: ${missingLeftAnswers.join(", ")}`;
   }
 
   return null;
@@ -901,10 +901,10 @@ export default function QuestionPanel({
   const openCreateDialog = () => {
     if (!selectedLesson) {
       error({
-        title: "Chưa chọn lesson",
-        message: "Bạn cần chọn lesson trước khi thêm question",
+        title: "No lesson selected",
+        message: "You need to select a lesson before adding questions",
         showCancelButton: false,
-        confirmText: "Đóng",
+        confirmText: "Close",
       });
       return;
     }
@@ -1086,9 +1086,9 @@ export default function QuestionPanel({
   };
 
   const validateSingle = () => {
-    if (!selectedLesson?.id) return "Thiếu lessonId";
-    if (!selectedSingleType) return "Bạn chưa chọn loại câu hỏi";
-    if (!singleForm.content.trim()) return "Content không được để trống";
+    if (!selectedLesson?.id) return "Missing lessonId";
+    if (!selectedSingleType) return "You have not selected a question type";
+    if (!singleForm.content.trim()) return "Content cannot be empty";
 
     if (isMatchingType(selectedSingleType)) {
       return validateMatchingQuestionData(
@@ -1099,26 +1099,26 @@ export default function QuestionPanel({
 
     if (isOptionBasedType(selectedSingleType)) {
       const emptyOption = singleForm.options.find((opt) => !opt.content.trim());
-      if (emptyOption) return "Các option không được để trống";
+      if (emptyOption) return "Options cannot be empty";
 
       const hasCorrect = singleForm.options.some((opt) => opt.isCorrect);
-      if (!hasCorrect) return "Bạn cần chọn 1 đáp án đúng";
+      if (!hasCorrect) return "You must choose one correct answer";
     }
 
     if (
       isTextAnswerType(selectedSingleType) &&
       !singleForm.correctAnswer.trim()
     ) {
-      return "Correct answer không được để trống";
+      return "Correct answer cannot be empty";
     }
 
     return null;
   };
 
   const validateGroup = () => {
-    if (!selectedLesson?.id) return "Thiếu lessonId";
-    if (!selectedGroupType) return "Bạn chưa chọn loại group";
-    if (!groupForm.title.trim()) return "Title group không được để trống";
+    if (!selectedLesson?.id) return "Missing lessonId";
+    if (!selectedGroupType) return "You have not selected a group type";
+    if (!groupForm.title.trim()) return "Group title cannot be empty";
 
     const childType = getDefaultChildType(selectedGroupType);
 
@@ -1126,7 +1126,7 @@ export default function QuestionPanel({
       const q = groupForm.questions[i];
 
       if (!q.content.trim()) {
-        return `Question ${i + 1}: content không được để trống`;
+        return `Question ${i + 1}: content cannot be empty`;
       }
 
       if (isMatchingType(childType)) {
@@ -1142,17 +1142,17 @@ export default function QuestionPanel({
       if (isOptionBasedType(childType)) {
         const emptyOption = q.options.find((opt) => !opt.content.trim());
         if (emptyOption) {
-          return `Question ${i + 1}: option không được để trống`;
+          return `Question ${i + 1}: option cannot be empty`;
         }
 
         const hasCorrect = q.options.some((opt) => opt.isCorrect);
         if (!hasCorrect) {
-          return `Question ${i + 1}: cần chọn 1 đáp án đúng`;
+          return `Question ${i + 1}: you must choose one correct answer`;
         }
       }
 
       if (isTextAnswerType(childType) && !q.correctAnswer.trim()) {
-        return `Question ${i + 1}: correct answer không được để trống`;
+        return `Question ${i + 1}: correct answer cannot be empty`;
       }
     }
 
@@ -1180,7 +1180,7 @@ export default function QuestionPanel({
 
         if (!optionRes.success) {
           throw new Error(
-            optionRes.error?.message || `Không thể cập nhật option ${i + 1}`,
+            optionRes.error?.message || `Could not update option ${i + 1}`,
           );
         }
       } else {
@@ -1188,7 +1188,7 @@ export default function QuestionPanel({
 
         if (!optionRes.success) {
           throw new Error(
-            optionRes.error?.message || `Không thể tạo option ${i + 1}`,
+            optionRes.error?.message || `Could not create option ${i + 1}`,
           );
         }
       }
@@ -1243,7 +1243,7 @@ export default function QuestionPanel({
         });
 
         if (!createRes.success || !createRes.data?.id) {
-          throw new Error(createRes.error?.message || "Import single question thất bại");
+          throw new Error(createRes.error?.message || "Failed to import single question");
         }
 
         if (isOptionBasedType(questionType)) {
@@ -1253,7 +1253,7 @@ export default function QuestionPanel({
           });
           if (options.length === 0) {
             throw new Error(
-              `Single question "${content}" không có option hợp lệ trong file Excel`,
+              `Single question "${content}" does not have valid options in the Excel file`,
             );
           }
           await upsertQuestionOptions(createRes.data.id, options);
@@ -1275,7 +1275,7 @@ export default function QuestionPanel({
         });
 
         if (!groupRes.success || !groupRes.data?.id) {
-          throw new Error(groupRes.error?.message || "Import group thất bại");
+          throw new Error(groupRes.error?.message || "Failed to import group");
         }
 
         const childType = getDefaultChildType(groupType);
@@ -1307,7 +1307,7 @@ export default function QuestionPanel({
 
           if (!questionRes.success || !questionRes.data?.id) {
             throw new Error(
-              questionRes.error?.message || "Import child question thất bại",
+              questionRes.error?.message || "Failed to import child question",
             );
           }
 
@@ -1318,7 +1318,7 @@ export default function QuestionPanel({
             });
             if (options.length === 0) {
               throw new Error(
-                `Group question "${content}" không có option hợp lệ trong file Excel`,
+                `Group question "${content}" does not have valid options in the Excel file`,
               );
             }
             await upsertQuestionOptions(questionRes.data.id, options);
@@ -1329,19 +1329,19 @@ export default function QuestionPanel({
       await onReload();
 
       success({
-        title: "Thành công",
-        message: "Đã import Excel",
+        title: "Success",
+        message: "Excel imported successfully",
         autoClose: true,
         showCancelButton: false,
       });
     } catch (e: any) {
       error({
-        title: "Import Excel thất bại",
+        title: "Excel import failed",
         message:
           e?.message ||
-          "Hãy kiểm tra lại tên sheet: single_questions, question_groups, group_questions",
+          "Please check the sheet names: single_questions, question_groups, group_questions",
         showCancelButton: false,
-        confirmText: "Đóng",
+        confirmText: "Close",
       });
     } finally {
       setSubmitting(false);
@@ -1355,10 +1355,10 @@ export default function QuestionPanel({
     const validationError = validateSingle();
     if (validationError) {
       error({
-        title: "Thiếu thông tin",
+        title: "Missing information",
         message: validationError,
         showCancelButton: false,
-        confirmText: "Đóng",
+        confirmText: "Close",
       });
       return;
     }
@@ -1404,7 +1404,7 @@ export default function QuestionPanel({
       if (!questionRes.success || !questionRes.data?.id) {
         throw new Error(
           questionRes.error?.message ||
-          (isEditing ? "Không thể cập nhật question" : "Không thể tạo question"),
+          (isEditing ? "Could not update question" : "Could not create question"),
         );
       }
 
@@ -1417,8 +1417,8 @@ export default function QuestionPanel({
       await onReload();
 
       success({
-        title: "Thành công",
-        message: isEditing ? "Đã cập nhật question" : "Đã tạo question",
+        title: "Success",
+        message: isEditing ? "Question updated successfully" : "Question created successfully",
         autoClose: true,
         showCancelButton: false,
       });
@@ -1426,11 +1426,11 @@ export default function QuestionPanel({
       error({
         title:
           dialogMode === "edit-single"
-            ? "Cập nhật question thất bại"
-            : "Tạo question thất bại",
-        message: e?.message || "Đã có lỗi xảy ra",
+            ? "Failed to update question"
+            : "Failed to create question",
+        message: e?.message || "An unexpected error occurred",
         showCancelButton: false,
-        confirmText: "Đóng",
+        confirmText: "Close",
       });
     } finally {
       setSubmitting(false);
@@ -1441,10 +1441,10 @@ export default function QuestionPanel({
     const validationError = validateGroup();
     if (validationError) {
       error({
-        title: "Thiếu thông tin",
+        title: "Missing information",
         message: validationError,
         showCancelButton: false,
-        confirmText: "Đóng",
+        confirmText: "Close",
       });
       return;
     }
@@ -1496,8 +1496,8 @@ export default function QuestionPanel({
         throw new Error(
           groupRes.error?.message ||
           (isEditing
-            ? "Không thể cập nhật question group"
-            : "Không thể tạo question group"),
+            ? "Could not update question group"
+            : "Could not create question group"),
         );
       }
 
@@ -1528,7 +1528,7 @@ export default function QuestionPanel({
       for (const removedId of removedChildIds) {
         const delRes = await adminApi.deleteContentQuestion({ id: removedId });
         if (!delRes.success) {
-          throw new Error(delRes.error?.message || "Không thể xóa câu con đã bị bỏ");
+          throw new Error(delRes.error?.message || "Could not delete the removed child question");
         }
       }
 
@@ -1568,7 +1568,7 @@ export default function QuestionPanel({
         if (!questionRes.success || !questionRes.data?.id) {
           throw new Error(
             questionRes.error?.message ||
-            `${q.id ? "Không thể cập nhật" : "Không thể tạo"} câu con ${qIndex + 1
+            `${q.id ? "Could not update" : "Could not create"} child question ${qIndex + 1
             }`,
           );
         }
@@ -1583,8 +1583,8 @@ export default function QuestionPanel({
       await onReload();
 
       success({
-        title: "Thành công",
-        message: isEditing ? "Đã cập nhật question group" : "Đã tạo question group",
+        title: "Success",
+        message: isEditing ? "Question group updated successfully" : "Question group created successfully",
         autoClose: true,
         showCancelButton: false,
       });
@@ -1597,11 +1597,11 @@ export default function QuestionPanel({
       error({
         title:
           dialogMode === "edit-group"
-            ? "Cập nhật question group thất bại"
-            : "Tạo question group thất bại",
-        message: e?.message || "Đã có lỗi xảy ra",
+            ? "Failed to update question group"
+            : "Failed to create question group",
+        message: e?.message || "An unexpected error occurred",
         showCancelButton: false,
-        confirmText: "Đóng",
+        confirmText: "Close",
       });
     } finally {
       setSubmitting(false);
@@ -1612,28 +1612,28 @@ export default function QuestionPanel({
     if (!questionId) return;
 
     warning({
-      title: "Xóa question",
-      message: "Bạn có chắc muốn xóa question này?",
-      description: "Hành động này không thể hoàn tác",
-      confirmText: "Xóa",
-      cancelText: "Hủy",
+      title: "Delete question",
+      message: "Are you sure you want to delete this question?",
+      description: "This action cannot be undone",
+      confirmText: "Delete",
+      cancelText: "Cancel",
       showCancelButton: true,
       onConfirm: async () => {
         const res = await adminApi.deleteContentQuestion({ id: questionId });
         if (res.success) {
           await onReload();
           success({
-            title: "Thành công",
-            message: "Đã xóa question",
+            title: "Success",
+            message: "Question deleted successfully",
             autoClose: true,
             showCancelButton: false,
           });
         } else {
           error({
-            title: "Không thể xóa question",
-            message: res.error?.message || "Đã có lỗi xảy ra",
+            title: "Could not delete question",
+            message: res.error?.message || "An unexpected error occurred",
             showCancelButton: false,
-            confirmText: "Đóng",
+            confirmText: "Close",
           });
         }
       },
@@ -1644,28 +1644,28 @@ export default function QuestionPanel({
     if (!groupId) return;
 
     warning({
-      title: "Xóa question group",
-      message: "Bạn có chắc muốn xóa group này?",
-      description: "Các câu bên trong nên được BE xử lý cascade nếu có cấu hình",
-      confirmText: "Xóa",
-      cancelText: "Hủy",
+      title: "Delete question group",
+      message: "Are you sure you want to delete this group?",
+      description: "Nested questions should be removed by backend cascade if configured",
+      confirmText: "Delete",
+      cancelText: "Cancel",
       showCancelButton: true,
       onConfirm: async () => {
         const res = await adminApi.deleteQuestionGroup({ id: groupId });
         if (res.success) {
           await onReload();
           success({
-            title: "Thành công",
-            message: "Đã xóa question group",
+            title: "Success",
+            message: "Question group deleted successfully",
             autoClose: true,
             showCancelButton: false,
           });
         } else {
           error({
-            title: "Không thể xóa group",
-            message: res.error?.message || "Đã có lỗi xảy ra",
+            title: "Could not delete group",
+            message: res.error?.message || "An unexpected error occurred",
             showCancelButton: false,
-            confirmText: "Đóng",
+            confirmText: "Close",
           });
         }
       },
@@ -1687,13 +1687,13 @@ export default function QuestionPanel({
           </div>
 
           <h2 className="text-xl font-bold text-slate-900">
-            {selectedLesson ? selectedLesson.name : "Chưa chọn lesson"}
+            {selectedLesson ? selectedLesson.name : "No lesson selected"}
           </h2>
 
           <p className="text-sm text-slate-500 mt-1">
             {selectedLesson
-              ? "Hiển thị single questions và question groups của lesson"
-              : "Hãy chọn lesson để xem question"}
+              ? "Showing single questions and question groups for this lesson"
+              : "Select a lesson to view questions"}
           </p>
         </div>
 
@@ -1747,10 +1747,10 @@ export default function QuestionPanel({
           <div className="max-w-md">
             <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-700 font-semibold">
-              Chưa có lesson nào được chọn
+              No lesson selected
             </p>
             <p className="text-sm text-slate-500 mt-2">
-              Sau khi chọn lesson, single question và group question sẽ hiện ở đây.
+              After you select a lesson, single questions and question groups will appear here.
             </p>
           </div>
         </div>
@@ -1780,7 +1780,7 @@ export default function QuestionPanel({
               <div>
                 <p className="text-slate-500">Duration</p>
                 <p className="font-semibold text-slate-900">
-                  {selectedLesson.durationMinutes ?? "-"} phút
+                  {selectedLesson.durationMinutes ?? "-"} minutes
                 </p>
               </div>
             </div>
@@ -1792,7 +1792,7 @@ export default function QuestionPanel({
                 Single Questions ({normalized.singleQuestions.length})
               </p>
               <p className="text-sm text-slate-500">
-                Các câu độc lập thuộc lesson này
+                Standalone questions in this lesson
               </p>
             </div>
 
@@ -1800,7 +1800,7 @@ export default function QuestionPanel({
               <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
                 <HelpCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-700 font-semibold">
-                  Chưa có single question
+                  No standalone questions yet
                 </p>
               </div>
             ) : (
@@ -1907,7 +1907,7 @@ export default function QuestionPanel({
                 Question Groups ({normalized.questionGroups.length})
               </p>
               <p className="text-sm text-slate-500">
-                Các nhóm câu hỏi có shared content
+                Question groups with shared content
               </p>
             </div>
 
@@ -1915,7 +1915,7 @@ export default function QuestionPanel({
               <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
                 <Layers3 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-700 font-semibold">
-                  Chưa có question group
+                  No question groups yet
                 </p>
               </div>
             ) : (
@@ -2018,7 +2018,7 @@ export default function QuestionPanel({
                               >
                                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                                   <span className="text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-700 font-bold">
-                                    Câu {qIndex + 1}
+                                    Question {qIndex + 1}
                                   </span>
                                   <span className="text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-600">
                                     {question.questionType}
@@ -2113,20 +2113,20 @@ export default function QuestionPanel({
         >
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === "edit-single" && "Sửa question"}
-              {dialogMode === "edit-group" && "Sửa question group"}
-              {dialogMode === "create-single" && "Thêm question"}
-              {dialogMode === "create-group" && "Thêm question group"}
-              {!dialogMode && "Thêm Question"}
+              {dialogMode === "edit-single" && "Edit question"}
+              {dialogMode === "edit-group" && "Edit question group"}
+              {dialogMode === "create-single" && "Add question"}
+              {dialogMode === "create-group" && "Add question group"}
+              {!dialogMode && "Add Question"}
             </DialogTitle>
           </DialogHeader>
 
           {step === 1 && (
             <div className="space-y-4">
               <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">
-                <span className="text-slate-500">Lesson đang chọn: </span>
+                <span className="text-slate-500">Selected lesson: </span>
                 <span className="font-semibold text-slate-900">
-                  {selectedLesson?.name || "Chưa chọn"}
+                  {selectedLesson?.name || "Not selected"}
                 </span>
               </div>
 
@@ -2144,7 +2144,7 @@ export default function QuestionPanel({
                 >
                   <p className="font-bold text-slate-900">Single question</p>
                   <p className="text-sm text-slate-500 mt-1">
-                    Một câu hỏi độc lập, có thể có option riêng
+                    A standalone question that can have its own options
                   </p>
                 </button>
 
@@ -2161,7 +2161,7 @@ export default function QuestionPanel({
                 >
                   <p className="font-bold text-slate-900">Question group</p>
                   <p className="text-sm text-slate-500 mt-1">
-                    Một group có passage/shared content và nhiều câu con
+                    A group with shared passage/content and multiple child questions
                   </p>
                 </button>
               </div>
@@ -2170,7 +2170,7 @@ export default function QuestionPanel({
 
           {step === 2 && dialogMode === "create-single" && (
             <div className="space-y-4">
-              <p className="font-semibold text-slate-900">Chọn loại câu hỏi</p>
+              <p className="font-semibold text-slate-900">Choose question type</p>
               <div className="grid grid-cols-2 gap-3 max-h-[420px] overflow-y-auto pr-2">
                 {SINGLE_TYPES.map((type) => (
                   <button
@@ -2191,7 +2191,7 @@ export default function QuestionPanel({
 
           {step === 2 && dialogMode === "create-group" && (
             <div className="space-y-4">
-              <p className="font-semibold text-slate-900">Chọn loại group</p>
+              <p className="font-semibold text-slate-900">Choose group type</p>
               <div className="grid grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-2">
                 {GROUP_TYPES.map((type) => (
                   <button
@@ -2234,7 +2234,7 @@ export default function QuestionPanel({
                           content: e.target.value,
                         }))
                       }
-                      placeholder="Nhập nội dung câu hỏi"
+                      placeholder="Enter question content"
                     />
                   </div>
 
@@ -2249,12 +2249,12 @@ export default function QuestionPanel({
                           instruction: e.target.value,
                         }))
                       }
-                      placeholder="Ví dụ: Choose the correct answer"
+                      placeholder="Example: Choose the correct answer"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Hint / Gợi ý</label>
+                    <label className="text-sm font-medium">Hint</label>
                     <Textarea
                       rows={3}
                       value={singleForm.hint}
@@ -2264,7 +2264,7 @@ export default function QuestionPanel({
                           hint: e.target.value,
                         }))
                       }
-                      placeholder="Nhập gợi ý hiển thị cho học sinh, ví dụ các ý cần có hoặc cách làm bài"
+                      placeholder="Enter a hint for students, such as key ideas or how to approach the task"
                     />
                   </div>
 
@@ -2279,7 +2279,7 @@ export default function QuestionPanel({
                             existingAudioUrl: e.target.value,
                           }))
                         }
-                        placeholder="Dán audio URL (https://...) nếu có"
+                        placeholder="Paste an audio URL (https://...) if available"
                       />
                       {singleForm.existingAudioUrl && (
                         <>
@@ -2347,7 +2347,7 @@ export default function QuestionPanel({
                           {getQuestionDataFieldMeta(selectedSingleType).label}
                         </label>
                         <p className="text-xs text-slate-500">
-                          Dữ liệu này được lưu thẳng vào cột `question_data` bên backend dưới dạng TEXT.
+                          This value is stored directly in the backend `question_data` column as TEXT.
                         </p>
                       </div>
                       <Textarea
@@ -2376,7 +2376,7 @@ export default function QuestionPanel({
                             correctAnswer: e.target.value,
                           }))
                         }
-                        placeholder="Nhập đáp án đúng"
+                        placeholder="Enter the correct answer"
                       />
                     </div>
                   )}
@@ -2388,7 +2388,7 @@ export default function QuestionPanel({
                           True / False / Not Given
                         </p>
                         <p className="text-xs text-slate-500">
-                          Dạng này dùng 3 lựa chọn cố định. Bạn chỉ cần chọn đáp án đúng.
+                          This type uses 3 fixed choices. You only need to select the correct answer.
                         </p>
                       </div>
                       <div className="space-y-3">
@@ -2441,7 +2441,7 @@ export default function QuestionPanel({
                                 onChange={(e) =>
                                   updateSingleOption(index, "content", e.target.value)
                                 }
-                                placeholder={`Nhập option ${option.optionKey}`}
+                                placeholder={`Enter option ${option.optionKey}`}
                               />
                             </div>
 
@@ -2485,7 +2485,7 @@ export default function QuestionPanel({
                       onChange={(e) =>
                         setGroupForm((prev) => ({ ...prev, title: e.target.value }))
                       }
-                      placeholder="Ví dụ: Read the passage"
+                      placeholder="Example: Read the passage"
                     />
                   </div>
 
@@ -2500,13 +2500,13 @@ export default function QuestionPanel({
                           instruction: e.target.value,
                         }))
                       }
-                      placeholder="Ví dụ: Read the passage and answer the questions"
+                      placeholder="Example: Read the passage and answer the questions"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Shared Content</label>
-                    <p className="text-xs leading-5 text-slate-500">
+                    <p className="hidden">
                       Dá»‹nh dáº¡ng nhanh: <span className="font-semibold">**text**</span> hoáº·c{" "}
                       <span className="font-semibold">&lt;b&gt;text&lt;/b&gt;</span> Ä‘á»ƒ in Ä‘áº­m;
                       {" "}
@@ -2515,6 +2515,14 @@ export default function QuestionPanel({
                       Ã´ chá»n ngay trong passage thÃ¬ nháº­p{" "}
                       <span className="font-semibold">(1)[A|B|C|D]</span> ngay Ä‘Ãºng vá»‹ trÃ­ admin
                       muá»‘n hiá»‡n.
+                    </p>
+                    <p className="text-xs leading-5 text-slate-500">
+                      Quick formatting: use <span className="font-semibold">**text**</span> or{" "}
+                      <span className="font-semibold">&lt;b&gt;text&lt;/b&gt;</span> for bold. Use{" "}
+                      <span className="font-semibold">[[text]]</span> or{" "}
+                      <span className="font-semibold">__text__</span> for underline. To place an inline choice in the
+                      passage, enter <span className="font-semibold">(1)[A|B|C|D]</span> at the exact position where it
+                      should appear.
                     </p>
                     <Textarea
                       rows={6}
@@ -2525,7 +2533,7 @@ export default function QuestionPanel({
                           sharedContent: e.target.value,
                         }))
                       }
-                      placeholder="Passage / transcript / prompt dùng chung cho cả group"
+                      placeholder="Shared passage / transcript / prompt for the whole group"
                     />
                   </div>
 
@@ -2540,7 +2548,7 @@ export default function QuestionPanel({
                             existingAudioUrl: e.target.value,
                           }))
                         }
-                        placeholder="Dán audio URL (https://...) nếu có"
+                        placeholder="Paste an audio URL (https://...) if available"
                       />
                       {groupForm.existingAudioUrl && (
                         <>
@@ -2603,8 +2611,8 @@ export default function QuestionPanel({
                         }
                         placeholder={
                           selectedGroupType === "WORD_BANK"
-                            ? 'Ví dụ: {"wordBank":["because","although","however"]}'
-                            : "JSON/string phụ nếu group này cần dữ liệu riêng"
+                            ? 'Example: {"wordBank":["because","although","however"]}'
+                            : "Optional JSON/string if this group needs custom data"
                         }
                       />
                     </div>
@@ -2614,7 +2622,7 @@ export default function QuestionPanel({
                     <div>
                       <p className="font-semibold text-slate-900">Questions in group</p>
                       <p className="text-sm text-slate-500">
-                        Tạo các câu con thuộc group này
+                        Create child questions inside this group
                       </p>
                     </div>
 
@@ -2624,14 +2632,14 @@ export default function QuestionPanel({
                         variant="outline"
                         onClick={() => setAllEditorQuestionsExpanded(false)}
                       >
-                        Thu gọn hết
+                        Collapse all
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setAllEditorQuestionsExpanded(true)}
                       >
-                        Mở rộng hết
+                        Expand all
                       </Button>
                       <Button type="button" variant="outline" onClick={addChildQuestion}>
                         <Plus className="w-4 h-4 mr-2" />
@@ -2676,7 +2684,7 @@ export default function QuestionPanel({
                               onClick={() => toggleEditorQuestion(qIndex)}
                               className="text-sm text-slate-500 hover:text-slate-700"
                             >
-                              {isExpanded ? "Thu gọn" : "Mở rộng"}
+                              {isExpanded ? "Collapse" : "Expand"}
                             </button>
 
                             {groupForm.questions.length > 1 && (
@@ -2685,7 +2693,7 @@ export default function QuestionPanel({
                                 onClick={() => removeChildQuestion(qIndex)}
                                 className="text-sm text-red-600 hover:text-red-700"
                               >
-                                Xóa câu này
+                                Remove this question
                               </button>
                             )}
                           </div>
@@ -2694,7 +2702,7 @@ export default function QuestionPanel({
                             <>
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Content</label>
-                            <p className="text-xs leading-5 text-slate-500">
+                            <p className="hidden">
                               HÃ´ trá»£ in Ä‘áº­m báº±ng <span className="font-semibold">**text**</span>
                               {" "}
                               hoáº·c <span className="font-semibold">&lt;b&gt;text&lt;/b&gt;</span>.
@@ -2703,13 +2711,20 @@ export default function QuestionPanel({
                               <span className="font-semibold">__text__</span> hoáº·c{" "}
                               <span className="font-semibold">&lt;u&gt;text&lt;/u&gt;</span>.
                             </p>
+                            <p className="text-xs leading-5 text-slate-500">
+                              Bold is supported with <span className="font-semibold">**text**</span> or{" "}
+                              <span className="font-semibold">&lt;b&gt;text&lt;/b&gt;</span>. Underline is supported with{" "}
+                              <span className="font-semibold">[[text]]</span>,{" "}
+                              <span className="font-semibold">__text__</span>, or{" "}
+                              <span className="font-semibold">&lt;u&gt;text&lt;/u&gt;</span>.
+                            </p>
                             <Textarea
                               rows={3}
                               value={question.content}
                               onChange={(e) =>
                                 updateGroupQuestion(qIndex, "content", e.target.value)
                               }
-                              placeholder="Nội dung câu hỏi con"
+                              placeholder="Child question content"
                             />
                           </div>
 
@@ -2725,19 +2740,19 @@ export default function QuestionPanel({
                                   e.target.value,
                                 )
                               }
-                              placeholder="Instruction riêng cho câu này nếu có"
+                              placeholder="Optional instruction for this question"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <label className="text-sm font-medium">Hint / Gợi ý</label>
+                            <label className="text-sm font-medium">Hint</label>
                             <Textarea
                               rows={3}
                               value={question.hint}
                               onChange={(e) =>
                                 updateGroupQuestion(qIndex, "hint", e.target.value)
                               }
-                              placeholder="Nhập gợi ý riêng cho câu này"
+                              placeholder="Enter a hint specific to this question"
                             />
                           </div>
 
@@ -2783,7 +2798,7 @@ export default function QuestionPanel({
                                     e.target.value,
                                   )
                                 }
-                                placeholder="Giải thích đáp án"
+                                placeholder="Explain the answer"
                               />
                             </div>
                           )}
@@ -2803,7 +2818,7 @@ export default function QuestionPanel({
                                     e.target.value,
                                   )
                                 }
-                                placeholder="Đáp án / expected answer / rubric"
+                                placeholder="Answer / expected answer / rubric"
                               />
                             </div>
                           )}
@@ -2834,7 +2849,7 @@ export default function QuestionPanel({
                                             e.target.value,
                                           )
                                         }
-                                        placeholder={`Nhập option ${option.optionKey}`}
+                                        placeholder={`Enter option ${option.optionKey}`}
                                       />
                                     </div>
 
@@ -2878,7 +2893,7 @@ export default function QuestionPanel({
                     onClick={() => setStep((prev) => (prev - 1) as WizardStep)}
                     disabled={submitting}
                   >
-                    Quay lại
+                    Back
                   </Button>
                 )}
               </div>
@@ -2889,7 +2904,7 @@ export default function QuestionPanel({
                   onClick={() => setIsDialogOpen(false)}
                   disabled={submitting}
                 >
-                  Hủy
+                  Cancel
                 </Button>
 
                 {step < 3 && isCreateMode ? (
@@ -2913,7 +2928,7 @@ export default function QuestionPanel({
                       setStep((prev) => (prev + 1) as WizardStep);
                     }}
                   >
-                    Tiếp tục
+                    Continue
                   </Button>
                 ) : (
                   <Button
@@ -2930,10 +2945,10 @@ export default function QuestionPanel({
                     {submitting && (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     )}
-                    {dialogMode === "edit-single" && "Cập nhật question"}
-                    {dialogMode === "edit-group" && "Cập nhật question group"}
-                    {dialogMode === "create-single" && "Tạo question"}
-                    {dialogMode === "create-group" && "Tạo question group"}
+                    {dialogMode === "edit-single" && "Update question"}
+                    {dialogMode === "edit-group" && "Update question group"}
+                    {dialogMode === "create-single" && "Create question"}
+                    {dialogMode === "create-group" && "Create question group"}
                   </Button>
                 )}
               </div>

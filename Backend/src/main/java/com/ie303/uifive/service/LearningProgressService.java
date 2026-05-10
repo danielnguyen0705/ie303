@@ -41,16 +41,22 @@ public class LearningProgressService {
         User user = currentUser;
         int expEarned = 0;
         boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+        boolean hasVipAccess = hasVipAccess(currentUser);
 
         Lesson lesson = lessonRepo.findById(request.lessonId())
                 .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
 
+        if (!isAdmin && lesson.isVipOnly() && !hasVipAccess) {
+            throw new AppException(ErrorCode.VIP_REQUIRED);
+        }
+
         Long gradeId = lesson.getSection().getUnit().getGrade().getId();
         List<Lesson> allLessonsInGrade = lessonRepo.findAllByGradeIdOrder(gradeId);
         Set<Long> completedLessonIds = userLessonProgressRepo.findCompletedLessonIdsByUserAndGrade(currentUser, gradeId);
+        List<Lesson> accessibleLessonsInGrade = filterVisibleLessons(allLessonsInGrade, isAdmin, hasVipAccess);
 
         boolean alreadyCompleted = completedLessonIds.contains(lesson.getId());
-        Long currentLessonId = resolveCurrentLessonId(allLessonsInGrade, completedLessonIds);
+        Long currentLessonId = resolveCurrentLessonId(accessibleLessonsInGrade, completedLessonIds);
 
         if (!isAdmin && !alreadyCompleted && currentLessonId != null && !currentLessonId.equals(lesson.getId())) {
             throw new AppException(ErrorCode.LESSON_LOCKED);
@@ -126,14 +132,22 @@ public class LearningProgressService {
     public List<UnitProgressResponse> getUnitsByGrade(Long gradeId) {
         User user = userService.getCurrentUser();
         boolean isAdmin = user.getRole() == Role.ADMIN;
+        boolean hasVipAccess = hasVipAccess(user);
 
         List<Unit> units = unitRepo.findByGradeIdOrderByUnitNumberAsc(gradeId);
+        List<Lesson> allLessonsInGrade = lessonRepo.findAllByGradeIdOrder(gradeId);
+        List<Lesson> accessibleLessonsInGrade = filterVisibleLessons(allLessonsInGrade, isAdmin, hasVipAccess);
+        Set<Long> completedLessonIds = userLessonProgressRepo.findCompletedLessonIdsByUserAndGrade(user, gradeId);
 
         return units.stream()
                 .map(unit -> {
-                    int totalLessons = lessonRepo.countLessonsByUnitId(unit.getId());
-                    int completedLessons = userLessonProgressRepo
-                            .countCompletedLessonsByUserAndUnit(user, unit.getId());
+                    long totalLessons = accessibleLessonsInGrade.stream()
+                            .filter(lesson -> lesson.getSection().getUnit().getId().equals(unit.getId()))
+                            .count();
+                    long completedLessons = accessibleLessonsInGrade.stream()
+                            .filter(lesson -> lesson.getSection().getUnit().getId().equals(unit.getId()))
+                            .filter(lesson -> completedLessonIds.contains(lesson.getId()))
+                            .count();
 
                     double progressPercent = 0.0;
                     if (isAdmin) {
@@ -155,15 +169,24 @@ public class LearningProgressService {
     public List<SectionProgressResponse> getSectionsByUnit(Long unitId) {
         User user = userService.getCurrentUser();
         boolean isAdmin = user.getRole() == Role.ADMIN;
+        boolean hasVipAccess = hasVipAccess(user);
 
         Unit unit = unitRepo.findById(unitId)
                 .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         List<Section> sections = sectionRepo.findByUnitIdOrderBySectionNumberAsc(unit.getId());
+        Set<Long> completedLessonIds = userLessonProgressRepo.findCompletedLessonIdsByUserAndGrade(user, unit.getGrade().getId());
 
         return sections.stream().map(section -> {
-            int totalLessons = lessonRepo.countLessonsBySectionId(section.getId());
-            int completedLessons = userLessonProgressRepo.countCompletedLessonsByUserAndSection(user, section.getId());
+            List<Lesson> sectionLessons = filterVisibleLessons(
+                    lessonRepo.findBySectionIdOrdered(section.getId()),
+                    isAdmin,
+                    hasVipAccess
+            );
+            long totalLessons = sectionLessons.size();
+            long completedLessons = sectionLessons.stream()
+                    .filter(lesson -> completedLessonIds.contains(lesson.getId()))
+                    .count();
 
             double progressPercent = totalLessons == 0
                     ? 0
@@ -180,6 +203,7 @@ public class LearningProgressService {
     public List<LessonProgressResponse> getLessonsBySection(Long sectionId) {
         User user = userService.getCurrentUser();
         boolean isAdmin = user.getRole() == Role.ADMIN;
+        boolean hasVipAccess = hasVipAccess(user);
 
         Section section = sectionRepo.findById(sectionId)
                 .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
@@ -188,9 +212,14 @@ public class LearningProgressService {
 
         List<Lesson> allLessonsInGrade = lessonRepo.findAllByGradeIdOrder(gradeId);
         Set<Long> completedLessonIds = userLessonProgressRepo.findCompletedLessonIdsByUserAndGrade(user, gradeId);
-        Long currentLessonId = resolveCurrentLessonId(allLessonsInGrade, completedLessonIds);
+        List<Lesson> accessibleLessonsInGrade = filterVisibleLessons(allLessonsInGrade, isAdmin, hasVipAccess);
+        Long currentLessonId = resolveCurrentLessonId(accessibleLessonsInGrade, completedLessonIds);
 
-        List<Lesson> lessonsInSection = lessonRepo.findBySectionIdOrderByLessonNumberAsc(sectionId);
+        List<Lesson> lessonsInSection = filterVisibleLessons(
+                lessonRepo.findBySectionIdOrdered(sectionId),
+                isAdmin,
+                hasVipAccess
+        );
 
         return lessonsInSection.stream().map(lesson -> {
             boolean completed = completedLessonIds.contains(lesson.getId());
@@ -200,6 +229,7 @@ public class LearningProgressService {
                     lesson.getId(),
                     lesson.getTitle(),
                     lesson.getLessonNumber(),
+                    lesson.getOrderIndex(),
                     lesson.isReviewLesson(),
                     completed,
                     unlocked,
@@ -218,6 +248,20 @@ public class LearningProgressService {
         return allLessonsInGrade.isEmpty()
                 ? null
                 : allLessonsInGrade.get(allLessonsInGrade.size() - 1).getId();
+    }
+
+    private boolean hasVipAccess(User user) {
+        return user.getVipExpiredAt() != null && user.getVipExpiredAt().isAfter(LocalDateTime.now());
+    }
+
+    private List<Lesson> filterVisibleLessons(List<Lesson> lessons, boolean isAdmin, boolean hasVipAccess) {
+        if (isAdmin || hasVipAccess) {
+            return lessons;
+        }
+
+        return lessons.stream()
+                .filter(lesson -> !lesson.isVipOnly())
+                .toList();
     }
 
     private int calculateLessonExpReward(User user) {

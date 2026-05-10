@@ -1,4 +1,4 @@
-export type SectionType =
+﻿export type SectionType =
   | "GETTING_STARTED"
   | "LANGUAGE"
   | "READING"
