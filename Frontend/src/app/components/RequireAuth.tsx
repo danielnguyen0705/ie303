@@ -1,7 +1,9 @@
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "@/context/AuthContext";
+import { Forbidden } from "@/app/pages/Forbidden";
 
 export function RequireAuth() {
+  const location = useLocation();
   const { isAuthenticated, isReady, user } = useAuth();
 
   if (!isReady) {
@@ -19,7 +21,7 @@ export function RequireAuth() {
   }
 
   if (user?.role !== "ADMIN") {
-    return <Navigate to="/" replace />;
+    return <Forbidden />;
   }
 
   return <Outlet />;

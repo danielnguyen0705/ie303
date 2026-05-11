@@ -29,63 +29,73 @@ type InventoryItem = {
   recommended?: boolean;
   userItemId?: number;
   useMode?: "skip";
+  itemType?: string;
 };
 
-const INITIAL_INVENTORY_ITEMS: InventoryItem[] = [
-  {
-    id: "streak-freeze",
-    name: "Streak Freeze",
+const ITEM_CONFIGS: Record<string, Partial<InventoryItem>> = {
+  freeze: {
     icon: "❄️",
     description: "Freeze your streak through the next midnight.",
-    quantity: 0,
+    recommended: false,
+    useMode: "skip",
   },
-  {
-    id: "xp-boost",
-    name: "XP Boost",
+  "xp-boost": {
     icon: "⚡",
     description: "Earn bonus XP on your next completed lesson.",
-    quantity: 0,
     recommended: true,
+    useMode: undefined,
   },
-];
-
-const containsAny = (value: string, tokens: string[]): boolean => {
-  const normalized = value.toLowerCase();
-  return tokens.some((token) => normalized.includes(token));
 };
 
-function mapInventoryItemsFromApi(userItems: UserItemResponse[]): InventoryItem[] {
-  const skipItems = userItems.filter((item) => item.type === "SKIP");
-  const expItems = userItems.filter((item) => item.type === "EXP");
+const getItemConfig = (name: string, type: string): Partial<InventoryItem> => {
+  const normalized = name.toLowerCase();
 
-  const freezeItem =
-    skipItems.find((item) => containsAny(item.name, ["freeze", "streak"])) ?? null;
+  // Check if name contains freeze/streak keywords
+  if (normalized.includes("freeze") || normalized.includes("streak")) {
+    return ITEM_CONFIGS.freeze;
+  }
 
-  const xpBoostItem =
-    expItems.find((item) => containsAny(item.name, ["xp", "exp", "boost"])) ??
-    expItems[0] ??
-    null;
+  // Check if name contains xp/exp/boost keywords
+  if (
+    normalized.includes("xp") ||
+    normalized.includes("exp") ||
+    normalized.includes("boost")
+  ) {
+    return ITEM_CONFIGS["xp-boost"];
+  }
 
-  return INITIAL_INVENTORY_ITEMS.map((item) => {
-    if (item.id === "streak-freeze") {
-      return {
-        ...item,
-        quantity: freezeItem?.quantity ?? 0,
-        userItemId: freezeItem?.userItemId,
-        useMode: freezeItem ? "skip" : undefined,
-      };
-    }
+  // Default config for unknown items
+  return {
+    icon: "📦",
+    description: type === "SKIP" ? "Use this item." : "Earn rewards.",
+    useMode: type === "SKIP" ? "skip" : undefined,
+  };
+};
+
+function mapInventoryItemsFromApi(
+  userItems: UserItemResponse[],
+): InventoryItem[] {
+  return userItems.map((item) => {
+    const config = getItemConfig(item.name, item.type);
 
     return {
-      ...item,
-      quantity: xpBoostItem?.quantity ?? 0,
-      userItemId: xpBoostItem?.userItemId,
-      useMode: undefined,
+      id: `item-${item.userItemId}`,
+      name: item.name,
+      quantity: item.quantity,
+      userItemId: item.userItemId,
+      itemType: item.type,
+      icon: config.icon ?? "📦",
+      description: config.description ?? "Use this item.",
+      recommended: config.recommended ?? false,
+      useMode: config.useMode as "skip" | undefined,
     };
   });
 }
 
-function getNumericField(source: Record<string, unknown> | null, keys: string[]): number {
+function getNumericField(
+  source: Record<string, unknown> | null,
+  keys: string[],
+): number {
   if (!source) {
     return 0;
   }
@@ -116,9 +126,7 @@ function NavbarContent() {
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>(
-    INITIAL_INVENTORY_ITEMS,
-  );
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
   const [usingItemId, setUsingItemId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -205,7 +213,7 @@ function NavbarContent() {
 
   const loadInventoryItems = useCallback(async () => {
     if (!isAuthenticated) {
-      setInventoryItems(INITIAL_INVENTORY_ITEMS);
+      setInventoryItems([]);
       return;
     }
 
@@ -213,7 +221,10 @@ function NavbarContent() {
     const response = await getMyShopItems();
 
     if (!response.success || !response.data) {
-      showToast(response.error?.message || copy("Failed to load inventory.", "Không thể tải túi đồ."));
+      showToast(
+        response.error?.message ||
+          copy("Failed to load inventory.", "Không thể tải túi đồ."),
+      );
       setIsInventoryLoading(false);
       return;
     }
@@ -266,7 +277,10 @@ function NavbarContent() {
     const response = await useSkipItem(selectedItem.userItemId);
 
     if (!response.success) {
-      showToast(response.error?.message || copy("Use item failed.", "Dùng vật phẩm thất bại."));
+      showToast(
+        response.error?.message ||
+          copy("Use item failed.", "Dùng vật phẩm thất bại."),
+      );
       setUsingItemId(null);
       return;
     }
@@ -430,7 +444,9 @@ function NavbarContent() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleNavigateAndClose("/payment-history")}
+                        onClick={() =>
+                          handleNavigateAndClose("/payment-history")
+                        }
                         className="w-full px-4 py-2.5 text-left hover:bg-slate-100 text-slate-700 font-medium text-sm transition-colors flex items-center gap-3"
                       >
                         <History className="w-4 h-4 text-[#155ca5]" />
@@ -487,7 +503,9 @@ function NavbarContent() {
                 disabled={loading}
                 className="rounded-lg bg-[#155ca5] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#124e8b] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? copy("Loading...", "Đang tải...") : copy("Login", "Đăng nhập")}
+                {loading
+                  ? copy("Loading...", "Đang tải...")
+                  : copy("Login", "Đăng nhập")}
               </button>
             )}
           </div>
@@ -505,7 +523,9 @@ function NavbarContent() {
           to="/quests"
           className={`flex flex-col items-center gap-1 ${isActive("/quests") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
-          <span className="text-xs font-bold">{copy("Quests", "Nhiệm vụ")}</span>
+          <span className="text-xs font-bold">
+            {copy("Quests", "Nhiệm vụ")}
+          </span>
         </Link>
         <Link
           to="/leaderboard"
@@ -523,7 +543,9 @@ function NavbarContent() {
           to="/topup"
           className={`flex flex-col items-center gap-1 ${isActive("/topup") ? "text-[#155ca5]" : "text-slate-400"}`}
         >
-          <span className="text-xs font-bold">{copy("Top Up", "Nạp tiền")}</span>
+          <span className="text-xs font-bold">
+            {copy("Top Up", "Nạp tiền")}
+          </span>
         </Link>
       </div>
 
@@ -560,7 +582,8 @@ function NavbarContent() {
 
             <div className="space-y-3">
               {inventoryItems.map((item) => {
-                const hasUseApi = item.useMode === "skip" && Boolean(item.userItemId);
+                const hasUseApi =
+                  item.useMode === "skip" && Boolean(item.userItemId);
                 const isDisabled =
                   item.quantity <= 0 ||
                   usingItemId === item.id ||
@@ -616,10 +639,10 @@ function NavbarContent() {
                       ) : isInventoryLoading ? (
                         "..."
                       ) : !hasUseApi ? (
-                          copy("Not usable", "Không dùng được")
-                        ) : (
-                          copy("Use", "Dùng")
-                        )}
+                        copy("Not usable", "Không dùng được")
+                      ) : (
+                        copy("Use", "Dùng")
+                      )}
                     </button>
                   </div>
                 );
