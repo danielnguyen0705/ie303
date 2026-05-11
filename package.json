@@ -9,9 +9,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run fe\" \"npm run be\"",
-    "fe": "cd Frontend && npm run dev",
-    "be": "cd Backend && mvn spring-boot:run"
+  "dev": "concurrently \"npm run fe\" \"npm run be\"",
+  "fe": "cd Frontend && npm run dev",
+  "be": "cd Backend && mvn spring-boot:run",
+  "build": "cd Frontend && npm run build",
+  "preview": "cd Frontend && npm run preview"
   },
   "repository": {
     "type": "git",
