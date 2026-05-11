@@ -226,5 +226,8 @@ export async function getMyActivityCalendar(
 
   return request<ActivityCalendarResponse>(path, {
     method: "GET",
+  }, {
+    key: `users:activity-calendar:${year ?? "all"}:${month ?? "all"}`,
+    ttlMs: 2 * 60 * 1000,
   });
 }

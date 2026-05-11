@@ -33,6 +33,9 @@ export async function getUnitsByGradeProgress(
 
   return request<UnitProgressItem[]>(`/progress/grades/${gradeId}/units`, {
     method: "GET",
+  }, {
+    key: `progress:grade-units:${gradeId}`,
+    ttlMs: 2 * 60 * 1000,
   });
 }
 
@@ -46,5 +49,8 @@ export async function getUnit(unitId: number): Promise<ApiResponse<UnitResponse>
 
   return request<UnitResponse>(`/progress/units/${unitId}/sections`, {
     method: "GET",
+  }, {
+    key: `progress:unit-sections:${unitId}`,
+    ttlMs: 10 * 60 * 1000,
   });
 }

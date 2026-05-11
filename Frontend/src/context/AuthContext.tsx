@@ -15,6 +15,7 @@ import {
 } from "@/api/auth";
 
 import { getCurrentUser } from "@/api/users";
+import { clearCache } from "@/api/utils/cache";
 
 type AuthUser = {
   id?: string;
@@ -153,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return false;
         }
 
+        clearCache();
         return await loadCurrentUser(true);
       } catch (unknownError: unknown) {
         setError(getErrorMessage(unknownError));
@@ -215,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(null);
+      clearCache();
       return true;
     } catch (unknownError: unknown) {
       setError(getErrorMessage(unknownError));

@@ -92,6 +92,9 @@ export async function getQuestionById(
 
   return request<QuestionDto>(`/questions/${questionId}`, {
     method: "GET",
+  }, {
+    key: `questions:by-id:${questionId}`,
+    ttlMs: 10 * 60 * 1000,
   });
 }
 
@@ -104,6 +107,9 @@ export async function getQuestionGroupById(
 
   return request<QuestionGroupDto>(`/question-groups/${questionGroupId}`, {
     method: "GET",
+  }, {
+    key: `question-groups:by-id:${questionGroupId}`,
+    ttlMs: 10 * 60 * 1000,
   });
 }
 
@@ -116,6 +122,9 @@ export async function getQuestionsByLesson(
 
   return request<LessonQuestionResponse>(`/questions/lesson/${lessonId}`, {
     method: "GET",
+  }, {
+    key: `questions:by-lesson:${lessonId}`,
+    ttlMs: 10 * 60 * 1000,
   });
 }
 

@@ -8,6 +8,7 @@ import type {
   UnitReviewResponse,
 } from "./types";
 import { createError, request } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
 
 const isPositiveNumber = (value: number): boolean =>
   Number.isFinite(value) && value > 0;
@@ -54,10 +55,16 @@ export async function createUnitReview(
     return createError("Question ids must contain only positive numbers", "VALIDATION_ERROR");
   }
 
-  return request<UnitReviewResponse>("/unit-reviews", {
+  const response = await request<UnitReviewResponse>("/unit-reviews", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("reviews:");
+  }
+
+  return response;
 }
 
 export async function updateUnitReview(
@@ -81,15 +88,24 @@ export async function updateUnitReview(
     return createError("Question ids must contain only positive numbers", "VALIDATION_ERROR");
   }
 
-  return request<UnitReviewResponse>(`/unit-reviews/${id}`, {
+  const response = await request<UnitReviewResponse>(`/unit-reviews/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("reviews:");
+  }
+
+  return response;
 }
 
 export async function getUnitReviews(): Promise<ApiResponse<UnitReviewResponse[]>> {
   return request<UnitReviewResponse[]>("/unit-reviews", {
     method: "GET",
+  }, {
+    key: "reviews:unit-reviews:list",
+    ttlMs: 5 * 60 * 1000,
   });
 }
 
@@ -102,6 +118,9 @@ export async function getUnitReviewById(
 
   return request<UnitReviewResponse>(`/unit-reviews/${id}`, {
     method: "GET",
+  }, {
+    key: `reviews:unit-reviews:${id}`,
+    ttlMs: 5 * 60 * 1000,
   });
 }
 
@@ -126,15 +145,24 @@ export async function createGroupReview(
     return createError("Question ids must contain only positive numbers", "VALIDATION_ERROR");
   }
 
-  return request<GroupReviewResponse>("/group-reviews", {
+  const response = await request<GroupReviewResponse>("/group-reviews", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("reviews:");
+  }
+
+  return response;
 }
 
 export async function getGroupReviews(): Promise<ApiResponse<GroupReviewResponse[]>> {
   return request<GroupReviewResponse[]>("/group-reviews", {
     method: "GET",
+  }, {
+    key: "reviews:group-reviews:list",
+    ttlMs: 5 * 60 * 1000,
   });
 }
 
@@ -147,6 +175,9 @@ export async function getGroupReviewById(
 
   return request<GroupReviewResponse>(`/group-reviews/${id}`, {
     method: "GET",
+  }, {
+    key: `reviews:group-reviews:${id}`,
+    ttlMs: 5 * 60 * 1000,
   });
 }
 
@@ -176,10 +207,16 @@ export async function updateGroupReview(
     return createError("Question ids must contain only positive numbers", "VALIDATION_ERROR");
   }
 
-  return request<GroupReviewResponse>(`/group-reviews/${id}`, {
+  const response = await request<GroupReviewResponse>(`/group-reviews/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("reviews:");
+  }
+
+  return response;
 }
 
 export async function createSemesterTest(
@@ -214,15 +251,24 @@ export async function createSemesterTest(
     return createError("Question ids must contain only positive numbers", "VALIDATION_ERROR");
   }
 
-  return request<SemesterTestResponse>("/semester-tests", {
+  const response = await request<SemesterTestResponse>("/semester-tests", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("reviews:");
+  }
+
+  return response;
 }
 
 export async function getSemesterTests(): Promise<ApiResponse<SemesterTestResponse[]>> {
   return request<SemesterTestResponse[]>("/semester-tests", {
     method: "GET",
+  }, {
+    key: "reviews:semester-tests:list",
+    ttlMs: 5 * 60 * 1000,
   });
 }
 
@@ -235,6 +281,9 @@ export async function getSemesterTestById(
 
   return request<SemesterTestResponse>(`/semester-tests/${id}`, {
     method: "GET",
+  }, {
+    key: `reviews:semester-tests:${id}`,
+    ttlMs: 5 * 60 * 1000,
   });
 }
 
@@ -275,8 +324,14 @@ export async function updateSemesterTest(
     return createError("Question ids must contain only positive numbers", "VALIDATION_ERROR");
   }
 
-  return request<SemesterTestResponse>(`/semester-tests/${id}`, {
+  const response = await request<SemesterTestResponse>(`/semester-tests/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("reviews:");
+  }
+
+  return response;
 }
