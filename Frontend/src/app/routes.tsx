@@ -38,6 +38,8 @@ import { Notifications } from "./pages/admin/Notifications";
 import { Settings } from "./pages/admin/Settings";
 import { ShopManagement } from "./pages/admin/ShopManagement";
 import { RequireAuth } from "./components/RequireAuth";
+import { Forbidden } from "./pages/Forbidden";
+import { NotFound } from "./pages/NotFound";
 
 export const router = createBrowserRouter([
   {
@@ -76,6 +78,8 @@ export const router = createBrowserRouter([
       { path: "reviews/unit", Component: UserUnitReviews },
       { path: "reviews/group", Component: UserGroupReviews },
       { path: "tests/semester", Component: UserSemesterTests },
+      { path: "403", Component: Forbidden },
+      { path: "*", Component: NotFound },
     ],
   },
   {
@@ -97,6 +101,7 @@ export const router = createBrowserRouter([
           { path: "shop", Component: ShopManagement },
           { path: "notifications", Component: Notifications },
           { path: "settings", Component: Settings },
+          { path: "*", Component: NotFound },
         ],
       },
     ],

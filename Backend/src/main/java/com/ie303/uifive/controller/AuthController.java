@@ -8,12 +8,10 @@ import com.ie303.uifive.dto.res.UserResponse;
 import com.ie303.uifive.service.AuthService;
 import com.ie303.uifive.service.UserService;
 import jakarta.annotation.security.PermitAll;
-import jakarta.annotation.security.RolesAllowed;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -33,14 +31,12 @@ public class AuthController {
     @PostMapping("/login")
         @PermitAll
     public ApiResponse<String> login(@RequestBody @Valid LoginRequest request,
+                                     HttpServletRequest httpRequest,
                                      HttpServletResponse response) {
 
         String token = authService.login(request);
 
-        response.setHeader(
-                "Set-Cookie",
-                "token=" + token + cookieAttributes(86400)
-        );
+        response.setHeader("Set-Cookie", buildAuthCookie(token, 86400, httpRequest));
 
         return ApiResponse.<String>builder()
                 .code(1000)
@@ -69,12 +65,10 @@ public class AuthController {
 
     @PostMapping("/logout")
         // @RolesAllowed({"USER", "ADMIN"})
-    public ApiResponse<String> logout(HttpServletResponse response) {
+    public ApiResponse<String> logout(HttpServletRequest httpRequest,
+                                      HttpServletResponse response) {
 
-        response.setHeader(
-                "Set-Cookie",
-                "token=" + cookieAttributes(0)
-        );
+        response.setHeader("Set-Cookie", buildAuthCookie("", 0, httpRequest));
 
         return ApiResponse.<String>builder()
                 .code(1000)
@@ -83,10 +77,30 @@ public class AuthController {
                 .build();
     }
 
-    private String cookieAttributes(int maxAge) {
-        return "; HttpOnly"
-                + (cookieSecure ? "; Secure" : "")
-                + "; Path=/; Max-Age=" + maxAge
-                + "; SameSite=" + cookieSameSite;
+    private String buildAuthCookie(String token, int maxAgeSeconds, HttpServletRequest request) {
+        boolean secure = isSecureRequest(request);
+        String sameSite = secure ? "None" : "Lax";
+
+        StringBuilder cookie = new StringBuilder("token=")
+                .append(token == null ? "" : token)
+                .append("; HttpOnly; Path=/; Max-Age=")
+                .append(maxAgeSeconds)
+                .append("; SameSite=")
+                .append(sameSite);
+
+        if (secure) {
+            cookie.append("; Secure");
+        }
+
+        return cookie.toString();
+    }
+
+    private boolean isSecureRequest(HttpServletRequest request) {
+        if (request.isSecure()) {
+            return true;
+        }
+
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        return "https".equalsIgnoreCase(forwardedProto);
     }
 }
