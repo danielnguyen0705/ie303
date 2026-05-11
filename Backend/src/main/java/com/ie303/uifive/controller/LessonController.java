@@ -1,6 +1,7 @@
 package com.ie303.uifive.controller;
 
 import com.ie303.uifive.dto.req.LessonRequest;
+import com.ie303.uifive.dto.req.ReviewCreationRequest;
 import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.LessonResponse;
 import com.ie303.uifive.service.LessonService;
@@ -62,6 +63,16 @@ public class LessonController {
                 .code(1000)
                 .message("Deleted lesson")
                 .result("Deleted lesson with id: " + id)
+                .build();
+    }
+
+    @PostMapping("/{id}/create-review")
+    @RolesAllowed("ADMIN")
+    public ApiResponse<LessonResponse> createReview(@PathVariable Long id,
+                                                    @RequestBody ReviewCreationRequest request) {
+        return ApiResponse.<LessonResponse>builder()
+                .code(1000)
+                .result(lessonService.createReviewFromLesson(id, request))
                 .build();
     }
 }

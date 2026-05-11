@@ -111,6 +111,7 @@ export {
 
 export {
   getLessonsBySectionProgress,
+  getReviewLessonsBySectionProgress,
   completeLesson,
   getLessonById,
 } from "./lessons";

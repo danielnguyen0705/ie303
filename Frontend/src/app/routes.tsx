@@ -29,8 +29,7 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { UserManagement } from "./pages/admin/UserManagement";
 import { ContentManagement } from "./pages/admin/ContentManagement";
 import { QuestionBank } from "./pages/admin/QuestionBank";
-import { UnitReviews } from "./pages/UnitReviews";
-import { GroupReviews } from "./pages/GroupReviews";
+// Unit/Group admin pages removed; use Lesson with isReviewLesson
 import { SemesterTests } from "./pages/SemesterTests";
 import { Reports } from "./pages/admin/Reports";
 import { VIPManagement } from "./pages/admin/VIPManagement";
@@ -73,6 +72,7 @@ export const router = createBrowserRouter([
       { path: "topup", Component: Topup },
       { path: "payment-history", Component: PaymentHistory },
       { path: "ai/personalized-questions", Component: PersonalizedQuestions },
+      // user review routes kept here
       { path: "reviews/unit", Component: UserUnitReviews },
       { path: "reviews/group", Component: UserGroupReviews },
       { path: "tests/semester", Component: UserSemesterTests },
@@ -89,8 +89,7 @@ export const router = createBrowserRouter([
           { path: "users", Component: UserManagement },
           { path: "content", Component: ContentManagement },
           { path: "questions", Component: QuestionBank },
-          { path: "unit-reviews", Component: UnitReviews },
-          { path: "group-reviews", Component: GroupReviews },
+          // Unit/Group review admin pages removed (use Lesson with isReviewLesson)
           { path: "semester-tests", Component: SemesterTests },
           { path: "reports", Component: Reports },
           { path: "vip", Component: VIPManagement },

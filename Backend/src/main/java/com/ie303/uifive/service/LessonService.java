@@ -1,13 +1,16 @@
 package com.ie303.uifive.service;
 
 import com.ie303.uifive.dto.req.LessonRequest;
+import com.ie303.uifive.dto.req.ReviewCreationRequest;
 import com.ie303.uifive.dto.res.LessonResponse;
 import com.ie303.uifive.entity.Lesson;
 import com.ie303.uifive.entity.Section;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.LessonMapper;
+import com.ie303.uifive.entity.Question;
 import com.ie303.uifive.repo.LessonRepo;
+import com.ie303.uifive.repo.QuestionRepo;
 import com.ie303.uifive.repo.SectionRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ public class LessonService {
     private final SectionRepo sectionRepo;
     private final LessonMapper lessonMapper;
     private final ContentDeletionService contentDeletionService;
+    private final QuestionRepo questionRepo;
 
     public LessonResponse create(LessonRequest request) {
         Lesson lesson = lessonMapper.toEntity(request);
@@ -33,6 +37,15 @@ public class LessonService {
         lesson.setSection(section);
 
         lesson = lessonRepo.save(lesson);
+
+        // Attach questions to lesson if provided (useful for review lessons)
+        if (request.questionIds() != null && !request.questionIds().isEmpty()) {
+            List<Question> questions = questionRepo.findAllById(request.questionIds());
+            for (Question q : questions) {
+                q.setLesson(lesson);
+            }
+            questionRepo.saveAll(questions);
+        }
 
         LessonResponse response = lessonMapper.toResponse(lesson);
         return response;
@@ -69,6 +82,27 @@ public class LessonService {
 
         lesson = lessonRepo.save(lesson);
 
+        // Update questions association when provided
+        if (request.questionIds() != null) {
+            // detach existing questions currently assigned to this lesson that are not in the new set
+            List<Question> currently = questionRepo.findByLessonId(lesson.getId());
+            List<Long> keepIds = request.questionIds();
+            for (Question q : currently) {
+                if (!keepIds.contains(q.getId())) {
+                    q.setLesson(null);
+                }
+            }
+            questionRepo.saveAll(currently);
+
+            if (!keepIds.isEmpty()) {
+                List<Question> newQuestions = questionRepo.findAllById(keepIds);
+                for (Question q : newQuestions) {
+                    q.setLesson(lesson);
+                }
+                questionRepo.saveAll(newQuestions);
+            }
+        }
+
         LessonResponse response = lessonMapper.toResponse(lesson);
         return response;
     }
@@ -80,5 +114,37 @@ public class LessonService {
         }
 
         contentDeletionService.deleteLesson(id);
+    }
+
+    /**
+     * Create a review lesson in the same section as the source lesson.
+     * If questionIds provided in request, attach those questions to the new review lesson.
+     */
+    @Transactional
+    public LessonResponse createReviewFromLesson(Long sourceLessonId, ReviewCreationRequest request) {
+        Lesson source = lessonRepo.findById(sourceLessonId)
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+
+        Lesson review = new Lesson();
+        review.setTitle(request.title() != null ? request.title() : "Review: " + source.getTitle());
+        review.setLessonNumber(source.getLessonNumber());
+        review.setSkillType(source.getSkillType());
+        review.setDurationMinutes(source.getDurationMinutes());
+        review.setVipOnly(source.isVipOnly());
+        review.setReviewLesson(true);
+        review.setSection(source.getSection());
+        review.setOrderIndex(lessonRepo.countLessonsBySectionId(source.getSection().getId()) + 1);
+
+        review = lessonRepo.save(review);
+
+        if (request.questionIds() != null && !request.questionIds().isEmpty()) {
+            List<Question> questions = questionRepo.findAllById(request.questionIds());
+            for (Question q : questions) {
+                q.setLesson(review);
+            }
+            questionRepo.saveAll(questions);
+        }
+
+        return lessonMapper.toResponse(review);
     }
 }

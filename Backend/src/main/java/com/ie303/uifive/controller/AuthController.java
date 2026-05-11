@@ -12,6 +12,7 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +24,12 @@ public class AuthController {
     private final AuthService authService;
     private final UserService service;
 
+    @Value("${app.cookie-secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-same-site:Lax}")
+    private String cookieSameSite;
+
     @PostMapping("/login")
         @PermitAll
     public ApiResponse<String> login(@RequestBody @Valid LoginRequest request,
@@ -32,7 +39,7 @@ public class AuthController {
 
         response.setHeader(
                 "Set-Cookie",
-                "token=" + token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax"
+                "token=" + token + cookieAttributes(86400)
         );
 
         return ApiResponse.<String>builder()
@@ -66,7 +73,7 @@ public class AuthController {
 
         response.setHeader(
                 "Set-Cookie",
-                "token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax"
+                "token=" + cookieAttributes(0)
         );
 
         return ApiResponse.<String>builder()
@@ -74,5 +81,12 @@ public class AuthController {
                 .message("Logout successful")
                 .result("Logged out")
                 .build();
+    }
+
+    private String cookieAttributes(int maxAge) {
+        return "; HttpOnly"
+                + (cookieSecure ? "; Secure" : "")
+                + "; Path=/; Max-Age=" + maxAge
+                + "; SameSite=" + cookieSameSite;
     }
 }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 
 public record LessonRequest(
 
@@ -32,6 +33,9 @@ public record LessonRequest(
         Integer orderIndex,
 
         @NotNull(message = "sectionId không được để trống")
-        Long sectionId
+        Long sectionId,
+
+        // Optional: question IDs to attach to this lesson (useful for review lessons)
+        List<Long> questionIds
 ) {
 }

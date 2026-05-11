@@ -259,6 +259,12 @@ public class LearningProgressService {
                 .toList();
     }
 
+    public List<LessonProgressResponse> getReviewLessonsBySection(Long sectionId) {
+        return getLessonsBySection(sectionId).stream()
+                .filter(LessonProgressResponse::reviewLesson)
+                .toList();
+    }
+
     private int calculateLessonExpReward(User user) {
         double multiplier = resolveActiveExpMultiplier(user);
         return (int) Math.round(LESSON_COMPLETION_EXP_REWARD * multiplier);

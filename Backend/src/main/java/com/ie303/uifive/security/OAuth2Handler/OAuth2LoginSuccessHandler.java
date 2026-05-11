@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -18,6 +19,15 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final JwtService jwtService;
     private final UserService userService;
+
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
+    @Value("${app.cookie-secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-same-site:Lax}")
+    private String cookieSameSite;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -38,9 +48,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         response.setHeader(
                 "Set-Cookie",
-                "token=" + token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax"
+                "token=" + token + cookieAttributes(86400)
         );
 
-        response.sendRedirect("http://localhost:5173/");
+        response.sendRedirect(frontendUrl.replaceAll("/+$", ""));
+    }
+
+    private String cookieAttributes(int maxAge) {
+        return "; HttpOnly"
+                + (cookieSecure ? "; Secure" : "")
+                + "; Path=/; Max-Age=" + maxAge
+                + "; SameSite=" + cookieSameSite;
     }
 }

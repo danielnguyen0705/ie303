@@ -56,6 +56,21 @@ export async function getLessonsBySectionProgress(
   );
 }
 
+export async function getReviewLessonsBySectionProgress(
+  sectionId: number,
+): Promise<ApiResponse<SectionLessonProgressItem[]>> {
+  if (!sectionId || Number.isNaN(sectionId)) {
+    return createError("Invalid sectionId", "INVALID_SECTION_ID");
+  }
+
+  return request<SectionLessonProgressItem[]>(
+    `/progress/sections/${sectionId}/review-lessons`,
+    {
+      method: "GET",
+    },
+  );
+}
+
 export async function completeLesson(
   payload: CompleteLessonRequest,
 ): Promise<ApiResponse<CompleteLessonResult>> {

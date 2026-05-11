@@ -50,4 +50,12 @@ public class UserLessonProgressController {
                 .result(learningProgressService.getLessonsBySection(sectionId))
                 .build();
     }
+
+    @GetMapping("/sections/{sectionId}/review-lessons")
+    public ApiResponse<List<LessonProgressResponse>> getReviewLessonsBySection(@PathVariable Long sectionId) {
+        return ApiResponse.<List<LessonProgressResponse>>builder()
+                .code(1000)
+                .result(learningProgressService.getReviewLessonsBySection(sectionId))
+                .build();
+    }
 }
