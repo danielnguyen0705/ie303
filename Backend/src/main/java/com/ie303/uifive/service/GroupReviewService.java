@@ -14,6 +14,8 @@ import com.ie303.uifive.repo.GradeRepo;
 import com.ie303.uifive.repo.GroupReviewRepo;
 import com.ie303.uifive.repo.QuestionRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -29,6 +31,12 @@ public class GroupReviewService {
     private final GroupReviewMapper mapper;
     private final UserService userService;
 
+    public String currentUserCacheKey() {
+        User user = userService.getCurrentUser();
+        return user.getId() + ":" + user.getRole() + ":" + user.getVipExpiredAt();
+    }
+
+    @CacheEvict(cacheNames = "group-reviews", allEntries = true)
     public GroupReviewResponse create(GroupReviewRequest request) {
         ensureVip(userService.getCurrentUser());
 
@@ -53,6 +61,7 @@ public class GroupReviewService {
         return response;
     }
 
+    @Cacheable(cacheNames = "group-reviews", key = "#root.target.currentUserCacheKey() + ':' + #id")
     public GroupReviewResponse getById(Long id) {
         ensureVip(userService.getCurrentUser());
 
@@ -63,6 +72,7 @@ public class GroupReviewService {
         return response;
     }
 
+    @Cacheable(cacheNames = "group-reviews", key = "#root.target.currentUserCacheKey() + ':list'")
     public List<GroupReviewResponse> getAll() {
         ensureVip(userService.getCurrentUser());
 
@@ -75,6 +85,7 @@ public class GroupReviewService {
         return responses;
     }
 
+    @CacheEvict(cacheNames = "group-reviews", allEntries = true)
     public GroupReviewResponse update(Long id, GroupReviewRequest request) {
         ensureVip(userService.getCurrentUser());
 
@@ -106,6 +117,7 @@ public class GroupReviewService {
         return response;
     }
 
+    @CacheEvict(cacheNames = "group-reviews", allEntries = true)
     public void delete(Long id) {
         ensureVip(userService.getCurrentUser());
 

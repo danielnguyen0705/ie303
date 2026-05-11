@@ -11,6 +11,8 @@ import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.UserLessonProgressMapper;
 import com.ie303.uifive.repo.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,16 @@ public class LearningProgressService {
     private final UserLessonProgressMapper userLessonProgressMapper;
     private final MLPredictionService mlPredictionService;
 
+    public String currentUserCacheKey() {
+        User user = userService.getCurrentUser();
+        return user.getId() + ":" + user.getRole() + ":" + user.getVipExpiredAt();
+    }
+
+    @CacheEvict(cacheNames = {
+            "progress-grades-units",
+            "progress-units-sections",
+            "progress-sections-lessons"
+    }, allEntries = true)
     public UserLessonProgressResponse completeLesson(UserLessonProgressRequest request) {
         User currentUser = userService.getCurrentUser();
         User user = currentUser;
@@ -124,6 +136,7 @@ public class LearningProgressService {
         );
     }
 
+    @Cacheable(cacheNames = "progress-grades-units", key = "#root.target.currentUserCacheKey() + ':' + #gradeId")
     public List<UnitProgressResponse> getUnitsByGrade(Long gradeId) {
         User user = userService.getCurrentUser();
         boolean isAdmin = user.getRole() == Role.ADMIN;
@@ -161,6 +174,7 @@ public class LearningProgressService {
                 .toList();
     }
 
+    @Cacheable(cacheNames = "progress-units-sections", key = "#root.target.currentUserCacheKey() + ':' + #unitId")
     public List<SectionProgressResponse> getSectionsByUnit(Long unitId) {
         User user = userService.getCurrentUser();
         boolean isAdmin = user.getRole() == Role.ADMIN;
@@ -195,6 +209,7 @@ public class LearningProgressService {
         }).toList();
     }
 
+    @Cacheable(cacheNames = "progress-sections-lessons", key = "#root.target.currentUserCacheKey() + ':' + #sectionId")
     public List<LessonProgressResponse> getLessonsBySection(Long sectionId) {
         User user = userService.getCurrentUser();
         boolean isAdmin = user.getRole() == Role.ADMIN;

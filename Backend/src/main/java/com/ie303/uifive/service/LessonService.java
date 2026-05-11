@@ -10,6 +10,8 @@ import com.ie303.uifive.mapper.LessonMapper;
 import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.SectionRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,15 @@ public class LessonService {
     private final LessonMapper lessonMapper;
     private final ContentDeletionService contentDeletionService;
 
+    @CacheEvict(cacheNames = {
+            "lessons",
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson",
+            "progress-grades-units",
+            "progress-units-sections",
+            "progress-sections-lessons"
+    }, allEntries = true)
     public LessonResponse create(LessonRequest request) {
         Lesson lesson = lessonMapper.toEntity(request);
 
@@ -38,6 +49,7 @@ public class LessonService {
         return response;
     }
 
+    @Cacheable(cacheNames = "lessons", key = "#id")
     public LessonResponse getById(Long id) {
         Lesson lesson = lessonRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
@@ -46,6 +58,7 @@ public class LessonService {
         return response;
     }
 
+    @Cacheable(cacheNames = "lessons", key = "'all'")
     public List<LessonResponse> getAll() {
         List<Lesson> lessons = lessonRepo.findAll();
 
@@ -56,6 +69,15 @@ public class LessonService {
         return responses;
     }
 
+    @CacheEvict(cacheNames = {
+            "lessons",
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson",
+            "progress-grades-units",
+            "progress-units-sections",
+            "progress-sections-lessons"
+    }, allEntries = true)
     public LessonResponse update(Long id, LessonRequest request) {
         Lesson lesson = lessonRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
@@ -74,6 +96,15 @@ public class LessonService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {
+            "lessons",
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson",
+            "progress-grades-units",
+            "progress-units-sections",
+            "progress-sections-lessons"
+    }, allEntries = true)
     public void delete(Long id) {
         if (!lessonRepo.existsById(id)) {
             throw new AppException(ErrorCode.LESSON_NOT_FOUND);

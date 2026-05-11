@@ -12,6 +12,8 @@ import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.QuestionGroupRepo;
 import com.ie303.uifive.repo.QuestionRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +31,11 @@ public class QuestionGroupService {
     private final CloudinaryService cloudinaryService;
     private final ContentDeletionService contentDeletionService;
 
+    @CacheEvict(cacheNames = {
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson"
+    }, allEntries = true)
     public QuestionGroupResponse create(QuestionGroupRequest request) {
         QuestionGroup questionGroup = questionGroupMapper.toEntity(request);
         applyMedia(questionGroup, request);
@@ -43,6 +50,7 @@ public class QuestionGroupService {
         return questionGroupMapper.toResponse(questionGroup);
     }
 
+    @Cacheable(cacheNames = "question-groups-by-id", key = "#id")
     public QuestionGroupResponse getById(Long id) {
         QuestionGroup questionGroup = questionGroupRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND));
@@ -55,6 +63,11 @@ public class QuestionGroupService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = {
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson"
+    }, allEntries = true)
     public QuestionGroupResponse update(Long id, QuestionGroupRequest request) {
         QuestionGroup questionGroup = questionGroupRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND));
@@ -75,6 +88,11 @@ public class QuestionGroupService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson"
+    }, allEntries = true)
     public void delete(Long id) {
         if (!questionGroupRepo.existsById(id)) {
             throw new AppException(ErrorCode.QUESTION_GROUP_NOT_FOUND);

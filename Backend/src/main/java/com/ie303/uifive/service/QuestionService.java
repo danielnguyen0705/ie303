@@ -16,6 +16,8 @@ import com.ie303.uifive.repo.LessonRepo;
 import com.ie303.uifive.repo.QuestionGroupRepo;
 import com.ie303.uifive.repo.QuestionRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,6 +35,11 @@ public class QuestionService {
     private final CloudinaryService cloudinaryService;
     private final ContentDeletionService contentDeletionService;
 
+    @CacheEvict(cacheNames = {
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson"
+    }, allEntries = true)
     public QuestionResponse create(QuestionRequest request) {
         Question question = questionMapper.toEntity(request);
         applyMedia(question, request);
@@ -53,6 +60,7 @@ public class QuestionService {
         return questionMapper.toResponse(question);
     }
 
+    @Cacheable(cacheNames = "questions-by-id", key = "#id")
     public QuestionResponse getById(Long id) {
         Question question = questionRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
@@ -65,6 +73,11 @@ public class QuestionService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = {
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson"
+    }, allEntries = true)
     public QuestionResponse update(Long id, QuestionRequest request) {
         Question question = questionRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
@@ -93,6 +106,11 @@ public class QuestionService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {
+            "questions-by-id",
+            "question-groups-by-id",
+            "questions-by-lesson"
+    }, allEntries = true)
     public void delete(Long id) {
         if (!questionRepo.existsById(id)) {
             throw new AppException(ErrorCode.QUESTION_NOT_FOUND);
@@ -100,6 +118,8 @@ public class QuestionService {
 
         contentDeletionService.deleteQuestion(id);
     }
+    
+    @Cacheable(cacheNames = "questions-by-lesson", key = "#lessonId")
     public LessonQuestionResponse getQuestionsByLesson(Long lessonId) {
         Lesson lesson = lessonRepo.findById(lessonId)
                 .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
