@@ -1,10 +1,10 @@
 package com.ie303.uifive.security.OAuth2Handler;
 
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import com.ie303.uifive.security.AuthCookieUtil;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
@@ -25,12 +25,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
                                         AuthenticationException exception)
             throws IOException, ServletException {
 
-        Cookie jwtCookie = new Cookie("token", "");
-        jwtCookie.setHttpOnly(true);
-        jwtCookie.setSecure(false);
-        jwtCookie.setPath("/");
-        jwtCookie.setMaxAge(0);
-        response.addCookie(jwtCookie);
+        response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie("", 0, request));
 
         String redirectUrl = frontendBaseUrl + "/?oauth_error="
                 + URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8);

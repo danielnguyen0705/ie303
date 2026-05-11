@@ -1,6 +1,7 @@
 package com.ie303.uifive.security.OAuth2Handler;
 
 import com.ie303.uifive.entity.User;
+import com.ie303.uifive.security.AuthCookieUtil;
 import com.ie303.uifive.service.JwtService;
 import com.ie303.uifive.service.UserService;
 import jakarta.servlet.ServletException;
@@ -40,10 +41,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         String token = jwtService.generateToken(user);
 
-        response.setHeader(
-                "Set-Cookie",
-                "token=" + token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax"
-        );
+        response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie(token, 86400, request));
 
         response.sendRedirect(frontendBaseUrl + "/");
     }
