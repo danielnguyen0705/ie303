@@ -6,6 +6,7 @@ import com.ie303.uifive.service.UserService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -18,6 +19,9 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final JwtService jwtService;
     private final UserService userService;
+
+    @Value("${app.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -41,6 +45,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 "token=" + token + "; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax"
         );
 
-        response.sendRedirect("http://localhost:5173/");
+        response.sendRedirect(frontendBaseUrl + "/");
     }
 }
