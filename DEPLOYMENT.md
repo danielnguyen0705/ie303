@@ -72,6 +72,9 @@ Environment variables:
 - `PAYMENT_BANK_SECRET`
 - `PAYMENT_MOMO_ENABLED`
 - `PAYMENT_MOCK_CONFIRM_ENABLED`
+- `FRONTEND_BASE_URL=<your-frontend-url>`
+- `CORS_ALLOWED_ORIGINS=<your-frontend-url>`
+- `BACKEND_PUBLIC_BASE_URL=<your-railway-backend-url>`
 - `ML_API_URL=https://ie303.onrender.com/predict`
 
 ## 4) MLService on Render

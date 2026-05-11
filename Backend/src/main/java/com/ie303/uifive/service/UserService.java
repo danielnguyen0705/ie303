@@ -46,6 +46,9 @@ public class UserService implements UserDetailsService {
     @Value("${notification.time-zone:Asia/Ho_Chi_Minh}")
     private String studyTimeZone;
 
+    @Value("${app.backend-public-base-url:http://localhost:8080}")
+    private String backendPublicBaseUrl;
+
     private final PasswordEncoder passwordEncoder;
     private final UserRepo repo;
     private final UserMapper mapper;
@@ -83,7 +86,7 @@ public class UserService implements UserDetailsService {
 
         UserResponse response = mapper.toResponse(user);
 
-        String verifyLink = "http://localhost:8080/api/auth/verify-email?token="
+        String verifyLink = backendPublicBaseUrl + "/api/auth/verify-email?token="
                 + user.getVerificationToken();
 
         emailService.sendVerificationEmail(user.getEmail(), verifyLink);

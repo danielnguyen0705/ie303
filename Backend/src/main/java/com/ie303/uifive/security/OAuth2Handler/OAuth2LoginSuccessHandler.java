@@ -6,6 +6,7 @@ import com.ie303.uifive.service.UserService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -20,14 +21,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final JwtService jwtService;
     private final UserService userService;
 
-    @Value("${app.frontend-url:http://localhost:5173}")
-    private String frontendUrl;
-
-    @Value("${app.cookie-secure:false}")
-    private boolean cookieSecure;
-
-    @Value("${app.cookie-same-site:Lax}")
-    private String cookieSameSite;
+    @Value("${app.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -51,13 +46,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 "token=" + token + cookieAttributes(86400)
         );
 
-        response.sendRedirect(frontendUrl.replaceAll("/+$", ""));
-    }
-
-    private String cookieAttributes(int maxAge) {
-        return "; HttpOnly"
-                + (cookieSecure ? "; Secure" : "")
-                + "; Path=/; Max-Age=" + maxAge
-                + "; SameSite=" + cookieSameSite;
+        response.sendRedirect(frontendBaseUrl + "/");
     }
 }

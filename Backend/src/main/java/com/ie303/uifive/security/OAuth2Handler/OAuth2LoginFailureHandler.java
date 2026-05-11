@@ -15,14 +15,8 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
-    @Value("${app.frontend-url:http://localhost:5173}")
-    private String frontendUrl;
-
-    @Value("${app.cookie-secure:false}")
-    private boolean cookieSecure;
-
-    @Value("${app.cookie-same-site:Lax}")
-    private String cookieSameSite;
+    @Value("${app.frontend-base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request,
@@ -32,7 +26,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
         response.setHeader("Set-Cookie", "token=" + cookieAttributes(0));
 
-        String redirectUrl = frontendUrl.replaceAll("/+$", "") + "/?oauth_error="
+        String redirectUrl = frontendBaseUrl + "/?oauth_error="
                 + URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8);
 
         response.sendRedirect(redirectUrl);
