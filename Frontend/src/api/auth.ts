@@ -62,6 +62,19 @@ export async function logout(): Promise<ApiResponse<boolean>> {
 }
 
 // =========================
+// EMAIL VERIFICATION
+// =========================
+export async function verifyEmail(token: string): Promise<ApiResponse<void>> {
+  if (!token) {
+    return createError("Verification token is required", "VALIDATION_ERROR");
+  }
+
+  return request<void>(`/auth/verify-email?token=${encodeURIComponent(token)}`, {
+    method: "GET",
+  });
+}
+
+// =========================
 // OAUTH2 GOOGLE LOGIN
 // =========================
 export function getGoogleOAuth2AuthorizeUrl(): string {

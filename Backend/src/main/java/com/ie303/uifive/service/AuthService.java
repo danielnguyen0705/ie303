@@ -54,7 +54,7 @@ public class AuthService {
         }
 
         user.setVerified(true);
-        user.setVerificationToken(null); // 🔥 xoá token luôn
+        user.setVerificationToken(null); 
         user.setVerificationExpiry(null);
 
         userRepository.save(user);

@@ -40,8 +40,13 @@ import { ShopManagement } from "./pages/admin/ShopManagement";
 import { RequireAuth } from "./components/RequireAuth";
 import { Forbidden } from "./pages/Forbidden";
 import { NotFound } from "./pages/NotFound";
+import { VerifyEmail } from "./pages/VerifyEmail";
 
 export const router = createBrowserRouter([
+  {
+    path: "/verify-email",
+    Component: VerifyEmail,
+  },
   {
     path: "/",
     Component: Root,
