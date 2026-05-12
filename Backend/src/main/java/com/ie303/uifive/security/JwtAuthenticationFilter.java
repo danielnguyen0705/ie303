@@ -7,7 +7,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,11 +19,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserService userService;
+
+    @Value("${app.cookie-secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-same-site:Lax}")
+    private String cookieSameSite;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -81,13 +88,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            Cookie cookie = new Cookie("token", null);
-            cookie.setHttpOnly(true);
-            cookie.setPath("/");
-            cookie.setMaxAge(0);
-            response.addCookie(cookie);
+            response.setHeader("Set-Cookie", "token=" + cookieAttributes(0));
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String cookieAttributes(int maxAge) {
+        return "; HttpOnly"
+                + (cookieSecure ? "; Secure" : "")
+                + "; Path=/; Max-Age=" + maxAge
+                + "; SameSite=" + cookieSameSite;
     }
 }

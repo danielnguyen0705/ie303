@@ -165,6 +165,7 @@ export interface CreateLessonRequest {
   isReviewLesson?: boolean;
   durationMinutes?: number;
   isVipOnly?: boolean;
+  questionIds?: number[];
 }
 
 export interface UpdateLessonRequest {
@@ -177,6 +178,7 @@ export interface UpdateLessonRequest {
   isReviewLesson?: boolean;
   durationMinutes?: number;
   isVipOnly?: boolean;
+  questionIds?: number[];
 }
 
 export interface DeleteLessonRequest {

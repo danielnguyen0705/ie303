@@ -516,6 +516,7 @@ export async function createLesson(
       isVipOnly: payload.isVipOnly ?? false,
       orderIndex: safeOrderIndex,
       sectionId: payload.sectionId,
+      questionIds: payload.questionIds?.length ? payload.questionIds : undefined,
     }),
   });
 
@@ -549,6 +550,9 @@ export async function updateLesson(params: {
       isVipOnly: params.data.isVipOnly ?? false,
       orderIndex: params.data.orderIndex,
       sectionId: params.data.sectionId,
+      questionIds: params.data.questionIds?.length
+        ? params.data.questionIds
+        : undefined,
     }),
   });
 

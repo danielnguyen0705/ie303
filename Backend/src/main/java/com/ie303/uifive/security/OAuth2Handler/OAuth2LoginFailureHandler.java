@@ -32,4 +32,11 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
         response.sendRedirect(redirectUrl);
     }
+
+    private String cookieAttributes(int maxAge) {
+        return "; HttpOnly"
+                + (cookieSecure ? "; Secure" : "")
+                + "; Path=/; Max-Age=" + maxAge
+                + "; SameSite=" + cookieSameSite;
+    }
 }

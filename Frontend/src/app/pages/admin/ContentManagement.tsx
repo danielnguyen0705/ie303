@@ -35,6 +35,14 @@ import QuestionPanel from "./content/QuestionPanel";
 
 type ActiveStage = "grade" | "unit" | "section" | "lesson" | "question";
 
+type ReviewQuestionBankItem = {
+  id: number;
+  label: string;
+  lessonId: number;
+  lessonTitle: string;
+  sectionTitle: string;
+};
+
 const SECTION_TYPE_OPTIONS: SectionType[] = [
   "GETTING_STARTED",
   "LANGUAGE",
@@ -213,6 +221,10 @@ export function ContentManagement() {
     useState("10");
   const [newLessonIsReview, setNewLessonIsReview] = useState(false);
   const [newLessonIsVipOnly, setNewLessonIsVipOnly] = useState(false);
+  const [reviewQuestionBank, setReviewQuestionBank] = useState<ReviewQuestionBankItem[]>([]);
+  const [selectedReviewQuestionIds, setSelectedReviewQuestionIds] = useState<number[]>([]);
+  const [loadingReviewQuestionBank, setLoadingReviewQuestionBank] = useState(false);
+  const [isReviewQuestionModalOpen, setIsReviewQuestionModalOpen] = useState(false);
 
   const [updatingLesson, setUpdatingLesson] = useState(false);
   const [isEditLessonOpen, setIsEditLessonOpen] = useState(false);
@@ -398,6 +410,125 @@ export function ContentManagement() {
       setQuestionsPayload(null);
     } finally {
       setPanelLoading(false);
+    }
+  };
+
+  const toggleReviewQuestionId = (questionId: number) => {
+    setSelectedReviewQuestionIds((current) =>
+      current.includes(questionId)
+        ? current.filter((id) => id !== questionId)
+        : [...current, questionId],
+    );
+  };
+
+  const loadReviewQuestionBank = async () => {
+    if (!selectedUnit) {
+      showError({
+        title: "No unit selected",
+        message: "Please select a unit first",
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+      return;
+    }
+
+    if (!selectedSection) {
+      showError({
+        title: "No section selected",
+        message: "Please select a section first",
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+      return;
+    }
+
+    try {
+      setLoadingReviewQuestionBank(true);
+
+      // Load questions only from the current section, not every section
+      const lessonsResponse = await adminApi.getLessonsBySection({ sectionId: selectedSection.id });
+
+      if (!lessonsResponse.success || !lessonsResponse.data) {
+        showError({
+          title: "Failed to load lessons",
+          message: "Could not load lessons for the section",
+          showCancelButton: false,
+          confirmText: "Close",
+        });
+        return;
+      }
+
+      const bankMap = new Map<number, ReviewQuestionBankItem>();
+
+      // Load questions only from lessons before the current lesson
+      const filteredLessons = lessonsResponse.data.filter((lesson) => {
+        // If a lesson is selected, only include lessons before it
+        if (selectedLesson) {
+          const selectedOrder = selectedLesson.lessonNumber ?? selectedLesson.orderIndex ?? selectedLesson.id ?? 0;
+          const currentOrder = lesson.lessonNumber ?? lesson.orderIndex ?? lesson.id ?? 0;
+          return currentOrder < selectedOrder;
+        }
+        // If no lesson is selected, include all non-review lessons
+        return !lesson.isReviewLesson;
+      });
+
+      for (const lesson of filteredLessons) {
+        const lessonTitle = lesson.name || `Lesson ${getLessonDisplayNumber(lesson, 0)}`;
+        const questionsResponse = await adminApi.getQuestionsByLesson({ lessonId: lesson.id });
+
+        if (!questionsResponse.success || !questionsResponse.data) {
+          console.warn(`Failed to load questions for lesson ${lessonTitle}:`, questionsResponse);
+          continue;
+        }
+
+        const addQuestion = (question: { id: number; content?: string; instruction?: string }) => {
+          if (!bankMap.has(question.id)) {
+            const label = question.content?.trim() || question.instruction?.trim() || `Question ${question.id}`;
+            bankMap.set(question.id, {
+              id: question.id,
+              label,
+              lessonId: lesson.id,
+              lessonTitle,
+              sectionTitle: selectedSection.name || `Section ${getSectionDisplayNumber(selectedSection, 0)}`,
+            });
+          }
+        };
+
+        (questionsResponse.data.singleQuestions ?? []).forEach(addQuestion);
+        (questionsResponse.data.questionGroups ?? []).forEach((group) => {
+          (group.questions ?? []).forEach(addQuestion);
+        });
+      }
+
+      const nextBank = Array.from(bankMap.values()).sort((left, right) => left.id - right.id);
+      setReviewQuestionBank(nextBank);
+      setSelectedReviewQuestionIds((current) => current.filter((id) => bankMap.has(id)));
+
+      if (nextBank.length === 0) {
+        warning({
+          title: "No questions found",
+          message: "No questions were found in the previous lessons",
+          showCancelButton: false,
+          confirmText: "OK",
+        });
+      } else {
+        success({
+          title: "Loaded successfully",
+          message: `Loaded ${nextBank.length} questions from ${filteredLessons.length} previous lessons`,
+          showCancelButton: false,
+          confirmText: "OK",
+        });
+      }
+    } catch (err) {
+      console.error("Error loading review question bank:", err);
+      showError({
+        title: "Failed to load questions",
+        message: `Could not load questions from previous lessons: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+    } finally {
+      setLoadingReviewQuestionBank(false);
     }
   };
 
@@ -937,6 +1068,16 @@ export function ContentManagement() {
         ? parsedOrderIndex
         : currentMaxLessonNumber + 1;
 
+    if (newLessonIsReview && selectedReviewQuestionIds.length === 0) {
+      showError({
+        title: "Missing review questions",
+        message: "Please load and select questions before creating a review lesson",
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+      return;
+    }
+
     try {
       setCreatingLesson(true);
 
@@ -949,6 +1090,7 @@ export function ContentManagement() {
         isReviewLesson: newLessonIsReview,
         durationMinutes: parsedDuration,
         isVipOnly: newLessonIsVipOnly,
+        questionIds: newLessonIsReview ? selectedReviewQuestionIds : undefined,
       });
 
       if (response.success) {
@@ -959,6 +1101,8 @@ export function ContentManagement() {
         setNewLessonDurationMinutes("10");
         setNewLessonIsReview(false);
         setNewLessonIsVipOnly(false);
+        setReviewQuestionBank([]);
+        setSelectedReviewQuestionIds([]);
 
         await loadLessonsBySection(selectedSection.id, false);
         setActiveStage("lesson");
@@ -1979,81 +2123,101 @@ export function ContentManagement() {
           }
         }}
       >
-        <DialogContent aria-describedby={undefined}>
+        <DialogContent
+          aria-describedby={undefined}
+          className="w-[min(96vw,1120px)] max-h-[90vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>Create New Lesson</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">
-              <span className="text-slate-500">Selected section: </span>
-              <span className="font-semibold text-slate-900">
-                {selectedSection?.name || "Not selected"}
-              </span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                <span className="text-slate-500">Selected section: </span>
+                <span className="font-semibold text-slate-900">
+                  {selectedSection?.name || "Not selected"}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Lesson name</label>
+                <Input
+                  value={newLessonName}
+                  onChange={(e) => setNewLessonName(e.target.value)}
+                  placeholder="Example: Vocabulary: Basic Greetings"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Lesson number</label>
+                <Input
+                  value={newLessonOrderIndex}
+                  onChange={(e) => setNewLessonOrderIndex(e.target.value)}
+                  placeholder="Example: 1"
+                  type="number"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Skill type</label>
+                <select
+                  value={newLessonSkillType}
+                  onChange={(e) => setNewLessonSkillType(e.target.value as SkillType)}
+                  className="w-full h-10 rounded-md border border-slate-200 px-3 text-sm"
+                >
+                  {SKILL_TYPE_OPTIONS.map((skillType) => (
+                    <option key={skillType} value={skillType}>
+                      {skillType}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Duration minutes</label>
+                <Input
+                  value={newLessonDurationMinutes}
+                  onChange={(e) => setNewLessonDurationMinutes(e.target.value)}
+                  placeholder="Example: 10"
+                  type="number"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={newLessonIsReview}
+                  onChange={(e) => {
+                    setNewLessonIsReview(e.target.checked);
+                    if (!e.target.checked) {
+                      setReviewQuestionBank([]);
+                      setSelectedReviewQuestionIds([]);
+                    }
+                  }}
+                />
+                Is review lesson
+              </label>
+
+              {newLessonIsReview && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsReviewQuestionModalOpen(true)}
+                  className="w-full"
+                >
+                  📋 Select Questions ({selectedReviewQuestionIds.length})
+                </Button>
+              )}
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={newLessonIsVipOnly}
+                  onChange={(e) => setNewLessonIsVipOnly(e.target.checked)}
+                />
+                Is VIP only
+              </label>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Lesson name</label>
-              <Input
-                value={newLessonName}
-                onChange={(e) => setNewLessonName(e.target.value)}
-                placeholder="Example: Vocabulary: Basic Greetings"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Lesson number</label>
-              <Input
-                value={newLessonOrderIndex}
-                onChange={(e) => setNewLessonOrderIndex(e.target.value)}
-                placeholder="Example: 1"
-                type="number"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Skill type</label>
-              <select
-                value={newLessonSkillType}
-                onChange={(e) => setNewLessonSkillType(e.target.value as SkillType)}
-                className="w-full h-10 rounded-md border border-slate-200 px-3 text-sm"
-              >
-                {SKILL_TYPE_OPTIONS.map((skillType) => (
-                  <option key={skillType} value={skillType}>
-                    {skillType}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Duration minutes</label>
-              <Input
-                value={newLessonDurationMinutes}
-                onChange={(e) => setNewLessonDurationMinutes(e.target.value)}
-                placeholder="Example: 10"
-                type="number"
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={newLessonIsReview}
-                onChange={(e) => setNewLessonIsReview(e.target.checked)}
-              />
-              Is review lesson
-            </label>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={newLessonIsVipOnly}
-                onChange={(e) => setNewLessonIsVipOnly(e.target.checked)}
-              />
-              Is VIP only
-            </label>
-          </div>
 
           <DialogFooter>
             <Button
@@ -2070,6 +2234,97 @@ export function ContentManagement() {
               {creatingLesson ? "Creating..." : "Create lesson"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isReviewQuestionModalOpen}
+        onOpenChange={setIsReviewQuestionModalOpen}
+      >
+        <DialogContent
+          aria-describedby={undefined}
+          className="w-[min(96vw,800px)] max-h-[90vh] overflow-hidden flex flex-col"
+        >
+          <DialogHeader>
+            <DialogTitle>Select Review Questions</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-3 pb-4">
+              <div className="flex items-center justify-between px-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Questions from previous lessons
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Select questions from previous lessons in the current unit.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void loadReviewQuestionBank()}
+                  disabled={loadingReviewQuestionBank}
+                >
+                  {loadingReviewQuestionBank ? "Loading..." : "Load"}
+                </Button>
+              </div>
+
+              <div className="px-4">
+                {reviewQuestionBank.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                    Load questions to show them here.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {reviewQuestionBank.map((item) => {
+                      const checked = selectedReviewQuestionIds.includes(item.id);
+
+                      return (
+                        <label
+                          key={item.id}
+                          className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-colors ${
+                            checked
+                              ? "border-[#155ca5] bg-[#f0f7ff]"
+                              : "border-slate-200 hover:border-[#155ca5]/30"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleReviewQuestionId(item.id)}
+                            className="mt-1"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-900 line-clamp-3">
+                              {item.label}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {item.sectionTitle} / {item.lessonTitle} / ID: {item.id}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 px-4 py-3">
+            <div className="text-sm font-semibold text-[#155ca5] mb-4">
+              Selected: {selectedReviewQuestionIds.length} question(s)
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsReviewQuestionModalOpen(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

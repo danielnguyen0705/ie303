@@ -23,6 +23,12 @@ public class AuthController {
     private final AuthService authService;
     private final UserService service;
 
+    @Value("${app.cookie-secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-same-site:Lax}")
+    private String cookieSameSite;
+
     @PostMapping("/login")
         @PermitAll
     public ApiResponse<String> login(@RequestBody @Valid LoginRequest request,
