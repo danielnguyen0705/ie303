@@ -1,6 +1,8 @@
 package com.ie303.uifive.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
@@ -22,7 +24,19 @@ public class RedisCacheConfig extends CachingConfigurerSupport {
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
-        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
+        ObjectMapper cacheObjectMapper = objectMapper.copy();
+        cacheObjectMapper.findAndRegisterModules();
+        cacheObjectMapper.activateDefaultTypingAsProperty(
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfSubType("com.ie303.uifive")
+                        .allowIfSubType("java.util")
+                        .allowIfSubType("java.lang")
+                        .build(),
+                ObjectMapper.DefaultTyping.EVERYTHING,
+                "@class"
+        );
+
+        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(cacheObjectMapper);
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(
