@@ -7,10 +7,6 @@ import { GradeUnits } from "./pages/GradeUnits";
 import { SectionSelection } from "./pages/SectionSelection";
 import { LessonSelection } from "./pages/LessonSelection";
 import LessonRunner from "./pages/LessonRunner";
-import { PronunciationExercise } from "./pages/exercises/PronunciationExercise";
-import { ReadingExercise } from "./pages/exercises/ReadingExercise";
-import { QuizExercise } from "./pages/exercises/QuizExercise";
-import { ListeningExercise } from "./pages/exercises/ListeningExercise";
 import { Leaderboard } from "./pages/Leaderboard";
 import { Quests } from "./pages/Quests";
 import { Profile } from "./pages/Profile";
@@ -58,12 +54,6 @@ export const router = createBrowserRouter([
       // Old routes - keep temporarily for compatibility
       { path: "units", Component: UnitSelection },
       { path: "unit/:unitId", Component: UnitView },
-
-      // Exercise demo routes
-      { path: "exercise/pronunciation", Component: PronunciationExercise },
-      { path: "exercise/reading", Component: ReadingExercise },
-      { path: "exercise/quiz", Component: QuizExercise },
-      { path: "exercise/listening", Component: ListeningExercise },
 
       { path: "test/results", Component: TestResults },
       { path: "test/review", Component: TestReview },

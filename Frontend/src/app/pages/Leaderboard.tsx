@@ -55,14 +55,22 @@ export function Leaderboard() {
 
       if (!coinResponse.success) {
         setError(
-          coinResponse.error?.message || copy("Failed to load coin leaderboard", "Không thể tải bảng xếp hạng xu"),
+          coinResponse.error?.message ||
+            copy(
+              "Failed to load coin leaderboard",
+              "Không thể tải bảng xếp hạng xu",
+            ),
         );
         return;
       }
 
       if (!expResponse.success) {
         setError(
-          expResponse.error?.message || copy("Failed to load exp leaderboard", "Không thể tải bảng xếp hạng EXP"),
+          expResponse.error?.message ||
+            copy(
+              "Failed to load exp leaderboard",
+              "Không thể tải bảng xếp hạng EXP",
+            ),
         );
         return;
       }
@@ -70,7 +78,10 @@ export function Leaderboard() {
       if (!collectorResponse.success) {
         setError(
           collectorResponse.error?.message ||
-            copy("Failed to load collector leaderboard", "Không thể tải bảng xếp hạng sưu tập"),
+            copy(
+              "Failed to load collector leaderboard",
+              "Không thể tải bảng xếp hạng sưu tập",
+            ),
         );
         return;
       }
@@ -80,7 +91,9 @@ export function Leaderboard() {
       setCollectorLeaderboard(collectorResponse.data?.leaderboard || []);
     } catch (err) {
       console.error("Error loading leaderboard:", err);
-      setError(copy("Failed to load leaderboard", "Không thể tải bảng xếp hạng"));
+      setError(
+        copy("Failed to load leaderboard", "Không thể tải bảng xếp hạng"),
+      );
     } finally {
       setLoading(false);
     }
@@ -98,7 +111,9 @@ export function Leaderboard() {
       <main className="flex min-h-[70vh] items-center justify-center px-6">
         <div className="space-y-4 text-center">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#155ca5]" />
-          <p className="font-medium text-gray-600">{copy("Loading leaderboard...", "Đang tải bảng xếp hạng...")}</p>
+          <p className="font-medium text-gray-600">
+            {copy("Loading leaderboard...", "Đang tải bảng xếp hạng...")}
+          </p>
         </div>
       </main>
     );
@@ -138,7 +153,10 @@ export function Leaderboard() {
 
       <section className="mx-auto w-full max-w-7xl space-y-8 px-5 py-10 md:px-0 md:py-0">
         <p className="text-center text-2xl font-semibold text-slate-700 md:text-left md:text-xl">
-          {copy("Top 10 Coins, EXP and Collection.", "Top 10 xu, EXP và bộ sưu tập.")}
+          {copy(
+            "Top 10 Coins, EXP and Collection.",
+            "Top 10 xu, EXP và bộ sưu tập.",
+          )}
         </p>
 
         <div className="grid grid-cols-3 rounded-[2rem] bg-white/70 p-2 shadow-sm md:inline-grid md:w-auto">
@@ -295,7 +313,7 @@ function MobileLeaderboardCard({
                   className={isCurrentUser ? "text-white" : "text-[#155ca5]"}
                 />
                 <Metric
-                  value={`${entry.score}%`}
+                  value={`${entry.score}`}
                   className={isCurrentUser ? "text-white/90" : "text-slate-700"}
                 />
                 <FlameMetric value={entry.streak} light={isCurrentUser} />
@@ -320,8 +338,12 @@ function MobileLeaderboardCard({
                   value={entry.collectibleCount}
                   className={isCurrentUser ? "text-white" : "text-[#155ca5]"}
                 />
-                <Metric value={`${entry.categoryCount} ${copy("cat", "loại")}`} />
-                <Metric value={`${entry.avatarCount} ${copy("ava", "avatar")}`} />
+                <Metric
+                  value={`${entry.categoryCount} ${copy("cat", "loại")}`}
+                />
+                <Metric
+                  value={`${entry.avatarCount} ${copy("ava", "avatar")}`}
+                />
                 <Metric value={`${entry.backgroundCount} bg`} />
               </>
             )}
@@ -388,7 +410,7 @@ function DesktopCoinTable({ data }: { data: CoinLeaderboardEntryResponse[] }) {
           <Td>#{entry.rank}</Td>
           <UserTd entry={entry} />
           <Td className="text-[#155ca5]">{entry.coin.toLocaleString()}</Td>
-          <Td>{entry.score}%</Td>
+          <Td>{entry.score}</Td>
           <Td>
             <FlameMetric value={entry.streak} />
           </Td>
@@ -401,7 +423,14 @@ function DesktopCoinTable({ data }: { data: CoinLeaderboardEntryResponse[] }) {
 function DesktopExpTable({ data }: { data: ExpLeaderboardEntryResponse[] }) {
   const { copy } = useLanguage();
   return (
-    <DesktopTable headers={[copy("Rank", "Hạng"), copy("User", "Người dùng"), "EXP", copy("Streak", "Chuỗi ngày")]}>
+    <DesktopTable
+      headers={[
+        copy("Rank", "Hạng"),
+        copy("User", "Người dùng"),
+        "EXP",
+        copy("Streak", "Chuỗi ngày"),
+      ]}
+    >
       {data.map((entry) => (
         <tr
           key={entry.userId}

@@ -1,10 +1,26 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import AuthModal from "@/components/AuthModal";
 import { useLanguage } from "@/context/LanguageContext";
+import { NotificationPopup } from "@/utils/NotificationPopup";
+import { useNotificationPopup } from "@/utils/useNotificationPopup";
 
 export function PublicLanding() {
   const { language, setLanguage, copy } = useLanguage();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const authPopup = useNotificationPopup({
+    autoClose: true,
+    autoCloseDuration: 2500,
+  });
+
+  const handleRegisterSuccess = useCallback(() => {
+    authPopup.success({
+      title: copy("Registration successful", "Đăng ký thành công"),
+      message: copy(
+        "Please verify your email before logging in.",
+        "Vui lòng mở email để xác minh tài khoản trước khi đăng nhập.",
+      ),
+    });
+  }, [authPopup, copy]);
 
   return (
     <div className="min-h-screen bg-[#f6f6ff] text-[#1e2e51] selection:bg-[#73aaf9] selection:text-[#002a54]">
@@ -179,6 +195,12 @@ export function PublicLanding() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        onRegisterSuccess={handleRegisterSuccess}
+      />
+
+      <NotificationPopup
+        {...authPopup.notification}
+        onClose={authPopup.close}
       />
     </div>
   );

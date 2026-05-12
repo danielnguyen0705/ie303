@@ -1,11 +1,5 @@
 import React, { ReactNode } from "react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Info,
-  XCircle,
-  AlertTriangle,
-} from "lucide-react";
+import { CheckCircle2, Info, XCircle, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -39,39 +33,53 @@ const typeConfig: Record<
   NotificationType,
   {
     icon: React.ComponentType<{ className?: string }>;
-    bgColor: string;
-    borderColor: string;
-    textColor: string;
-    iconColor: string;
+    iconShell: string;
+    titleColor: string;
+    bodyColor: string;
+    accentBar: string;
+    confirmButton: string;
   }
 > = {
   success: {
     icon: CheckCircle2,
-    bgColor: "bg-green-50 dark:bg-green-950",
-    borderColor: "border-green-200 dark:border-green-800",
-    textColor: "text-green-900 dark:text-green-100",
-    iconColor: "text-green-600 dark:text-green-400",
+    iconShell:
+      "border-emerald-100 bg-emerald-50 text-emerald-600 shadow-[0_10px_30px_rgba(16,185,129,0.12)]",
+    titleColor: "text-slate-900",
+    bodyColor: "text-slate-600",
+    accentBar:
+      "bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500",
+    confirmButton:
+      "bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-[0_16px_34px_rgba(34,197,94,0.28)] hover:from-emerald-600 hover:to-emerald-700",
   },
   error: {
     icon: XCircle,
-    bgColor: "bg-red-50 dark:bg-red-950",
-    borderColor: "border-red-200 dark:border-red-800",
-    textColor: "text-red-900 dark:text-red-100",
-    iconColor: "text-red-600 dark:text-red-400",
+    iconShell:
+      "border-red-100 bg-red-50 text-red-600 shadow-[0_10px_30px_rgba(239,68,68,0.12)]",
+    titleColor: "text-slate-900",
+    bodyColor: "text-slate-600",
+    accentBar: "bg-gradient-to-r from-red-500 via-red-400 to-red-500",
+    confirmButton:
+      "bg-gradient-to-b from-red-600 to-red-700 text-white shadow-[0_16px_34px_rgba(220,38,38,0.28)] hover:from-red-700 hover:to-red-800",
   },
   warning: {
     icon: AlertTriangle,
-    bgColor: "bg-yellow-50 dark:bg-yellow-950",
-    borderColor: "border-yellow-200 dark:border-yellow-800",
-    textColor: "text-yellow-900 dark:text-yellow-100",
-    iconColor: "text-yellow-600 dark:text-yellow-400",
+    iconShell:
+      "border-amber-100 bg-amber-50 text-amber-600 shadow-[0_10px_30px_rgba(245,158,11,0.12)]",
+    titleColor: "text-slate-900",
+    bodyColor: "text-slate-600",
+    accentBar: "bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500",
+    confirmButton:
+      "bg-gradient-to-b from-amber-500 to-amber-600 text-white shadow-[0_16px_34px_rgba(245,158,11,0.28)] hover:from-amber-600 hover:to-amber-700",
   },
   info: {
     icon: Info,
-    bgColor: "bg-blue-50 dark:bg-blue-950",
-    borderColor: "border-blue-200 dark:border-blue-800",
-    textColor: "text-blue-900 dark:text-blue-100",
-    iconColor: "text-blue-600 dark:text-blue-400",
+    iconShell:
+      "border-blue-100 bg-blue-50 text-blue-600 shadow-[0_10px_30px_rgba(37,99,235,0.12)]",
+    titleColor: "text-slate-900",
+    bodyColor: "text-slate-600",
+    accentBar: "bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500",
+    confirmButton:
+      "bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-[0_16px_34px_rgba(37,99,235,0.28)] hover:from-blue-700 hover:to-blue-800",
   },
 };
 
@@ -95,6 +103,24 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
   const Icon = config.icon;
   const resolvedConfirmText = confirmText ?? copy("Confirm", "Xác nhận");
   const resolvedCancelText = cancelText ?? copy("Cancel", "Hủy");
+  const resolvedTitle =
+    title ??
+    copy(
+      type === "success"
+        ? "Success"
+        : type === "error"
+          ? "Error"
+          : type === "warning"
+            ? "Warning"
+            : "Information",
+      type === "success"
+        ? "Thành công"
+        : type === "error"
+          ? "Thất bại"
+          : type === "warning"
+            ? "Cảnh báo"
+            : "Thông báo",
+    );
   const accessibleDescription =
     typeof description === "string"
       ? description
@@ -118,66 +144,77 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`sm:max-w-[425px] ${className}`}>
+      <DialogContent
+        className={`z-[210] overflow-hidden rounded-[28px] border border-slate-100 bg-white p-0 shadow-[0_28px_80px_rgba(15,23,42,0.24)] sm:max-w-[520px] [&_[data-slot=dialog-close]]:hidden ${className}`}
+      >
         <DialogDescription className="sr-only">
           {accessibleDescription}
         </DialogDescription>
         <div
-          className={`flex gap-4 p-4 rounded-lg border ${config.bgColor} ${config.borderColor}`}
-        >
-          <Icon className={`h-6 w-6 flex-shrink-0 ${config.iconColor}`} />
-          <div className="flex-1">
-            <DialogHeader>
-              {title && (
-                <DialogTitle className={config.textColor}>{title}</DialogTitle>
-              )}
-            </DialogHeader>
+          className={`absolute inset-x-0 bottom-0 h-1 ${config.accentBar}`}
+        />
 
-            <div className={`mt-2 ${config.textColor}`}>
-              {typeof message === "string" ? (
-                <p className="text-sm font-medium">{message}</p>
-              ) : (
-                <div className="text-sm font-medium">{message}</div>
-              )}
+        <div className="relative px-6 pb-7 pt-6 sm:px-8 sm:pb-8 sm:pt-8">
+          <div className="flex items-start gap-4 sm:gap-5">
+            <div
+              className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border ${config.iconShell}`}
+            >
+              <Icon className="h-7 w-7" />
+            </div>
 
-              {description && (
-                <div className="mt-2 text-sm opacity-90">
-                  {typeof description === "string" ? (
-                    <p>{description}</p>
-                  ) : (
-                    description
-                  )}
-                </div>
-              )}
+            <div className="min-w-0 flex-1">
+              <DialogHeader className="items-start text-left">
+                <DialogTitle
+                  className={`text-2xl font-bold tracking-[-0.03em] sm:text-[2rem] ${config.titleColor}`}
+                >
+                  {resolvedTitle}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className={`mt-4 text-base leading-7 ${config.bodyColor}`}>
+                {typeof message === "string" ? (
+                  <p>{message}</p>
+                ) : (
+                  <div>{message}</div>
+                )}
+
+                {description && (
+                  <div className="mt-2">
+                    {typeof description === "string" ? (
+                      <p>{description}</p>
+                    ) : (
+                      description
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {(onConfirm || showCancelButton) && (
-          <DialogFooter className="mt-6">
-            {showCancelButton && (
-              <Button variant="outline" onClick={onClose}>
-                {resolvedCancelText}
-              </Button>
-            )}
-            {onConfirm && (
-              <Button
-                onClick={handleConfirm}
-                className={`${
-                  type === "success"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : type === "error"
-                      ? "bg-red-600 hover:bg-red-700"
-                      : type === "warning"
-                        ? "bg-yellow-600 hover:bg-yellow-700"
-                        : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {resolvedConfirmText}
-              </Button>
-            )}
-          </DialogFooter>
-        )}
+          {(onConfirm || showCancelButton) && (
+            <DialogFooter
+              className={`mt-8 gap-3 ${showCancelButton && onConfirm ? "grid grid-cols-1 sm:grid-cols-2" : "flex"}`}
+            >
+              {showCancelButton && (
+                <Button
+                  variant="outline"
+                  onClick={onClose}
+                  className="h-12 rounded-2xl border-0 bg-slate-100 px-6 text-base font-semibold text-slate-700 shadow-none hover:bg-slate-200 hover:text-slate-800"
+                >
+                  {resolvedCancelText}
+                </Button>
+              )}
+              {onConfirm && (
+                <Button
+                  onClick={handleConfirm}
+                  className={`h-12 rounded-2xl px-6 text-base font-semibold ${config.confirmButton} ${!showCancelButton ? "w-full" : ""}`}
+                >
+                  {resolvedConfirmText}
+                </Button>
+              )}
+            </DialogFooter>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
