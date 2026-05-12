@@ -1,4 +1,5 @@
 import { request, createError } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
 import type { ApiResponse } from "./types";
 
 export interface SectionLessonProgressItem {
@@ -53,6 +54,10 @@ export async function getLessonsBySectionProgress(
     {
       method: "GET",
     },
+    {
+      key: `progress:section-lessons:${sectionId}`,
+      ttlMs: 2 * 60 * 1000,
+    },
   );
 }
 
@@ -82,10 +87,16 @@ export async function completeLesson(
     return createError("Invalid score or accuracy", "INVALID_COMPLETION_DATA");
   }
 
-  return request<CompleteLessonResult>("/progress/lessons/complete", {
+  const response = await request<CompleteLessonResult>("/progress/lessons/complete", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("progress:");
+  }
+
+  return response;
 }
 
 export async function getLessonById(
@@ -97,5 +108,8 @@ export async function getLessonById(
 
   return request<LessonDetailResult>(`/lessons/${lessonId}`, {
     method: "GET",
+  }, {
+    key: `lessons:by-id:${lessonId}`,
+    ttlMs: 10 * 60 * 1000,
   });
 }

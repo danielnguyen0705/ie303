@@ -19,6 +19,8 @@ import com.ie303.uifive.repo.UserItemRepo;
 import com.ie303.uifive.repo.UserRepo;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,6 +43,15 @@ public class ShopItemService {
     private final UserItemMapper userItemMapper;
     private final CloudinaryService cloudinaryService;
 
+    @CacheEvict(cacheNames = {
+            "shop-items-by-id",
+            "shop-items-all",
+            "shop-items-active",
+            "shop-items-my-items",
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
+    }, allEntries = true)
     public ShopItemResponse create(ShopItemRequest request) {
         validateShopItemRequest(request);
 
@@ -54,6 +65,7 @@ public class ShopItemService {
         return mapper.toResponse(entity);
     }
 
+    @Cacheable(cacheNames = "shop-items-by-id", key = "#id")
     public ShopItemResponse getById(Long id) {
         ShopItem entity = repo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_ITEM_NOT_FOUND));
@@ -61,6 +73,7 @@ public class ShopItemService {
         return mapper.toResponse(entity);
     }
 
+    @Cacheable(cacheNames = "shop-items-all")
     public List<ShopItemResponse> getAll() {
         return repo.findAll()
                 .stream()
@@ -68,6 +81,7 @@ public class ShopItemService {
                 .toList();
     }
 
+    @Cacheable(cacheNames = "shop-items-active")
     public List<ShopItemResponse> getAllActive() {
         return repo.findByActiveTrue()
                 .stream()
@@ -75,6 +89,15 @@ public class ShopItemService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = {
+            "shop-items-by-id",
+            "shop-items-all",
+            "shop-items-active",
+            "shop-items-my-items",
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
+    }, allEntries = true)
     public ShopItemResponse update(Long id, ShopItemRequest request) {
         validateShopItemRequest(request);
 
@@ -92,6 +115,15 @@ public class ShopItemService {
         return mapper.toResponse(entity);
     }
 
+    @CacheEvict(cacheNames = {
+            "shop-items-by-id",
+            "shop-items-all",
+            "shop-items-active",
+            "shop-items-my-items",
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
+    }, allEntries = true)
     public void delete(Long id) {
         ShopItem entity = repo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.SHOP_ITEM_NOT_FOUND));
@@ -100,6 +132,7 @@ public class ShopItemService {
         repo.save(entity);
     }
 
+    @Cacheable(cacheNames = "shop-items-my-items", key = "@userService.getCurrentUser().id")
     public List<UserItemResponse> getMyItems() {
         User user = userService.getCurrentUser();
 
@@ -109,6 +142,12 @@ public class ShopItemService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = {
+            "shop-items-my-items",
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
+    }, allEntries = true)
     public BuyItemResponse buyItem(Long itemId) {
         User user = userService.getCurrentUser();
 
@@ -138,6 +177,7 @@ public class ShopItemService {
         return new BuyItemResponse("Mua vật phẩm thành công", user.getCoin());
     }
 
+    @CacheEvict(cacheNames = "shop-items-my-items", allEntries = true)
     public String useSkip(Long userItemId) {
         User user = userService.getCurrentUser();
 
@@ -167,10 +207,22 @@ public class ShopItemService {
         return "Dùng SKIP thành công. Vật phẩm này sẽ bảo vệ 1 ngày streak bị bỏ lỡ";
     }
 
+    @CacheEvict(cacheNames = {
+            "shop-items-my-items",
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
+    }, allEntries = true)
     public String equipAvatar(Long shopItemId) {
         return equipItem(shopItemId, ItemType.AVATAR);
     }
 
+    @CacheEvict(cacheNames = {
+            "shop-items-my-items",
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
+    }, allEntries = true)
     public String equipBackground(Long shopItemId) {
         return equipItem(shopItemId, ItemType.BACKGROUND);
     }

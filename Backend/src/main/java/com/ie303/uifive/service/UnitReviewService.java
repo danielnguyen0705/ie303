@@ -12,6 +12,8 @@ import com.ie303.uifive.repo.QuestionRepo;
 import com.ie303.uifive.repo.UnitRepo;
 import com.ie303.uifive.repo.UnitReviewRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,6 +27,7 @@ public class UnitReviewService {
     private final QuestionRepo questionRepo;
     private final UnitReviewMapper mapper;
 
+    @CacheEvict(cacheNames = "unit-reviews", allEntries = true)
     public UnitReviewResponse create(UnitReviewRequest request) {
         UnitReview entity = mapper.toEntity(request);
 
@@ -44,6 +47,7 @@ public class UnitReviewService {
         return response;
     }
 
+    @Cacheable(cacheNames = "unit-reviews", key = "#id")
     public UnitReviewResponse getById(Long id) {
         UnitReview entity = repo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Unit review not found"));
@@ -52,6 +56,7 @@ public class UnitReviewService {
         return response;
     }
 
+    @Cacheable(cacheNames = "unit-reviews", key = "'list'")
     public List<UnitReviewResponse> getAll() {
         List<UnitReview> entities = repo.findAll();
 
@@ -62,6 +67,7 @@ public class UnitReviewService {
         return responses;
     }
 
+    @CacheEvict(cacheNames = "unit-reviews", allEntries = true)
     public UnitReviewResponse update(Long id, UnitReviewRequest request) {
         UnitReview entity = repo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Unit review not found"));
@@ -86,6 +92,7 @@ public class UnitReviewService {
         return response;
     }
 
+    @CacheEvict(cacheNames = "unit-reviews", allEntries = true)
     public void delete(Long id) {
         if (!repo.existsById(id)) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Unit review not found");

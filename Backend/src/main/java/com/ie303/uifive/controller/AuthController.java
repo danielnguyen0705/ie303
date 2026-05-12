@@ -7,6 +7,7 @@ import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UserResponse;
 import com.ie303.uifive.service.AuthService;
 import com.ie303.uifive.service.UserService;
+import com.ie303.uifive.security.AuthCookieUtil;
 import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,7 +37,7 @@ public class AuthController {
 
         String token = authService.login(request);
 
-        response.setHeader("Set-Cookie", buildAuthCookie(token, 86400, httpRequest));
+        response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie(token, 86400, httpRequest));
 
         return ApiResponse.<String>builder()
                 .code(1000)
@@ -68,7 +69,7 @@ public class AuthController {
     public ApiResponse<String> logout(HttpServletRequest httpRequest,
                                       HttpServletResponse response) {
 
-        response.setHeader("Set-Cookie", buildAuthCookie("", 0, httpRequest));
+        response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie("", 0, httpRequest));
 
         return ApiResponse.<String>builder()
                 .code(1000)
@@ -77,30 +78,4 @@ public class AuthController {
                 .build();
     }
 
-    private String buildAuthCookie(String token, int maxAgeSeconds, HttpServletRequest request) {
-        boolean secure = isSecureRequest(request);
-        String sameSite = secure ? "None" : "Lax";
-
-        StringBuilder cookie = new StringBuilder("token=")
-                .append(token == null ? "" : token)
-                .append("; HttpOnly; Path=/; Max-Age=")
-                .append(maxAgeSeconds)
-                .append("; SameSite=")
-                .append(sameSite);
-
-        if (secure) {
-            cookie.append("; Secure");
-        }
-
-        return cookie.toString();
-    }
-
-    private boolean isSecureRequest(HttpServletRequest request) {
-        if (request.isSecure()) {
-            return true;
-        }
-
-        String forwardedProto = request.getHeader("X-Forwarded-Proto");
-        return "https".equalsIgnoreCase(forwardedProto);
-    }
 }

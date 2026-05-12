@@ -25,6 +25,9 @@ export async function getSectionsByUnitProgress(
 
   return request<SectionProgressItem[]>(`/progress/units/${unitId}/sections`, {
     method: "GET",
+  }, {
+    key: `progress:unit-sections:${unitId}`,
+    ttlMs: 2 * 60 * 1000,
   });
 }
 
@@ -37,6 +40,9 @@ export async function getSection(
 
   return request<SectionResponse>(`/sections/${sectionId}`, {
     method: "GET",
+  }, {
+    key: `sections:by-id:${sectionId}`,
+    ttlMs: 10 * 60 * 1000,
   });
 }
 

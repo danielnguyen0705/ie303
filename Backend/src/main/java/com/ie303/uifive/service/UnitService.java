@@ -10,6 +10,8 @@ import com.ie303.uifive.mapper.UnitMapper;
 import com.ie303.uifive.repo.GradeRepo;
 import com.ie303.uifive.repo.UnitRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,14 @@ public class UnitService {
     private final UnitMapper mapper;
     private final ContentDeletionService contentDeletionService;
 
+    @CacheEvict(cacheNames = {
+            "units",
+            "sections",
+            "lessons",
+            "progress-grades-units",
+            "progress-units-sections",
+            "progress-sections-lessons"
+    }, allEntries = true)
     public UnitResponse create(UnitRequest request) {
         Unit entity = mapper.toEntity(request);
 
@@ -38,6 +48,7 @@ public class UnitService {
         return response;
     }
 
+    @Cacheable(cacheNames = "units", key = "#id")
     public UnitResponse getById(Long id) {
         Unit entity = unitRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
@@ -46,6 +57,7 @@ public class UnitService {
         return response;
     }
 
+    @Cacheable(cacheNames = "units", key = "'all'")
     public List<UnitResponse> getAll() {
         List<Unit> entities = unitRepo.findAll();
 
@@ -56,6 +68,14 @@ public class UnitService {
         return responses;
     }
 
+    @CacheEvict(cacheNames = {
+            "units",
+            "sections",
+            "lessons",
+            "progress-grades-units",
+            "progress-units-sections",
+            "progress-sections-lessons"
+    }, allEntries = true)
     public UnitResponse update(Long id, UnitRequest request) {
         Unit entity = unitRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
@@ -74,6 +94,14 @@ public class UnitService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {
+            "units",
+            "sections",
+            "lessons",
+            "progress-grades-units",
+            "progress-units-sections",
+            "progress-sections-lessons"
+    }, allEntries = true)
     public void delete(Long id) {
         if (!unitRepo.existsById(id)) {
             throw new AppException(ErrorCode.UNIT_NOT_FOUND);

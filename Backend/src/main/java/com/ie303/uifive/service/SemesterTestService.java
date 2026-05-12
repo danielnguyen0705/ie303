@@ -17,6 +17,8 @@ import com.ie303.uifive.repo.QuestionRepo;
 import com.ie303.uifive.repo.SemesterTestRepo;
 import com.ie303.uifive.repo.UserQuestionHistoryRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -36,6 +38,12 @@ public class SemesterTestService {
     private final UserService userService;
     private final UserQuestionHistoryRepo userQuestionHistoryRepo;
 
+    public String currentUserCacheKey() {
+        User user = userService.getCurrentUser();
+        return user.getId() + ":" + user.getRole() + ":" + user.getVipExpiredAt();
+    }
+
+    @CacheEvict(cacheNames = "semester-tests", allEntries = true)
     public SemesterTestResponse create(SemesterTestRequest request) {
         User currentUser = userService.getCurrentUser();
         ensureVip(currentUser);
@@ -85,6 +93,7 @@ public class SemesterTestService {
         return response;
     }
 
+    @Cacheable(cacheNames = "semester-tests", key = "#root.target.currentUserCacheKey() + ':' + #id")
     public SemesterTestResponse getById(Long id) {
         ensureVip(userService.getCurrentUser());
 
@@ -95,6 +104,7 @@ public class SemesterTestService {
         return response;
     }
 
+    @Cacheable(cacheNames = "semester-tests", key = "#root.target.currentUserCacheKey() + ':list'")
     public List<SemesterTestResponse> getAll() {
         ensureVip(userService.getCurrentUser());
 
@@ -107,6 +117,7 @@ public class SemesterTestService {
         return responses;
     }
 
+    @CacheEvict(cacheNames = "semester-tests", allEntries = true)
     public SemesterTestResponse update(Long id, SemesterTestRequest request) {
         User currentUser = userService.getCurrentUser();
         ensureVip(currentUser);
@@ -165,6 +176,7 @@ public class SemesterTestService {
         return response;
     }
 
+    @CacheEvict(cacheNames = "semester-tests", allEntries = true)
     public void delete(Long id) {
         ensureVip(userService.getCurrentUser());
 

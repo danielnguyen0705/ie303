@@ -14,6 +14,7 @@ import com.ie303.uifive.repo.ShopItemRepo;
 import com.ie303.uifive.repo.UserItemRepo;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,7 @@ public class LeaderboardService {
     private final ShopItemRepo shopItemRepo;
     private final UserService userService;
 
+    @Cacheable(cacheNames = "leaderboard-coins", key = "#limit + ':' + @userService.getCurrentUser().id")
     public CoinLeaderboardResponse getCoinLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getLeaderboardUsers();
@@ -52,6 +54,7 @@ public class LeaderboardService {
         );
     }
 
+    @Cacheable(cacheNames = "leaderboard-collectors", key = "#limit + ':' + @userService.getCurrentUser().id")
     public CollectorLeaderboardResponse getCollectorLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getLeaderboardUsers();
@@ -74,6 +77,7 @@ public class LeaderboardService {
         );
     }
 
+    @Cacheable(cacheNames = "leaderboard-exp", key = "#limit + ':' + @userService.getCurrentUser().id")
     public ExpLeaderboardResponse getExpLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getLeaderboardUsers();

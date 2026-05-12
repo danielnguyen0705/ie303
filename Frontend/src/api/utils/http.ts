@@ -1,7 +1,9 @@
 import { ENV } from "@/config/env";
 import { ApiError, type ApiResponse } from "../types";
+import { readCache, writeCache } from "./cache";
 
 const BASE_URL = ENV.API_BASE_URL;
+const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export function createError(
   message: string,
@@ -13,10 +15,31 @@ export function createError(
   };
 }
 
+export type RequestCacheOptions = {
+  key?: string;
+  ttlMs?: number;
+  storage?: Storage;
+};
+
 export async function request<T>(
   url: string,
   options: RequestInit,
+  cacheOptions?: RequestCacheOptions,
 ): Promise<ApiResponse<T>> {
+  const method = String(options.method ?? "GET").toUpperCase();
+  const shouldUseCache = method === "GET" && Boolean(cacheOptions?.key);
+
+  if (shouldUseCache && cacheOptions?.key) {
+    const cachedResponse = readCache<ApiResponse<T>>(
+      cacheOptions.key,
+      cacheOptions.storage,
+    );
+
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+  }
+
   try {
     const isFormDataBody =
       typeof FormData !== "undefined" && options.body instanceof FormData;
@@ -63,25 +86,31 @@ export async function request<T>(
       result?: T;
       data?: T;
     } | null;
+    const response: ApiResponse<T> = payload && typeof payload === "object" && "result" in payload
+      ? {
+          success: true,
+          data: payload.result as T,
+        }
+      : payload && typeof payload === "object" && "data" in payload
+        ? {
+            success: true,
+            data: payload.data as T,
+          }
+        : {
+            success: true,
+            data: data as T,
+          };
 
-    if (payload && typeof payload === "object" && "result" in payload) {
-      return {
-        success: true,
-        data: payload.result as T,
-      };
+    if (shouldUseCache && cacheOptions?.key) {
+      writeCache(
+        cacheOptions.key,
+        response,
+        cacheOptions.ttlMs ?? DEFAULT_CACHE_TTL_MS,
+        cacheOptions.storage,
+      );
     }
 
-    if (payload && typeof payload === "object" && "data" in payload) {
-      return {
-        success: true,
-        data: payload.data as T,
-      };
-    }
-
-    return {
-      success: true,
-      data: data as T,
-    };
+    return response;
   } catch (error: unknown) {
     return {
       success: false,
