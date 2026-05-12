@@ -241,6 +241,7 @@ public class LearningProgressService {
                     lesson.getLessonNumber(),
                     lesson.getOrderIndex(),
                     lesson.isReviewLesson(),
+                    lesson.isVipOnly(),
                     completed,
                     unlocked,
                     current

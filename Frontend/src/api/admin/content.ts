@@ -68,8 +68,10 @@ type RawLesson = {
   lessonNumber?: number;
   orderIndex?: number;
   skillType?: string;
+  reviewLesson?: boolean;
   isReviewLesson?: boolean;
   durationMinutes?: number;
+  vipOnly?: boolean;
   isVipOnly?: boolean;
   completed?: boolean;
   unlocked?: boolean;
@@ -129,9 +131,9 @@ function mapLesson(raw: RawLesson): Lesson {
     lessonNumber: raw.lessonNumber ?? raw.orderIndex,
     orderIndex: raw.orderIndex ?? raw.lessonNumber,
     skillType: raw.skillType as Lesson["skillType"],
-    isReviewLesson: raw.isReviewLesson,
+    isReviewLesson: raw.isReviewLesson ?? raw.reviewLesson,
     durationMinutes: raw.durationMinutes,
-    isVipOnly: raw.isVipOnly,
+    isVipOnly: raw.isVipOnly ?? raw.vipOnly,
     completed: raw.completed,
     unlocked: raw.unlocked,
     current: raw.current,

@@ -9,6 +9,8 @@ import com.ie303.uifive.entity.Lesson;
 import com.ie303.uifive.entity.Question;
 import com.ie303.uifive.entity.QuestionGroup;
 import com.ie303.uifive.entity.QuestionOption;
+import com.ie303.uifive.entity.Role;
+import com.ie303.uifive.entity.User;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.mapper.QuestionMapper;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -34,6 +37,12 @@ public class QuestionService {
     private final QuestionMapper questionMapper;
     private final CloudinaryService cloudinaryService;
     private final ContentDeletionService contentDeletionService;
+    private final UserService userService;
+
+    public String currentUserCacheKey() {
+        User user = userService.getCurrentUser();
+        return user.getId() + ":" + user.getRole() + ":" + user.getVipExpiredAt();
+    }
 
     @CacheEvict(cacheNames = {
             "questions-by-id",
@@ -119,10 +128,12 @@ public class QuestionService {
         contentDeletionService.deleteQuestion(id);
     }
     
-    @Cacheable(cacheNames = "questions-by-lesson", key = "#lessonId")
+    @Cacheable(cacheNames = "questions-by-lesson", key = "#root.target.currentUserCacheKey() + ':' + #lessonId")
     public LessonQuestionResponse getQuestionsByLesson(Long lessonId) {
         Lesson lesson = lessonRepo.findById(lessonId)
                 .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+
+        ensureLessonAccessible(lesson);
 
         List<QuestionResponse> questions = questionRepo
                 .findByLessonIdAndQuestionGroupIsNullOrderByIdAsc(lessonId)
@@ -141,6 +152,18 @@ public class QuestionService {
                 questions,
                 questionGroups
         );
+    }
+
+    private void ensureLessonAccessible(Lesson lesson) {
+        User user = userService.getCurrentUser();
+
+        if (user.getRole() != Role.ADMIN && lesson.isVipOnly() && !hasVipAccess(user)) {
+            throw new AppException(ErrorCode.VIP_REQUIRED);
+        }
+    }
+
+    private boolean hasVipAccess(User user) {
+        return user.getVipExpiredAt() != null && user.getVipExpiredAt().isAfter(LocalDateTime.now());
     }
 
     private QuestionGroupResponse toQuestionGroupResponse(QuestionGroup group) {

@@ -10,7 +10,7 @@ import {
   FolderTree,
   Pencil,
 } from "lucide-react";
-import { adminApi } from "@/api";
+import { adminApi, reviewApi } from "@/api";
 import type {
   Grade,
   Unit,
@@ -199,10 +199,16 @@ export function ContentManagement() {
 
   const [creatingSection, setCreatingSection] = useState(false);
   const [isCreateSectionOpen, setIsCreateSectionOpen] = useState(false);
+  const [newSectionCreatesUnitReview, setNewSectionCreatesUnitReview] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
   const [newSectionOrderIndex, setNewSectionOrderIndex] = useState("");
   const [newSectionType, setNewSectionType] =
     useState<SectionType>("GETTING_STARTED");
+  const [newUnitReviewTitle, setNewUnitReviewTitle] = useState("");
+  const [unitReviewQuestionBank, setUnitReviewQuestionBank] = useState<ReviewQuestionBankItem[]>([]);
+  const [selectedUnitReviewQuestionIds, setSelectedUnitReviewQuestionIds] = useState<number[]>([]);
+  const [loadingUnitReviewQuestionBank, setLoadingUnitReviewQuestionBank] = useState(false);
+  const [isUnitReviewQuestionModalOpen, setIsUnitReviewQuestionModalOpen] = useState(false);
   const [updatingSection, setUpdatingSection] = useState(false);
   const [isEditSectionOpen, setIsEditSectionOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
@@ -419,6 +425,128 @@ export function ContentManagement() {
         ? current.filter((id) => id !== questionId)
         : [...current, questionId],
     );
+  };
+
+  const toggleUnitReviewQuestionId = (questionId: number) => {
+    setSelectedUnitReviewQuestionIds((current) =>
+      current.includes(questionId)
+        ? current.filter((id) => id !== questionId)
+        : [...current, questionId],
+    );
+  };
+
+  const resetCreateSectionDialog = () => {
+    setNewSectionCreatesUnitReview(false);
+    setNewSectionName("");
+    setNewSectionOrderIndex("");
+    setNewSectionType("GETTING_STARTED");
+    setNewUnitReviewTitle("");
+    setUnitReviewQuestionBank([]);
+    setSelectedUnitReviewQuestionIds([]);
+    setIsUnitReviewQuestionModalOpen(false);
+  };
+
+  const loadUnitReviewQuestionBank = async () => {
+    if (!selectedUnit) {
+      showError({
+        title: "No unit selected",
+        message: "Please select a unit first",
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+      return;
+    }
+
+    try {
+      setLoadingUnitReviewQuestionBank(true);
+
+      const sectionsResponse = await adminApi.getSectionsByUnit({ unitId: selectedUnit.id });
+
+      if (!sectionsResponse.success || !sectionsResponse.data) {
+        showError({
+          title: "Failed to load sections",
+          message: "Could not load sections for the selected unit",
+          showCancelButton: false,
+          confirmText: "Close",
+        });
+        return;
+      }
+
+      const bankMap = new Map<number, ReviewQuestionBankItem>();
+      let lessonCount = 0;
+
+      for (const section of sortSections(sectionsResponse.data)) {
+        const lessonsResponse = await adminApi.getLessonsBySection({ sectionId: section.id });
+
+        if (!lessonsResponse.success || !lessonsResponse.data) {
+          console.warn(`Failed to load lessons for section ${section.name}:`, lessonsResponse);
+          continue;
+        }
+
+        const normalLessons = sortLessons(lessonsResponse.data).filter(
+          (lesson) => !lesson.isReviewLesson,
+        );
+        lessonCount += normalLessons.length;
+
+        for (const lesson of normalLessons) {
+          const lessonTitle = lesson.name || `Lesson ${getLessonDisplayNumber(lesson, 0)}`;
+          const questionsResponse = await adminApi.getQuestionsByLesson({ lessonId: lesson.id });
+
+          if (!questionsResponse.success || !questionsResponse.data) {
+            console.warn(`Failed to load questions for lesson ${lessonTitle}:`, questionsResponse);
+            continue;
+          }
+
+          const addQuestion = (question: { id: number; content?: string; instruction?: string }) => {
+            if (!bankMap.has(question.id)) {
+              const label = question.content?.trim() || question.instruction?.trim() || `Question ${question.id}`;
+              bankMap.set(question.id, {
+                id: question.id,
+                label,
+                lessonId: lesson.id,
+                lessonTitle,
+                sectionTitle: section.name || `Section ${getSectionDisplayNumber(section, 0)}`,
+              });
+            }
+          };
+
+          (questionsResponse.data.singleQuestions ?? []).forEach(addQuestion);
+          (questionsResponse.data.questionGroups ?? []).forEach((group) => {
+            (group.questions ?? []).forEach(addQuestion);
+          });
+        }
+      }
+
+      const nextBank = Array.from(bankMap.values()).sort((left, right) => left.id - right.id);
+      setUnitReviewQuestionBank(nextBank);
+      setSelectedUnitReviewQuestionIds((current) => current.filter((id) => bankMap.has(id)));
+
+      if (nextBank.length === 0) {
+        warning({
+          title: "No questions found",
+          message: "No questions were found in this unit",
+          showCancelButton: false,
+          confirmText: "OK",
+        });
+      } else {
+        success({
+          title: "Loaded successfully",
+          message: `Loaded ${nextBank.length} questions from ${lessonCount} lesson(s)`,
+          showCancelButton: false,
+          confirmText: "OK",
+        });
+      }
+    } catch (err) {
+      console.error("Error loading unit review question bank:", err);
+      showError({
+        title: "Failed to load questions",
+        message: `Could not load questions from this unit: ${err instanceof Error ? err.message : "Unknown error"}`,
+        showCancelButton: false,
+        confirmText: "Close",
+      });
+    } finally {
+      setLoadingUnitReviewQuestionBank(false);
+    }
   };
 
   const loadReviewQuestionBank = async () => {
@@ -857,6 +985,57 @@ export function ContentManagement() {
 
     const sectionName = newSectionName.trim();
 
+    if (newSectionCreatesUnitReview) {
+      const reviewTitle =
+        newUnitReviewTitle.trim() ||
+        `${selectedUnit.name || `Unit ${selectedUnit.unitNumber ?? selectedUnit.id}`} Review`;
+
+      if (selectedUnitReviewQuestionIds.length === 0) {
+        showError({
+          title: "Missing review questions",
+          message: "Please load and select questions before creating a unit review",
+          showCancelButton: false,
+          confirmText: "Close",
+        });
+        return;
+      }
+
+      try {
+        setCreatingSection(true);
+
+        const response = await reviewApi.createUnitReview({
+          title: reviewTitle,
+          unitId: selectedUnit.id,
+          questionIds: selectedUnitReviewQuestionIds,
+        });
+
+        if (response.success) {
+          setIsCreateSectionOpen(false);
+          resetCreateSectionDialog();
+          setActiveStage("section");
+
+          success({
+            title: "Success",
+            message: "Unit review EP created successfully",
+            autoClose: true,
+            showCancelButton: false,
+          });
+        } else {
+          showError({
+            title: "Failed to create unit review",
+            message: response.error?.message || "An error occurred",
+            showCancelButton: false,
+            confirmText: "Close",
+          });
+        }
+      } catch (err) {
+        console.error("Error creating unit review:", err);
+      } finally {
+        setCreatingSection(false);
+      }
+      return;
+    }
+
     if (!sectionName) {
       showError({
         title: "Missing information",
@@ -898,9 +1077,7 @@ export function ContentManagement() {
 
       if (response.success) {
         setIsCreateSectionOpen(false);
-        setNewSectionName("");
-        setNewSectionOrderIndex("");
-        setNewSectionType("GETTING_STARTED");
+        resetCreateSectionDialog();
 
         await loadSectionsByUnit(selectedUnit.id, false);
         setActiveStage("section");
@@ -1964,15 +2141,15 @@ export function ContentManagement() {
         onOpenChange={(open) => {
           setIsCreateSectionOpen(open);
           if (!open) {
-            setNewSectionName("");
-            setNewSectionOrderIndex("");
-            setNewSectionType("GETTING_STARTED");
+            resetCreateSectionDialog();
           }
         }}
       >
         <DialogContent aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle>Create New Section</DialogTitle>
+            <DialogTitle>
+              {newSectionCreatesUnitReview ? "Create Unit Review EP" : "Create New Section"}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -1983,39 +2160,76 @@ export function ContentManagement() {
               </span>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Section name</label>
-              <Input
-                value={newSectionName}
-                onChange={(e) => setNewSectionName(e.target.value)}
-                placeholder="Example: Reading: Introductions"
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={newSectionCreatesUnitReview}
+                onChange={(e) => {
+                  setNewSectionCreatesUnitReview(e.target.checked);
+                  setUnitReviewQuestionBank([]);
+                  setSelectedUnitReviewQuestionIds([]);
+                }}
               />
-            </div>
+              Create Unit Review EP instead of a section
+            </label>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Section number</label>
-              <Input
-                value={newSectionOrderIndex}
-                onChange={(e) => setNewSectionOrderIndex(e.target.value)}
-                placeholder="Example: 1"
-                type="number"
-              />
-            </div>
+            {newSectionCreatesUnitReview ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Review title</label>
+                  <Input
+                    value={newUnitReviewTitle}
+                    onChange={(e) => setNewUnitReviewTitle(e.target.value)}
+                    placeholder="Example: Unit 11 Review"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Section type</label>
-              <select
-                value={newSectionType}
-                onChange={(e) => setNewSectionType(e.target.value as SectionType)}
-                className="w-full h-10 rounded-md border border-slate-200 px-3 text-sm"
-              >
-                {SECTION_TYPE_OPTIONS.map((sectionType) => (
-                  <option key={sectionType} value={sectionType}>
-                    {sectionType}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsUnitReviewQuestionModalOpen(true)}
+                  className="w-full"
+                >
+                  Select Questions ({selectedUnitReviewQuestionIds.length})
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Section name</label>
+                  <Input
+                    value={newSectionName}
+                    onChange={(e) => setNewSectionName(e.target.value)}
+                    placeholder="Example: Reading: Introductions"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Section number</label>
+                  <Input
+                    value={newSectionOrderIndex}
+                    onChange={(e) => setNewSectionOrderIndex(e.target.value)}
+                    placeholder="Example: 1"
+                    type="number"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Section type</label>
+                  <select
+                    value={newSectionType}
+                    onChange={(e) => setNewSectionType(e.target.value as SectionType)}
+                    className="w-full h-10 rounded-md border border-slate-200 px-3 text-sm"
+                  >
+                    {SECTION_TYPE_OPTIONS.map((sectionType) => (
+                      <option key={sectionType} value={sectionType}>
+                        {sectionType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter>
@@ -2030,9 +2244,104 @@ export function ContentManagement() {
               onClick={() => void handleCreateSection()}
               disabled={creatingSection}
             >
-              {creatingSection ? "Creating..." : "Create section"}
+              {creatingSection
+                ? "Creating..."
+                : newSectionCreatesUnitReview
+                  ? "Create unit review"
+                  : "Create section"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isUnitReviewQuestionModalOpen}
+        onOpenChange={setIsUnitReviewQuestionModalOpen}
+      >
+        <DialogContent
+          aria-describedby={undefined}
+          className="w-[min(96vw,800px)] max-h-[90vh] overflow-hidden flex flex-col"
+        >
+          <DialogHeader>
+            <DialogTitle>Select Unit Review Questions</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-3 pb-4">
+              <div className="flex items-center justify-between px-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Questions from this unit
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Select questions from normal lessons across all sections in the current unit.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void loadUnitReviewQuestionBank()}
+                  disabled={loadingUnitReviewQuestionBank}
+                >
+                  {loadingUnitReviewQuestionBank ? "Loading..." : "Load"}
+                </Button>
+              </div>
+
+              <div className="px-4">
+                {unitReviewQuestionBank.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                    Load questions to show them here.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {unitReviewQuestionBank.map((item) => {
+                      const checked = selectedUnitReviewQuestionIds.includes(item.id);
+
+                      return (
+                        <label
+                          key={item.id}
+                          className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-colors ${
+                            checked
+                              ? "border-[#155ca5] bg-[#f0f7ff]"
+                              : "border-slate-200 hover:border-[#155ca5]/30"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleUnitReviewQuestionId(item.id)}
+                            className="mt-1"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-900 line-clamp-3">
+                              {item.label}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {item.sectionTitle} / {item.lessonTitle} / ID: {item.id}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 px-4 py-3">
+            <div className="text-sm font-semibold text-[#155ca5] mb-4">
+              Selected: {selectedUnitReviewQuestionIds.length} question(s)
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsUnitReviewQuestionModalOpen(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -47,10 +47,10 @@ export async function getUnit(unitId: number): Promise<ApiResponse<UnitResponse>
     return createError("Invalid unitId", "INVALID_UNIT_ID");
   }
 
-  return request<UnitResponse>(`/progress/units/${unitId}/sections`, {
+  return request<UnitResponse>(`/units/${unitId}`, {
     method: "GET",
   }, {
-    key: `progress:unit-sections:${unitId}`,
+    key: `units:by-id:${unitId}`,
     ttlMs: 10 * 60 * 1000,
   });
 }

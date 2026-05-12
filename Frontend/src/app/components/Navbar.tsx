@@ -142,6 +142,7 @@ function NavbarContent() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const { language, setLanguage, copy } = useLanguage();
   const userProfile = (user ?? null) as Record<string, unknown> | null;
+  const isVipUser = Boolean(userProfile?.isVip) || Boolean(userProfile?.vipExpiredAt);
 
   const streakDays = getNumericField(userProfile, [
     "streak",
@@ -437,14 +438,22 @@ function NavbarContent() {
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className="relative group shrink-0 cursor-pointer transition-transform hover:scale-105"
                   >
-                    <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 to-yellow-600 shadow-md">
+                    <div
+                      className={`w-10 h-10 rounded-full p-0.5 shadow-md ${
+                        isVipUser
+                          ? "bg-gradient-to-tr from-yellow-400 to-yellow-600"
+                          : "bg-slate-200"
+                      }`}
+                    >
                       <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                         <User className="w-6 h-6 text-slate-400" />
                       </div>
                     </div>
-                    <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
-                      VIP
-                    </div>
+                    {isVipUser && (
+                      <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
+                        VIP
+                      </div>
+                    )}
                   </button>
 
                   {isDropdownOpen && (
@@ -467,37 +476,6 @@ function NavbarContent() {
                         <History className="w-4 h-4 text-[#155ca5]" />
                         {copy("Payment History", "Lịch sử nạp")}
                       </button>
-                      {user.role !== "ADMIN" && (
-                        <div className="px-4 py-2">
-                          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                            {copy("Language", "Ngôn ngữ")}
-                          </div>
-                          <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
-                            <button
-                              type="button"
-                              onClick={() => setLanguage("en")}
-                              className={`flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition ${
-                                language === "en"
-                                  ? "bg-[#155ca5] text-white"
-                                  : "text-slate-500 hover:text-[#155ca5]"
-                              }`}
-                            >
-                              English
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setLanguage("vi")}
-                              className={`flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition ${
-                                language === "vi"
-                                  ? "bg-[#155ca5] text-white"
-                                  : "text-slate-500 hover:text-[#155ca5]"
-                              }`}
-                            >
-                              Tiếng Việt
-                            </button>
-                          </div>
-                        </div>
-                      )}
                       <hr className="my-1" />
                       <button
                         type="button"

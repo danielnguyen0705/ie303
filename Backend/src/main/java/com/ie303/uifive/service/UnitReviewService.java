@@ -29,17 +29,16 @@ public class UnitReviewService {
 
     @CacheEvict(cacheNames = "unit-reviews", allEntries = true)
     public UnitReviewResponse create(UnitReviewRequest request) {
-        UnitReview entity = mapper.toEntity(request);
+        UnitReview entity = repo.findByUnitId(request.unitId())
+                .orElseGet(() -> mapper.toEntity(request));
+
+        mapper.updateEntityFromRequest(request, entity);
 
         Unit unit = unitRepo.findById(request.unitId())
                 .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         entity.setUnit(unit);
-
-        if (request.questionIds() != null && !request.questionIds().isEmpty()) {
-            List<Question> questions = questionRepo.findAllById(request.questionIds());
-            entity.setQuestions(questions);
-        }
+        applyQuestions(request, entity);
 
         entity = repo.save(entity);
 
@@ -72,19 +71,19 @@ public class UnitReviewService {
         UnitReview entity = repo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Unit review not found"));
 
+        repo.findByUnitId(request.unitId())
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new AppException(ErrorCode.INVALID_REQUEST, "This unit already has a unit review");
+                });
+
         mapper.updateEntityFromRequest(request, entity);
 
         Unit unit = unitRepo.findById(request.unitId())
                 .orElseThrow(() -> new AppException(ErrorCode.UNIT_NOT_FOUND));
 
         entity.setUnit(unit);
-
-        if (request.questionIds() != null && !request.questionIds().isEmpty()) {
-            List<Question> questions = questionRepo.findAllById(request.questionIds());
-            entity.setQuestions(questions);
-        } else {
-            entity.setQuestions(null);
-        }
+        applyQuestions(request, entity);
 
         entity = repo.save(entity);
 
@@ -99,5 +98,14 @@ public class UnitReviewService {
         }
 
         repo.deleteById(id);
+    }
+
+    private void applyQuestions(UnitReviewRequest request, UnitReview entity) {
+        if (request.questionIds() != null && !request.questionIds().isEmpty()) {
+            List<Question> questions = questionRepo.findAllById(request.questionIds());
+            entity.setQuestions(questions);
+        } else {
+            entity.setQuestions(null);
+        }
     }
 }
