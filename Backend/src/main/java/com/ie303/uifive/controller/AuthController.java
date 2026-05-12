@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -30,7 +31,7 @@ public class AuthController {
     private String cookieSameSite;
 
     @PostMapping("/login")
-        @PermitAll
+    @PermitAll
     public ApiResponse<String> login(@RequestBody @Valid LoginRequest request,
                                      HttpServletRequest httpRequest,
                                      HttpServletResponse response) {
@@ -47,7 +48,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-        @PermitAll
+    @PermitAll
     public ApiResponse<UserResponse> create(@RequestBody @Valid UserRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .result(service.create(request))
@@ -55,7 +56,7 @@ public class AuthController {
     }
 
     @GetMapping("/verify-email")
-        @PermitAll
+    @PermitAll
     public ApiResponse<String> verifyEmail(@RequestParam("token") String token) {
         authService.verifyEmail(token);
         return ApiResponse.<String>builder()
@@ -65,7 +66,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-        // @RolesAllowed({"USER", "ADMIN"})
+    // @RolesAllowed({"USER", "ADMIN"})
     public ApiResponse<String> logout(HttpServletRequest httpRequest,
                                       HttpServletResponse response) {
 
