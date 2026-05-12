@@ -106,7 +106,7 @@ export function Footer() {
             <ul className="space-y-2.5">
               <li>
                 <a
-                  href="#"
+                  href="/help"
                   className="text-sm text-slate-600 transition-colors hover:text-[#155ca5]"
                 >
                   Help Center
@@ -115,7 +115,7 @@ export function Footer() {
 
               <li>
                 <a
-                  href="#"
+                  href="/learning-guide"
                   className="text-sm text-slate-600 transition-colors hover:text-[#155ca5]"
                 >
                   Learning Guide
@@ -133,7 +133,7 @@ export function Footer() {
             <ul className="space-y-2.5">
               <li>
                 <a
-                  href="#"
+                  href="/about"
                   className="text-sm text-slate-600 transition-colors hover:text-[#155ca5]"
                 >
                   About
@@ -142,7 +142,7 @@ export function Footer() {
 
               <li>
                 <a
-                  href="#"
+                  href="/privacy"
                   className="text-sm text-slate-600 transition-colors hover:text-[#155ca5]"
                 >
                   Privacy
@@ -151,7 +151,7 @@ export function Footer() {
 
               <li>
                 <a
-                  href="#"
+                  href="/terms"
                   className="text-sm text-slate-600 transition-colors hover:text-[#155ca5]"
                 >
                   Terms
