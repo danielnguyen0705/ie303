@@ -17,11 +17,15 @@ public interface LessonMapper {
     @Mapping(target = "section", ignore = true)
     @Mapping(target = "questions", ignore = true)
     @Mapping(target = "questionGroups", ignore = true)
+    @Mapping(target = "reviewLesson", source = "isReviewLesson")
+    @Mapping(target = "vipOnly", source = "isVipOnly")
     Lesson toEntity(LessonRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "section", ignore = true)
     @Mapping(target = "questions", ignore = true)
     @Mapping(target = "questionGroups", ignore = true)
+    @Mapping(target = "reviewLesson", source = "isReviewLesson")
+    @Mapping(target = "vipOnly", source = "isVipOnly")
     void updateEntityFromRequest(LessonRequest request, @MappingTarget Lesson lesson);
 }

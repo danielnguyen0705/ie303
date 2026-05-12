@@ -6,6 +6,7 @@ public record LessonProgressResponse(
         int lessonNumber,
         Integer orderIndex,
         boolean reviewLesson,
+        boolean vipOnly,
         boolean completed,
         boolean unlocked,
         boolean current

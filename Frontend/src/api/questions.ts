@@ -122,9 +122,6 @@ export async function getQuestionsByLesson(
 
   return request<LessonQuestionResponse>(`/questions/lesson/${lessonId}`, {
     method: "GET",
-  }, {
-    key: `questions:by-lesson:${lessonId}`,
-    ttlMs: 10 * 60 * 1000,
   });
 }
 

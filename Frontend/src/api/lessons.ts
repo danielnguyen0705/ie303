@@ -8,6 +8,7 @@ export interface SectionLessonProgressItem {
   lessonNumber: number;
   orderIndex?: number | null;
   reviewLesson: boolean;
+  vipOnly?: boolean;
   completed: boolean;
   unlocked: boolean;
   current: boolean;
@@ -40,6 +41,7 @@ export interface LessonDetailResult {
   title: string;
   sectionId: number;
   isVipOnly?: boolean;
+  vipOnly?: boolean;
 }
 
 export async function getLessonsBySectionProgress(
@@ -108,8 +110,5 @@ export async function getLessonById(
 
   return request<LessonDetailResult>(`/lessons/${lessonId}`, {
     method: "GET",
-  }, {
-    key: `lessons:by-id:${lessonId}`,
-    ttlMs: 10 * 60 * 1000,
   });
 }
