@@ -3,14 +3,14 @@ package com.ie303.uifive.service;
 import com.ie303.uifive.entity.ShopItem;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -25,7 +25,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${mail.from-email:noreply@uifive.local}")
     private String fromEmail;
 
     public void sendVerificationEmail(String toEmail, String verifyLink) {
