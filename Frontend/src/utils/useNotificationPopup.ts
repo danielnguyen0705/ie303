@@ -81,6 +81,18 @@ export const useNotificationPopup = (
     [show],
   );
 
+  const confirm = useCallback(
+    (params: Omit<NotificationParams, "type">) => {
+      show({
+        ...params,
+        type: "info",
+        showCancelButton: true,
+        autoClose: false,
+      });
+    },
+    [show],
+  );
+
   return {
     notification: notification as NotificationPopupProps,
     show,
@@ -89,5 +101,6 @@ export const useNotificationPopup = (
     error,
     warning,
     info,
+    confirm,
   };
 };

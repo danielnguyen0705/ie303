@@ -187,7 +187,11 @@ export function PublicLanding() {
             UIFIVE
           </div>
           <p className="mt-4 font-['Lexend'] text-xs uppercase tracking-widest text-slate-500">
-            © 2026 UIFIVE. {copy("Built for the next generation of linguists.", "Xây dựng cho thế hệ học ngôn ngữ tiếp theo.")}
+            © 2026 UIFIVE.{" "}
+            {copy(
+              "Built for the next generation of linguists.",
+              "Xây dựng cho thế hệ học ngôn ngữ tiếp theo.",
+            )}
           </p>
         </div>
       </footer>

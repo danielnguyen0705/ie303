@@ -36,6 +36,7 @@ type AuthContextValue = {
   isReady: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  refreshCurrentUser: (showError?: boolean) => Promise<boolean>;
   login: (username: string, password: string) => Promise<boolean>;
   register: (
     username: string,
@@ -239,6 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isReady,
       error,
       isAuthenticated,
+      refreshCurrentUser: loadCurrentUser,
       login,
       register,
       loginWithGoogle,
@@ -250,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isReady,
       error,
       isAuthenticated,
+      loadCurrentUser,
       login,
       register,
       loginWithGoogle,

@@ -29,6 +29,7 @@ import type {
 } from "@/api/types";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
+import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 
 const VIP_PLANS: TopupVipPlan[] = [
@@ -116,6 +117,7 @@ function PackIcon({ icon }: { icon: TopupCoinPackIcon }) {
 
 export function Topup() {
   const { copy } = useLanguage();
+  const { refreshCurrentUser } = useAuth();
   const [balance, setBalance] = useState(0);
   const [activeOffers, setActiveOffers] = useState<PaymentOffer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,6 +207,8 @@ export function Topup() {
     if (response.success) {
       setBalance(response.data?.balance || 0);
     }
+
+    void refreshCurrentUser(false);
   };
 
   const waitForTransactionResult = async (transactionCode: string) => {
@@ -217,7 +221,10 @@ export function Topup() {
           transaction: latestTransaction,
           errorMessage:
             transactionsResponse.error?.message ||
-            copy("Please check payment history.", "Vui lòng kiểm tra lịch sử thanh toán."),
+            copy(
+              "Please check payment history.",
+              "Vui lòng kiểm tra lịch sử thanh toán.",
+            ),
         };
       }
 
@@ -251,7 +258,10 @@ export function Topup() {
 
     if (errorMessage) {
       popup.warning({
-        title: copy("Unable to verify payment result", "Không thể xác minh kết quả thanh toán"),
+        title: copy(
+          "Unable to verify payment result",
+          "Không thể xác minh kết quả thanh toán",
+        ),
         message: errorMessage,
       });
       clearReturnQuery();
@@ -275,7 +285,10 @@ export function Topup() {
       await refreshBalance();
       popup.success({
         title: copy("Payment successful", "Thanh toán thành công"),
-        message: copy("Your transaction was confirmed.", "Giao dịch của bạn đã được xác nhận."),
+        message: copy(
+          "Your transaction was confirmed.",
+          "Giao dịch của bạn đã được xác nhận.",
+        ),
         description: `${copy("Transaction:", "Giao dịch:")} ${transaction.transactionCode}`,
       });
       clearPendingCheckout();
@@ -287,10 +300,13 @@ export function Topup() {
         message:
           vnpResponseCode && vnpResponseCode !== "00"
             ? copy(
-              `VNPAY return code ${vnpResponseCode}. Waiting for server callback.`,
-              `Mã trả về VNPAY ${vnpResponseCode}. Đang chờ server callback.`,
-            )
-            : copy("Please wait a moment and check payment history.", "Vui lòng chờ một lát và kiểm tra lịch sử thanh toán."),
+                `VNPAY return code ${vnpResponseCode}. Waiting for server callback.`,
+                `Mã trả về VNPAY ${vnpResponseCode}. Đang chờ server callback.`,
+              )
+            : copy(
+                "Please wait a moment and check payment history.",
+                "Vui lòng chờ một lát và kiểm tra lịch sử thanh toán.",
+              ),
         description: `${copy("Transaction:", "Giao dịch:")} ${transaction.transactionCode}`,
       });
     } else {
@@ -318,7 +334,8 @@ export function Topup() {
 
         if (!balanceResponse.success) {
           setError(
-            balanceResponse.error?.message || copy("Failed to load coin balance", "Không thể tải số dư xu"),
+            balanceResponse.error?.message ||
+              copy("Failed to load coin balance", "Không thể tải số dư xu"),
           );
           return;
         }
@@ -326,7 +343,10 @@ export function Topup() {
         setBalance(balanceResponse.data?.balance || 0);
 
         if (!offersResponse.success) {
-          setError(offersResponse.error?.message || copy("Failed to load offers", "Không thể tải ưu đãi"));
+          setError(
+            offersResponse.error?.message ||
+              copy("Failed to load offers", "Không thể tải ưu đãi"),
+          );
           return;
         }
 
@@ -337,7 +357,9 @@ export function Topup() {
         }
       } catch (err) {
         console.error("Error loading topup data:", err);
-        setError(copy("Failed to load top-up data", "Không thể tải dữ liệu nạp tiền"));
+        setError(
+          copy("Failed to load top-up data", "Không thể tải dữ liệu nạp tiền"),
+        );
       } finally {
         setLoading(false);
       }
@@ -347,8 +369,13 @@ export function Topup() {
   }, []);
 
   const heroSubtitle = useMemo(() => {
-    if (loading) return copy("Syncing your wallet...", "Đang đồng bộ ví của bạn...");
-    if (error) return copy("Continue with curated VIP plans and coin bundles.", "Tiếp tục với các gói VIP và gói xu được chọn lọc.");
+    if (loading)
+      return copy("Syncing your wallet...", "Đang đồng bộ ví của bạn...");
+    if (error)
+      return copy(
+        "Continue with curated VIP plans and coin bundles.",
+        "Tiếp tục với các gói VIP và gói xu được chọn lọc.",
+      );
     return copy(
       `Your current balance is ${balance.toLocaleString()} coins.`,
       `Số dư hiện tại của bạn là ${balance.toLocaleString()} xu.`,
@@ -422,7 +449,10 @@ export function Topup() {
           message:
             confirmResponse.error?.message ||
             webhookResponse.error?.message ||
-            copy("Checkout created, waiting for payment confirmation.", "Checkout đã được tạo, đang chờ xác nhận thanh toán."),
+            copy(
+              "Checkout created, waiting for payment confirmation.",
+              "Checkout đã được tạo, đang chờ xác nhận thanh toán.",
+            ),
           description: `${copy("Transaction:", "Giao dịch:")} ${transactionCode}`,
         });
         return;
@@ -458,7 +488,8 @@ export function Topup() {
       popup.error({
         title: copy("Checkout failed", "Checkout thất bại"),
         message:
-          checkoutResponse.error?.message || copy("Unable to create transaction", "Không thể tạo giao dịch"),
+          checkoutResponse.error?.message ||
+          copy("Unable to create transaction", "Không thể tạo giao dịch"),
       });
       return;
     }
@@ -566,7 +597,9 @@ export function Topup() {
     }
 
     const priceDisplay =
-      offer.price > 0 ? `${offer.price.toLocaleString()} VND` : copy("Free", "Miễn phí");
+      offer.price > 0
+        ? `${offer.price.toLocaleString()} VND`
+        : copy("Free", "Miễn phí");
 
     openCheckoutIntent(
       pack.id,
@@ -774,7 +807,10 @@ export function Topup() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-slate-600 font-medium">
-            {copy("No active VIP offers available right now.", "Hiện chưa có ưu đãi VIP đang hoạt động.")}
+            {copy(
+              "No active VIP offers available right now.",
+              "Hiện chưa có ưu đãi VIP đang hoạt động.",
+            )}
           </div>
         )}
       </section>
@@ -831,7 +867,10 @@ export function Topup() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-slate-600 font-medium">
-            {copy("No active coin offers available right now.", "Hiện chưa có ưu đãi xu đang hoạt động.")}
+            {copy(
+              "No active coin offers available right now.",
+              "Hiện chưa có ưu đãi xu đang hoạt động.",
+            )}
           </div>
         )}
       </section>
@@ -841,7 +880,10 @@ export function Topup() {
           <Flame className="w-7 h-7 mt-1" />
           <div>
             <h3 className="text-2xl font-black mb-1">
-              {copy("Need More Coins Without Paying?", "Muốn kiếm thêm xu miễn phí?")}
+              {copy(
+                "Need More Coins Without Paying?",
+                "Muốn kiếm thêm xu miễn phí?",
+              )}
             </h3>
             <p className="text-white/90">
               {copy(
@@ -902,7 +944,10 @@ export function Topup() {
 
             {provider === "MOCK" && (
               <p className="mt-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">
-                {copy("MOCK is only for local testing.", "MOCK chỉ dùng cho local test.")}
+                {copy(
+                  "MOCK is only for local testing.",
+                  "MOCK chỉ dùng cho local test.",
+                )}
               </p>
             )}
 

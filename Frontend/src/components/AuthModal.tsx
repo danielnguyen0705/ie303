@@ -28,6 +28,7 @@ export default function AuthModal({
   const [visible, setVisible] = useState(false);
   const [tabVisible, setTabVisible] = useState(true);
   const switchTimeoutRef = useRef<number | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   const title = useMemo(
     () =>
@@ -137,6 +138,14 @@ export default function AuthModal({
 
   return (
     <div
+      onMouseDown={(e) => {
+        if (
+          contentRef.current &&
+          !contentRef.current.contains(e.target as Node)
+        ) {
+          onClose();
+        }
+      }}
       className={`fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-4 transition-opacity duration-300 ${
         visible ? "opacity-100" : "opacity-0"
       }`}
@@ -148,7 +157,10 @@ export default function AuthModal({
             : "translate-y-4 scale-95 opacity-0"
         }`}
       >
-        <div className="rounded-[1.3rem] bg-white/95 p-6 shadow-xl backdrop-blur-xl">
+        <div
+          ref={contentRef}
+          className="rounded-[1.3rem] bg-white/95 p-6 shadow-xl backdrop-blur-xl"
+        >
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold tracking-tight text-slate-950">

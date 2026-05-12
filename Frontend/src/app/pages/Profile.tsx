@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import {
   changePassword as changePasswordApi,
-
   equipAvatar,
   equipBackground,
   getActiveShopItems,
@@ -66,6 +65,7 @@ type ProfileUser = {
   avatarItemId: number | null;
   backgroundImageUrl: string | null;
   backgroundItemId: number | null;
+  streak: number;
   lastStudyDate: string | null;
   vipExpiredAt: string | null;
   isVip: boolean;
@@ -292,6 +292,7 @@ export function Profile() {
           avatarItemId: equippedAvatarId,
           backgroundImageUrl: equippedBackgroundImage || null,
           backgroundItemId: equippedBackgroundId,
+          streak: Number(currentUser.streak ?? 0),
           lastStudyDate: currentUser.lastStudyDate ?? null,
           vipExpiredAt: currentUser.vipExpiredAt ?? null,
           isVip: Boolean(currentUser.isVip),
@@ -312,11 +313,15 @@ export function Profile() {
           averageScore: Number(currentUser.score ?? 0),
         }));
       } else {
-        setError(copy("Failed to load profile data", "Không thể tải dữ liệu hồ sơ"));
+        setError(
+          copy("Failed to load profile data", "Không thể tải dữ liệu hồ sơ"),
+        );
       }
     } catch (err) {
       console.error("Error loading profile:", err);
-      setError(copy("Failed to load profile data", "Không thể tải dữ liệu hồ sơ"));
+      setError(
+        copy("Failed to load profile data", "Không thể tải dữ liệu hồ sơ"),
+      );
     } finally {
       setLoading(false);
     }
@@ -359,17 +364,27 @@ export function Profile() {
       const response = await changePasswordApi(oldPassword, newPassword);
 
       if (!response.success) {
-          setPasswordError(response.error?.message || copy("Change password failed.", "Đổi mật khẩu thất bại."));
+        setPasswordError(
+          response.error?.message ||
+            copy("Change password failed.", "Đổi mật khẩu thất bại."),
+        );
         return;
       }
 
-      setPasswordSuccess(copy("Password changed successfully.", "Đổi mật khẩu thành công."));
+      setPasswordSuccess(
+        copy("Password changed successfully.", "Đổi mật khẩu thành công."),
+      );
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
       console.error("Error changing password:", err);
-      setPasswordError(copy("Change password failed. Please try again.", "Đổi mật khẩu thất bại. Vui lòng thử lại."));
+      setPasswordError(
+        copy(
+          "Change password failed. Please try again.",
+          "Đổi mật khẩu thất bại. Vui lòng thử lại.",
+        ),
+      );
     } finally {
       setChangingPassword(false);
     }
@@ -437,7 +452,8 @@ export function Profile() {
         const response = await equipAvatar(selectedAvatarId);
         if (!response.success) {
           setCustomizationError(
-            response.error?.message || copy("Failed to equip avatar.", "Không thể trang bị avatar."),
+            response.error?.message ||
+              copy("Failed to equip avatar.", "Không thể trang bị avatar."),
           );
           return;
         }
@@ -447,7 +463,11 @@ export function Profile() {
         const response = await equipBackground(selectedBackgroundId);
         if (!response.success) {
           setCustomizationError(
-            response.error?.message || copy("Failed to equip background.", "Không thể trang bị ảnh nền."),
+            response.error?.message ||
+              copy(
+                "Failed to equip background.",
+                "Không thể trang bị ảnh nền.",
+              ),
           );
           return;
         }
@@ -495,7 +515,12 @@ export function Profile() {
       setIsCustomizeModalOpen(false);
     } catch (err) {
       console.error("Failed to save customization:", err);
-      setCustomizationError(copy("Failed to save customization. Please try again.", "Không thể lưu tùy chỉnh. Vui lòng thử lại."));
+      setCustomizationError(
+        copy(
+          "Failed to save customization. Please try again.",
+          "Không thể lưu tùy chỉnh. Vui lòng thử lại.",
+        ),
+      );
     } finally {
       setSavingCustomization(false);
     }
@@ -506,7 +531,12 @@ export function Profile() {
     const isSuccess = await logout();
 
     if (!isSuccess) {
-      setLogoutError(copy("Unable to logout right now. Please try again.", "Hiện không thể đăng xuất. Vui lòng thử lại."));
+      setLogoutError(
+        copy(
+          "Unable to logout right now. Please try again.",
+          "Hiện không thể đăng xuất. Vui lòng thử lại.",
+        ),
+      );
     }
   };
 
@@ -515,7 +545,9 @@ export function Profile() {
       <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">{copy("Loading profile...", "Đang tải hồ sơ...")}</p>
+          <p className="text-gray-600 font-medium">
+            {copy("Loading profile...", "Đang tải hồ sơ...")}
+          </p>
         </div>
       </main>
     );
@@ -698,9 +730,11 @@ export function Profile() {
       <section className="bg-white rounded-lg shadow-sm p-8">
         <div className="flex items-center gap-3 mb-6">
           <Sparkles className="w-7 h-7 text-[#155ca5]" />
-          <h2 className="text-2xl font-black">{copy("AI Learning Insights", "Phân tích học tập AI")}</h2>
+          <h2 className="text-2xl font-black">
+            {copy("AI Learning Insights", "Phân tích học tập AI")}
+          </h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Strong Skill */}
           <div className="bg-green-50 rounded-xl p-5 border border-green-100 flex flex-col justify-between hover:scale-105 transition-transform">
@@ -736,14 +770,22 @@ export function Profile() {
           <div className="bg-blue-50 rounded-xl p-5 border border-blue-100 flex flex-col justify-between hover:scale-105 transition-transform">
             <div className="flex items-center gap-2 mb-3">
               <div className="p-2 bg-blue-100 rounded-lg">
-                {user.trendLabel === "IMPROVING" ? <TrendingUp className="w-5 h-5 text-blue-600" /> : user.trendLabel === "DECLINING" ? <TrendingDown className="w-5 h-5 text-red-600" /> : <Minus className="w-5 h-5 text-blue-600" />}
+                {user.trendLabel === "IMPROVING" ? (
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                ) : user.trendLabel === "DECLINING" ? (
+                  <TrendingDown className="w-5 h-5 text-red-600" />
+                ) : (
+                  <Minus className="w-5 h-5 text-blue-600" />
+                )}
               </div>
               <span className="font-bold text-blue-700 uppercase tracking-wider text-sm">
                 {copy("Learning Trend", "Xu hướng học")}
               </span>
             </div>
             <div className="text-2xl font-black text-blue-800 capitalize">
-              {user.trendLabel ? user.trendLabel.toLowerCase() : copy("Not enough data", "Chưa đủ dữ liệu")}
+              {user.trendLabel
+                ? user.trendLabel.toLowerCase()
+                : copy("Not enough data", "Chưa đủ dữ liệu")}
             </div>
           </div>
         </div>
@@ -759,7 +801,9 @@ export function Profile() {
             <div className="rounded-full bg-[#155ca5]/10 px-4 py-2 text-sm font-bold text-[#155ca5]">
               {studyingGrades.length}{" "}
               {copy(
-                studyingGrades.length !== 1 ? "grades in progress" : "grade in progress",
+                studyingGrades.length !== 1
+                  ? "grades in progress"
+                  : "grade in progress",
                 "lớp đang học",
               )}
             </div>
@@ -794,7 +838,10 @@ export function Profile() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-gray-500">
-            {copy("No studying grades found yet.", "Chưa tìm thấy lớp đang học.")}
+            {copy(
+              "No studying grades found yet.",
+              "Chưa tìm thấy lớp đang học.",
+            )}
           </div>
         )}
       </section>
@@ -815,11 +862,15 @@ export function Profile() {
               <span className="font-bold">{user.email}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">{copy("Member Since", "Tham gia từ")}</span>
+              <span className="text-gray-600 font-medium">
+                {copy("Member Since", "Tham gia từ")}
+              </span>
               <span className="font-bold">{formatDate(user.createdAt)}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">{copy("Account Type", "Loại tài khoản")}</span>
+              <span className="text-gray-600 font-medium">
+                {copy("Account Type", "Loại tài khoản")}
+              </span>
               <span
                 className={`font-bold capitalize ${
                   user.isVip ? "text-amber-600" : "text-gray-600"
@@ -833,13 +884,19 @@ export function Profile() {
               <span className="font-bold text-[#155ca5]">{user.role}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">{copy("Last Study Date", "Ngày học gần nhất")}</span>
+              <span className="text-gray-600 font-medium">
+                {copy("Last Study Date", "Ngày học gần nhất")}
+              </span>
               <span className="font-bold">
-                {user.lastStudyDate ? formatDate(user.lastStudyDate) : copy("N/A", "Chưa có")}
+                {user.lastStudyDate
+                  ? formatDate(user.lastStudyDate)
+                  : copy("N/A", "Chưa có")}
               </span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">{copy("Streak Status", "Trạng thái streak")}</span>
+              <span className="text-gray-600 font-medium">
+                {copy("Streak Status", "Trạng thái streak")}
+              </span>
               <span
                 className={`font-bold rounded-full px-3 py-1 text-xs uppercase tracking-widest ${streakStatus.className}`}
                 title={streakStatus.description}
@@ -848,21 +905,27 @@ export function Profile() {
               </span>
             </div>
             <div className="flex justify-between py-3 border-b border-gray-200">
-              <span className="text-gray-600 font-medium">{copy("Study Progress", "Tiến độ học")}</span>
+              <span className="text-gray-600 font-medium">
+                {copy("Study Progress", "Tiến độ học")}
+              </span>
               <span className="font-bold text-[#27ae60]">
                 {stats.accuracy.toFixed(1)}%
               </span>
             </div>
             {user.isVip && user.vipExpiredAt && (
               <div className="flex justify-between py-3 border-b border-gray-200">
-                <span className="text-gray-600 font-medium">{copy("VIP Expires", "VIP hết hạn")}</span>
+                <span className="text-gray-600 font-medium">
+                  {copy("VIP Expires", "VIP hết hạn")}
+                </span>
                 <span className="font-bold text-amber-600">
                   {formatDate(user.vipExpiredAt)}
                 </span>
               </div>
             )}
             <div className="flex justify-between py-3">
-              <span className="text-gray-600 font-medium">{copy("Total XP", "Tổng XP")}</span>
+              <span className="text-gray-600 font-medium">
+                {copy("Total XP", "Tổng XP")}
+              </span>
               <span className="font-bold text-[#155ca5]">
                 {stats.totalXP.toLocaleString()}
               </span>
@@ -885,7 +948,9 @@ export function Profile() {
             className="w-full mt-6 bg-red-50 text-red-600 py-3 rounded-lg font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <LogOut className="w-5 h-5" />
-            {authLoading ? copy("Signing out...", "Đang đăng xuất...") : copy("Sign Out", "Đăng xuất")}
+            {authLoading
+              ? copy("Signing out...", "Đang đăng xuất...")
+              : copy("Sign Out", "Đăng xuất")}
           </button>
 
           {logoutError && (
@@ -928,7 +993,10 @@ export function Profile() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder={copy("Confirm New Password", "Xác nhận mật khẩu mới")}
+              placeholder={copy(
+                "Confirm New Password",
+                "Xác nhận mật khẩu mới",
+              )}
               className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#155ca5]/40"
             />
 
@@ -939,7 +1007,11 @@ export function Profile() {
             )}
             {passwordSuccess && (
               <p className="text-sm font-semibold text-green-600">
-                {passwordSuccess} {copy("This dialog will close automatically.", "Hộp thoại sẽ tự đóng.")}
+                {passwordSuccess}{" "}
+                {copy(
+                  "This dialog will close automatically.",
+                  "Hộp thoại sẽ tự đóng.",
+                )}
               </p>
             )}
 
@@ -958,7 +1030,9 @@ export function Profile() {
                 disabled={changingPassword}
                 className="flex-1 bg-[#155ca5] text-white py-2.5 rounded-md font-bold hover:brightness-105 transition-colors disabled:opacity-70"
               >
-                {changingPassword ? copy("Changing...", "Đang đổi...") : copy("Confirm", "Xác nhận")}
+                {changingPassword
+                  ? copy("Changing...", "Đang đổi...")
+                  : copy("Confirm", "Xác nhận")}
               </button>
             </div>
           </div>
@@ -1014,7 +1088,8 @@ export function Profile() {
                         {copy("Current avatar", "Avatar hiện tại")}
                       </p>
                       <p className="font-bold text-slate-900 truncate">
-                        {selectedAvatarOption?.name || copy("Default avatar", "Avatar mặc định")}
+                        {selectedAvatarOption?.name ||
+                          copy("Default avatar", "Avatar mặc định")}
                       </p>
                     </div>
                   </div>
@@ -1046,7 +1121,8 @@ export function Profile() {
                       {copy("Current background", "Ảnh nền hiện tại")}
                     </p>
                     <p className="font-bold text-slate-900 truncate">
-                      {selectedBackgroundOption?.name || copy("Default background", "Ảnh nền mặc định")}
+                      {selectedBackgroundOption?.name ||
+                        copy("Default background", "Ảnh nền mặc định")}
                     </p>
                   </div>
                   <button
@@ -1101,7 +1177,9 @@ export function Profile() {
                 disabled={savingCustomization}
                 className="px-4 py-2 rounded-md bg-[#155ca5] text-white font-bold hover:brightness-105 transition-colors disabled:opacity-70"
               >
-                {savingCustomization ? copy("Saving...", "Đang lưu...") : copy("Save changes", "Lưu thay đổi")}
+                {savingCustomization
+                  ? copy("Saving...", "Đang lưu...")
+                  : copy("Save changes", "Lưu thay đổi")}
               </button>
             </div>
           </div>
@@ -1125,57 +1203,57 @@ export function Profile() {
 
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {avatarOptions.map((item) => {
-                    const isLocked = !item.owned;
-                    const isSelected = selectedAvatarId === item.id;
+                      const isLocked = !item.owned;
+                      const isSelected = selectedAvatarId === item.id;
 
-                    return (
-                      <button
-                        key={`avatar-modal-${item.id}`}
-                        type="button"
-                        onClick={() => {
-                          if (isLocked) {
-                            return;
-                          }
-                          setSelectedAvatarId(item.id);
-                        }}
-                        className={`relative rounded-lg border p-2 text-left transition-all ${
-                          isSelected
-                            ? "border-[#155ca5] bg-[#155ca5]/5"
-                            : "border-slate-200 hover:border-slate-300"
-                        } ${isLocked ? "opacity-70" : ""}`}
-                      >
-                        <div className="aspect-square rounded-md overflow-hidden bg-slate-100">
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full grid place-items-center text-xs text-slate-500">
-                              {copy("No Image", "Không có ảnh")}
+                      return (
+                        <button
+                          key={`avatar-modal-${item.id}`}
+                          type="button"
+                          onClick={() => {
+                            if (isLocked) {
+                              return;
+                            }
+                            setSelectedAvatarId(item.id);
+                          }}
+                          className={`relative rounded-lg border p-2 text-left transition-all ${
+                            isSelected
+                              ? "border-[#155ca5] bg-[#155ca5]/5"
+                              : "border-slate-200 hover:border-slate-300"
+                          } ${isLocked ? "opacity-70" : ""}`}
+                        >
+                          <div className="aspect-square rounded-md overflow-hidden bg-slate-100">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full grid place-items-center text-xs text-slate-500">
+                                {copy("No Image", "Không có ảnh")}
+                              </div>
+                            )}
+                          </div>
+                          <p className="mt-1.5 text-xs md:text-sm font-semibold truncate">
+                            {item.name}
+                          </p>
+                          {item.equipped && (
+                            <span className="inline-block text-[11px] font-bold text-[#155ca5]">
+                              {copy("Equipped", "Đang dùng")}
+                            </span>
+                          )}
+                          {isLocked && (
+                            <div className="absolute inset-0 rounded-lg bg-black/35 grid place-items-center">
+                              <div className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                <Lock className="w-3 h-3" />
+                                {copy("Locked", "Đã khóa")}
+                              </div>
                             </div>
                           )}
-                        </div>
-                        <p className="mt-1.5 text-xs md:text-sm font-semibold truncate">
-                          {item.name}
-                        </p>
-                        {item.equipped && (
-                          <span className="inline-block text-[11px] font-bold text-[#155ca5]">
-                            {copy("Equipped", "Đang dùng")}
-                          </span>
-                        )}
-                        {isLocked && (
-                          <div className="absolute inset-0 rounded-lg bg-black/35 grid place-items-center">
-                            <div className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              {copy("Locked", "Đã khóa")}
-                            </div>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1213,57 +1291,57 @@ export function Profile() {
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {backgroundOptions.map((item) => {
-                    const isLocked = !item.owned;
-                    const isSelected = selectedBackgroundId === item.id;
+                      const isLocked = !item.owned;
+                      const isSelected = selectedBackgroundId === item.id;
 
-                    return (
-                      <button
-                        key={`background-modal-${item.id}`}
-                        type="button"
-                        onClick={() => {
-                          if (isLocked) {
-                            return;
-                          }
-                          setSelectedBackgroundId(item.id);
-                        }}
-                        className={`relative rounded-lg border p-2 text-left transition-all ${
-                          isSelected
-                            ? "border-[#155ca5] bg-[#155ca5]/5"
-                            : "border-slate-200 hover:border-slate-300"
-                        } ${isLocked ? "opacity-70" : ""}`}
-                      >
-                        <div className="h-20 rounded-md overflow-hidden bg-slate-100">
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full grid place-items-center text-xs text-slate-500">
-                              {copy("No Image", "Không có ảnh")}
+                      return (
+                        <button
+                          key={`background-modal-${item.id}`}
+                          type="button"
+                          onClick={() => {
+                            if (isLocked) {
+                              return;
+                            }
+                            setSelectedBackgroundId(item.id);
+                          }}
+                          className={`relative rounded-lg border p-2 text-left transition-all ${
+                            isSelected
+                              ? "border-[#155ca5] bg-[#155ca5]/5"
+                              : "border-slate-200 hover:border-slate-300"
+                          } ${isLocked ? "opacity-70" : ""}`}
+                        >
+                          <div className="h-20 rounded-md overflow-hidden bg-slate-100">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full grid place-items-center text-xs text-slate-500">
+                                {copy("No Image", "Không có ảnh")}
+                              </div>
+                            )}
+                          </div>
+                          <p className="mt-1.5 text-xs md:text-sm font-semibold truncate">
+                            {item.name}
+                          </p>
+                          {item.equipped && (
+                            <span className="inline-block text-[11px] font-bold text-[#155ca5]">
+                              {copy("Equipped", "Đang dùng")}
+                            </span>
+                          )}
+                          {isLocked && (
+                            <div className="absolute inset-0 rounded-lg bg-black/35 grid place-items-center">
+                              <div className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                <Lock className="w-3 h-3" />
+                                {copy("Locked", "Đã khóa")}
+                              </div>
                             </div>
                           )}
-                        </div>
-                        <p className="mt-1.5 text-xs md:text-sm font-semibold truncate">
-                          {item.name}
-                        </p>
-                        {item.equipped && (
-                          <span className="inline-block text-[11px] font-bold text-[#155ca5]">
-                            {copy("Equipped", "Đang dùng")}
-                          </span>
-                        )}
-                        {isLocked && (
-                          <div className="absolute inset-0 rounded-lg bg-black/35 grid place-items-center">
-                            <div className="bg-white text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              {copy("Locked", "Đã khóa")}
-                            </div>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -17,6 +17,7 @@ import { useNotificationPopup } from "@/utils/useNotificationPopup";
 import getPagination from "@/utils/pagination";
 import scrollToTop from "@/utils/scrollToTop";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 const isCosmeticShopType = (shopType: ShopItemType) =>
   shopType === "AVATAR" || shopType === "BACKGROUND";
@@ -33,6 +34,7 @@ type ShopFilterCategory = "ALL" | ShopItemType;
 
 export function Shop() {
   const { copy } = useLanguage();
+  const { refreshCurrentUser } = useAuth();
   const [items, setItems] = useState<ShopItem[]>([]);
   const [balance, setBalance] = useState(0);
   const [selectedCategory, setSelectedCategory] =
@@ -69,23 +71,17 @@ export function Shop() {
       }
     } catch (err) {
       console.error("Error loading shop:", err);
-      setError(copy("Failed to load shop items", "Không thể tải vật phẩm cửa hàng"));
+      setError(
+        copy("Failed to load shop items", "Không thể tải vật phẩm cửa hàng"),
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePurchase = async (item: ShopItem) => {
+  const handleConfirmPurchase = async (item: ShopItem) => {
     const { id: itemId, price } = item;
     const shopType = getItemShopType(item);
-
-    if (balance < price) {
-      popup.error({
-        title: copy("Insufficient coins", "Không đủ xu"),
-        message: copy("You do not have enough coins for this item.", "Bạn không có đủ xu cho vật phẩm này."),
-      });
-      return;
-    }
 
     try {
       setPurchasing(itemId);
@@ -94,6 +90,7 @@ export function Shop() {
       if (response.success && response.data) {
         // Update balance
         setBalance(response.data.remainingCoin);
+        void refreshCurrentUser(false);
 
         if (isCosmeticShopType(shopType)) {
           setItems((prev) =>
@@ -107,13 +104,20 @@ export function Shop() {
 
         popup.success({
           title: copy("Purchase successful", "Mua thành công"),
-          message: copy(`Successfully purchased ${item.name}.`, `Đã mua ${item.name} thành công.`),
+          message: copy(
+            `Successfully purchased ${item.name}.`,
+            `Đã mua ${item.name} thành công.`,
+          ),
         });
       } else {
         popup.error({
           title: copy("Purchase failed", "Mua thất bại"),
           message:
-            response.error?.message || copy("Could not complete the purchase.", "Không thể hoàn tất giao dịch."),
+            response.error?.message ||
+            copy(
+              "Could not complete the purchase.",
+              "Không thể hoàn tất giao dịch.",
+            ),
         });
       }
     } catch (err: any) {
@@ -123,11 +127,45 @@ export function Shop() {
         message:
           err?.code === "INSUFFICIENT_FUNDS"
             ? copy("You don't have enough coins.", "Bạn không có đủ xu.")
-            : copy("Purchase failed. Please try again.", "Mua thất bại. Vui lòng thử lại."),
+            : copy(
+                "Purchase failed. Please try again.",
+                "Mua thất bại. Vui lòng thử lại.",
+              ),
       });
     } finally {
       setPurchasing(null);
     }
+  };
+
+  const handlePurchase = (item: ShopItem) => {
+    const { price } = item;
+
+    if (balance < price) {
+      popup.error({
+        title: copy("Insufficient coins", "Không đủ xu"),
+        message: copy(
+          "You do not have enough coins for this item.",
+          "Bạn không có đủ xu cho vật phẩm này.",
+        ),
+      });
+      return;
+    }
+
+    // Show confirmation dialog
+    popup.confirm({
+      title: copy("Confirm Purchase", "Xác nhận mua"),
+      message: copy(
+        `Do you want to buy ${item.name}?`,
+        `Bạn có muốn mua ${item.name}?`,
+      ),
+      description: copy(
+        `This will cost ${item.price} coins.`,
+        `Điều này sẽ tốn ${item.price} xu.`,
+      ),
+      confirmText: copy("Buy", "Mua"),
+      cancelText: copy("Cancel", "Hủy"),
+      onConfirm: () => handleConfirmPurchase(item),
+    });
   };
 
   const getCategoryIcon = (category: ShopItemType) => {
@@ -170,17 +208,33 @@ export function Shop() {
     return getItemShopType(item) === "BACKGROUND";
   };
 
+  const isItemOwned = (item: ShopItem) => {
+    const shopType = getItemShopType(item);
+    return isCosmeticShopType(shopType) && item.isPurchased;
+  };
+
   const filteredItems =
     selectedCategory === "ALL"
       ? items
       : items.filter((item) => getItemShopType(item) === selectedCategory);
 
+  const sortedFilteredItems = [...filteredItems].sort((left, right) => {
+    const leftOwned = isItemOwned(left);
+    const rightOwned = isItemOwned(right);
+
+    if (leftOwned === rightOwned) {
+      return 0;
+    }
+
+    return leftOwned ? 1 : -1;
+  });
+
   const itemsPerPage = 12;
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedFilteredItems.length / itemsPerPage);
   const pagination = getPagination(currentPage, totalPages);
   const visibleItems =
     totalPages > 0
-      ? filteredItems.slice(
+      ? sortedFilteredItems.slice(
           (pagination.current - 1) * itemsPerPage,
           pagination.current * itemsPerPage,
         )
@@ -202,7 +256,9 @@ export function Shop() {
       <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-[#155ca5] animate-spin mx-auto" />
-          <p className="text-gray-600 font-medium">{copy("Loading shop...", "Đang tải cửa hàng...")}</p>
+          <p className="text-gray-600 font-medium">
+            {copy("Loading shop...", "Đang tải cửa hàng...")}
+          </p>
         </div>
       </main>
     );
@@ -425,7 +481,9 @@ export function Shop() {
                 {item.duration && (
                   <p className="text-[11px] sm:text-xs text-gray-500">
                     {copy("Duration:", "Thời hạn:")} {item.duration}{" "}
-                    {item.duration === 1 ? copy("day", "ngày") : copy("days", "ngày")}
+                    {item.duration === 1
+                      ? copy("day", "ngày")
+                      : copy("days", "ngày")}
                   </p>
                 )}
 
@@ -463,7 +521,9 @@ export function Shop() {
                       ) : (
                         <>
                           <ShoppingCart className="w-4 h-4" />
-                          {canAfford ? copy("Buy Now", "Mua ngay") : copy("Not Enough Coins", "Không đủ xu")}
+                          {canAfford
+                            ? copy("Buy Now", "Mua ngay")
+                            : copy("Not Enough Coins", "Không đủ xu")}
                         </>
                       )}
                     </button>
@@ -475,11 +535,14 @@ export function Shop() {
         })}
       </section>
 
-      {filteredItems.length === 0 && (
+      {sortedFilteredItems.length === 0 && (
         <div className="text-center py-10 sm:py-12 bg-white rounded-lg">
           <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 text-base sm:text-lg">
-            {copy("No items in this category", "Không có vật phẩm trong danh mục này")}
+            {copy(
+              "No items in this category",
+              "Không có vật phẩm trong danh mục này",
+            )}
           </p>
         </div>
       )}
