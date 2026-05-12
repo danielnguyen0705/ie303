@@ -19,6 +19,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { getMyShopItems, useSkipItem } from "@/api/shop";
 import type { UserItemResponse } from "@/api/types";
+import { NotificationPopup } from "@/utils/NotificationPopup";
+import { useNotificationPopup } from "@/utils/useNotificationPopup";
 
 type InventoryItem = {
   id: string;
@@ -133,6 +135,10 @@ function NavbarContent() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutIdsRef = useRef<number[]>([]);
+  const authPopup = useNotificationPopup({
+    autoClose: true,
+    autoCloseDuration: 2500,
+  });
   const { user, loading, isAuthenticated, logout } = useAuth();
   const { language, setLanguage, copy } = useLanguage();
   const userProfile = (user ?? null) as Record<string, unknown> | null;
@@ -151,6 +157,15 @@ function NavbarContent() {
   ]);
 
   const isActive = (path: string) => location.pathname === path;
+  const handleRegisterSuccess = useCallback(() => {
+    authPopup.success({
+      title: copy("Registration successful", "Đăng ký thành công"),
+      message: copy(
+        "Please verify your email before logging in.",
+        "Vui lòng mở email để xác minh tài khoản trước khi đăng nhập.",
+      ),
+    });
+  }, [authPopup, copy]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -552,6 +567,12 @@ function NavbarContent() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        onRegisterSuccess={handleRegisterSuccess}
+      />
+
+      <NotificationPopup
+        {...authPopup.notification}
+        onClose={authPopup.close}
       />
 
       {isInventoryModalOpen && (

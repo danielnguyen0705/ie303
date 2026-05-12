@@ -7,15 +7,16 @@ import { GradeUnits } from "./pages/GradeUnits";
 import { SectionSelection } from "./pages/SectionSelection";
 import { LessonSelection } from "./pages/LessonSelection";
 import LessonRunner from "./pages/LessonRunner";
-import { PronunciationExercise } from "./pages/exercises/PronunciationExercise";
-import { ReadingExercise } from "./pages/exercises/ReadingExercise";
-import { QuizExercise } from "./pages/exercises/QuizExercise";
-import { ListeningExercise } from "./pages/exercises/ListeningExercise";
 import { Leaderboard } from "./pages/Leaderboard";
 import { Quests } from "./pages/Quests";
 import { Profile } from "./pages/Profile";
 import { Shop } from "./pages/Shop";
 import { Topup } from "./pages/Topup";
+import { About } from "./pages/About";
+import { Privacy } from "./pages/Privacy";
+import { Terms } from "./pages/Terms";
+import { HelpCenter } from "./pages/HelpCenter";
+import { LearningGuide } from "./pages/LearningGuide";
 import { PaymentHistory } from "./pages/PaymentHistory";
 import { TestResults } from "./pages/TestResults";
 import { TestReview } from "./pages/TestReview";
@@ -63,18 +64,17 @@ export const router = createBrowserRouter([
       { path: "units", Component: UnitSelection },
       { path: "unit/:unitId", Component: UnitView },
 
-      // Exercise demo routes
-      { path: "exercise/pronunciation", Component: PronunciationExercise },
-      { path: "exercise/reading", Component: ReadingExercise },
-      { path: "exercise/quiz", Component: QuizExercise },
-      { path: "exercise/listening", Component: ListeningExercise },
-
       { path: "test/results", Component: TestResults },
       { path: "test/review", Component: TestReview },
       { path: "test/revision", Component: RevisionTest },
       { path: "leaderboard", Component: Leaderboard },
       { path: "quests", Component: Quests },
       { path: "profile", Component: Profile },
+      { path: "about", Component: About },
+      { path: "privacy", Component: Privacy },
+      { path: "terms", Component: Terms },
+      { path: "help", Component: HelpCenter },
+      { path: "learning-guide", Component: LearningGuide },
       { path: "shop", Component: Shop },
       { path: "topup", Component: Topup },
       { path: "payment-history", Component: PaymentHistory },
