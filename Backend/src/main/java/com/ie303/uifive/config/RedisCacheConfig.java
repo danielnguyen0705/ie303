@@ -31,6 +31,7 @@ public class RedisCacheConfig extends CachingConfigurerSupport {
                         .allowIfSubType("com.ie303.uifive")
                         .allowIfSubType("java.util")
                         .allowIfSubType("java.lang")
+                        .allowIfSubType("java.time")
                         .build(),
                 ObjectMapper.DefaultTyping.EVERYTHING,
                 "@class"
