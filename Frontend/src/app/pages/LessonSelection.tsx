@@ -7,7 +7,7 @@ import {
   faLock,
   faFire,
 } from "@fortawesome/free-solid-svg-icons";
-import { getLessonsBySectionProgress } from "@/api";
+import { getLessonsBySectionProgress, getSection } from "@/api";
 import { useLanguage } from "@/context/LanguageContext";
 
 type LessonProgressItem = {
@@ -194,10 +194,33 @@ export function LessonSelection() {
   const { sectionId } = useParams();
   const navigate = useNavigate();
   const [lessons, setLessons] = useState<LessonProgressItem[]>([]);
+  const [sectionTitle, setSectionTitle] = useState<string | null>(null);
+  const [sectionDisplayNumber, setSectionDisplayNumber] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const sectionIdNumber = useMemo(() => Number(sectionId), [sectionId]);
+
+  useEffect(() => {
+    const loadSectionMeta = async () => {
+      if (!sectionIdNumber || Number.isNaN(sectionIdNumber)) {
+        setSectionTitle(null);
+        setSectionDisplayNumber(null);
+        return;
+      }
+
+      const response = await getSection(sectionIdNumber);
+      if (response.success && response.data) {
+        setSectionTitle(response.data.title);
+        setSectionDisplayNumber(response.data.sectionNumber);
+      } else {
+        setSectionTitle(null);
+        setSectionDisplayNumber(null);
+      }
+    };
+
+    void loadSectionMeta();
+  }, [sectionIdNumber]);
 
   useEffect(() => {
     const loadLessons = async () => {
@@ -355,7 +378,7 @@ export function LessonSelection() {
 
         <div className="mt-3">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
-            Section {sectionId}
+            {sectionTitle ?? `Section ${sectionDisplayNumber ?? sectionId}`}
           </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
             {copy("Choose a Lesson", "Chọn Lesson")}

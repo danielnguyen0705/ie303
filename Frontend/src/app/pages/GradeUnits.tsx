@@ -7,7 +7,7 @@ import {
   faLock,
   faFire,
 } from "@fortawesome/free-solid-svg-icons";
-import { getSemesterTests, getUnitsByGradeProgress } from "@/api";
+import { getGrade, getSemesterTests, getUnitsByGradeProgress } from "@/api";
 import type { SemesterTestResponse } from "@/api/types";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -171,10 +171,25 @@ export function GradeUnits() {
   const navigate = useNavigate();
   const [units, setUnits] = useState<UnitProgressItem[]>([]);
   const [semesterTests, setSemesterTests] = useState<SemesterTestResponse[]>([]);
+  const [gradeTitle, setGradeTitle] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const gradeIdNumber = useMemo(() => Number(gradeId), [gradeId]);
+
+  useEffect(() => {
+    const loadGradeMeta = async () => {
+      if (!gradeIdNumber || Number.isNaN(gradeIdNumber)) {
+        setGradeTitle(null);
+        return;
+      }
+
+      const response = await getGrade(gradeIdNumber);
+      setGradeTitle(response.success && response.data ? response.data.title : null);
+    };
+
+    void loadGradeMeta();
+  }, [gradeIdNumber]);
 
   useEffect(() => {
     const loadUnits = async () => {
@@ -348,9 +363,6 @@ export function GradeUnits() {
         </button>
 
         <div className="mt-3">
-          <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
-            {copy("Grade", "Lớp")} {gradeId}
-          </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
             {copy("Choose a Unit", "Chọn Unit")}
           </h1>

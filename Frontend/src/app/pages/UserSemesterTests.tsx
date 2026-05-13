@@ -1,9 +1,10 @@
-import { getSemesterTestById, getSemesterTests } from "@/api";
+import { getAllGrades, getSemesterTestById, getSemesterTests } from "@/api";
 import { PracticePackageRunner } from "@/app/components/PracticePackageRunner";
 import type { SemesterTestResponse } from "@/api/types";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { hasVipAccess, loadQuestionBundle } from "./practicePackageData";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 
 async function loadSemesterTestItems() {
@@ -49,6 +50,23 @@ export function UserSemesterTests() {
   const [searchParams] = useSearchParams();
   const includeVipLessons = hasVipAccess(user);
   const preferredItemId = Number(searchParams.get("testId"));
+  const [gradeTitles, setGradeTitles] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    const loadGradeTitles = async () => {
+      const response = await getAllGrades();
+      if (!response.success || !response.data) {
+        setGradeTitles({});
+        return;
+      }
+
+      setGradeTitles(
+        Object.fromEntries(response.data.map((grade) => [grade.id, grade.title])),
+      );
+    };
+
+    void loadGradeTitles();
+  }, []);
 
   return (
     <PracticePackageRunner<SemesterTestResponse>
@@ -72,7 +90,7 @@ export function UserSemesterTests() {
       loadItems={loadSemesterTestItems}
       loadPackage={(item) => loadSemesterTestPackage(item, includeVipLessons)}
       getItemMeta={(item) =>
-        `${copy("Grade", "Lop")} ${item.gradeId} - ${copy("Units", "Unit")} ${item.startUnit} ${copy("to", "den")} ${item.endUnit} - ${item.timeLimit} ${copy("min", "phut")}`
+        `${gradeTitles[item.gradeId] ?? `${copy("Grade", "Lop")} ${item.gradeId}`} - ${copy("Units", "Unit")} ${item.startUnit} ${copy("to", "den")} ${item.endUnit} - ${item.timeLimit} ${copy("min", "phut")}`
       }
       getResultMeta={(item) =>
         `${copy("Question groups:", "Nhom cau hoi:")} ${item.questionGroupIds.length} - ${copy("Single questions:", "Cau hoi le:")} ${item.questionIds.length}`
