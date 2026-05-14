@@ -21,6 +21,7 @@ import { getMyShopItems, useSkipItem } from "@/api/shop";
 import type { UserItemResponse } from "@/api/types";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type InventoryItem = {
   id: string;
@@ -119,6 +120,24 @@ function getNumericField(
   return 0;
 }
 
+function getAvatarInitials(username: string | undefined): string {
+  if (!username) {
+    return "U";
+  }
+
+  const trimmed = username.trim();
+  if (!trimmed) {
+    return "U";
+  }
+
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+}
+
 export function Navbar() {
   return <NavbarContent />;
 }
@@ -143,6 +162,11 @@ function NavbarContent() {
   const { language, setLanguage, copy } = useLanguage();
   const userProfile = (user ?? null) as Record<string, unknown> | null;
   const isVipUser = Boolean(userProfile?.isVip) || Boolean(userProfile?.vipExpiredAt);
+  const userAvatar =
+    typeof user?.avatar === "string" && user.avatar.length > 0
+      ? user.avatar
+      : undefined;
+  const userName = user?.username ?? user?.email ?? "User";
 
   const streakDays = getNumericField(userProfile, [
     "streak",
@@ -445,9 +469,16 @@ function NavbarContent() {
                           : "bg-slate-200"
                       }`}
                     >
-                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                        <User className="w-6 h-6 text-slate-400" />
-                      </div>
+                      <Avatar className="h-full w-full rounded-full border-2 border-white bg-white">
+                        <AvatarImage
+                          src={userAvatar}
+                          alt={`${userName} avatar`}
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="bg-white text-[11px] font-bold text-slate-500">
+                          {getAvatarInitials(userName)}
+                        </AvatarFallback>
+                      </Avatar>
                     </div>
                     {isVipUser && (
                       <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
