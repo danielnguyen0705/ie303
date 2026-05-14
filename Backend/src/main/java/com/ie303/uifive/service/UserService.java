@@ -79,17 +79,18 @@ public class UserService implements UserDetailsService {
         user.setStreakItemPendingCount(0);
 
         user.setVerified(false);
-        user.setVerificationToken(UUID.randomUUID().toString());
+        String verificationToken = UUID.randomUUID().toString();
+        user.setVerificationToken(verificationToken);
         user.setVerificationExpiry(LocalDateTime.now().plusMinutes(5));
+
+        String verifyLink = frontendPublicBaseUrl + "/verify-email?token="
+                + verificationToken;
+
+        emailService.sendVerificationEmail(user.getEmail(), verifyLink);
 
         user = repo.save(user);
 
         UserResponse response = mapper.toResponse(user);
-
-        String verifyLink = frontendPublicBaseUrl + "/verify-email?token="
-                + user.getVerificationToken();
-
-        emailService.sendVerificationEmail(user.getEmail(), verifyLink);
         return response;
     }
 
