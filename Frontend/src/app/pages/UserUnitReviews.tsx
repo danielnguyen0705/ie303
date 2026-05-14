@@ -1,9 +1,10 @@
-import { getUnitReviewById, getUnitReviews } from "@/api";
+import { getUnit, getUnitReviewById, getUnitReviews } from "@/api";
 import { PracticePackageRunner } from "@/app/components/PracticePackageRunner";
 import type { UnitReviewResponse } from "@/api/types";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { hasVipAccess, loadQuestionBundle } from "./practicePackageData";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 
 async function loadUnitReviewItems() {
@@ -48,6 +49,34 @@ export function UserUnitReviews() {
   const [searchParams] = useSearchParams();
   const includeVipLessons = hasVipAccess(user);
   const preferredItemId = Number(searchParams.get("reviewId"));
+  const [unitTitles, setUnitTitles] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    const loadUnitTitles = async () => {
+      const response = await getUnitReviews();
+      if (!response.success || !response.data) {
+        setUnitTitles({});
+        return;
+      }
+
+      const uniqueUnitIds = [...new Set(response.data.map((item) => item.unitId))];
+      const titleEntries = await Promise.all(
+        uniqueUnitIds.map(async (unitId) => {
+          const unitResponse = await getUnit(unitId);
+          return [
+            unitId,
+            unitResponse.success && unitResponse.data ? unitResponse.data.title : "",
+          ] as const;
+        }),
+      );
+
+      setUnitTitles(
+        Object.fromEntries(titleEntries.filter(([, title]) => Boolean(title))),
+      );
+    };
+
+    void loadUnitTitles();
+  }, []);
 
   return (
     <PracticePackageRunner<UnitReviewResponse>
@@ -71,7 +100,7 @@ export function UserUnitReviews() {
       loadItems={loadUnitReviewItems}
       loadPackage={(item) => loadUnitReviewPackage(item, includeVipLessons)}
       getItemMeta={(item) =>
-        `${copy("Unit ID", "Unit ID")} ${item.unitId} - ${item.questionIds.length} ${copy("question(s)", "cau hoi")}`
+        `${unitTitles[item.unitId] ?? `${copy("Unit", "Unit")} ${item.unitId}`} - ${item.questionIds.length} ${copy("question(s)", "cau hoi")}`
       }
       preferredItemId={Number.isFinite(preferredItemId) && preferredItemId > 0 ? preferredItemId : null}
     />

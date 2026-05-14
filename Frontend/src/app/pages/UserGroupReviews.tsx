@@ -1,9 +1,10 @@
-import { getGroupReviewById, getGroupReviews } from "@/api";
+import { getAllGrades, getGroupReviewById, getGroupReviews } from "@/api";
 import { PracticePackageRunner } from "@/app/components/PracticePackageRunner";
 import type { GroupReviewResponse } from "@/api/types";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { hasVipAccess, loadQuestionBundle } from "./practicePackageData";
+import { useEffect, useState } from "react";
 
 async function loadGroupReviewItems() {
   const response = await getGroupReviews();
@@ -45,6 +46,23 @@ export function UserGroupReviews() {
   const { user } = useAuth();
   const { copy } = useLanguage();
   const includeVipLessons = hasVipAccess(user);
+  const [gradeTitles, setGradeTitles] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    const loadGradeTitles = async () => {
+      const response = await getAllGrades();
+      if (!response.success || !response.data) {
+        setGradeTitles({});
+        return;
+      }
+
+      setGradeTitles(
+        Object.fromEntries(response.data.map((grade) => [grade.id, grade.title])),
+      );
+    };
+
+    void loadGradeTitles();
+  }, []);
 
   return (
     <PracticePackageRunner<GroupReviewResponse>
@@ -68,7 +86,7 @@ export function UserGroupReviews() {
       loadItems={loadGroupReviewItems}
       loadPackage={(item) => loadGroupReviewPackage(item, includeVipLessons)}
       getItemMeta={(item) =>
-        `${copy("Grade", "Lop")} ${item.gradeId} - ${copy("Units", "Unit")} ${item.startUnit} ${copy("to", "den")} ${item.endUnit} - ${item.questionIds.length} ${copy("question(s)", "cau hoi")}`
+        `${gradeTitles[item.gradeId] ?? `${copy("Grade", "Lop")} ${item.gradeId}`} - ${copy("Units", "Unit")} ${item.startUnit} ${copy("to", "den")} ${item.endUnit} - ${item.questionIds.length} ${copy("question(s)", "cau hoi")}`
       }
     />
   );

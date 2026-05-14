@@ -491,7 +491,7 @@ export function Dashboard() {
                     <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
                   <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${style.soft}`}>
-                    {copy("Grade", "Lớp")} {grade.id}
+                    {grade.name}
                   </span>
                 </div>
 
@@ -577,39 +577,6 @@ export function Dashboard() {
               )}
             </div>
           </Link>
-
-          <div
-            className={`flex w-full min-w-0 flex-col rounded-[1.35rem] border p-4 shadow-sm ${
-              isVip
-                ? "border-slate-100 bg-white"
-                : "border-[#f5d39b] bg-[#fff8eb]"
-            }`}
-          >
-            <div className="flex w-full min-w-0 items-center justify-between gap-3">
-              <BrainCircuit
-                className={`h-6 w-6 shrink-0 sm:h-7 sm:w-7 ${isVip ? "text-[#155ca5]" : "text-[#d29b2a]"}`}
-              />
-              <span
-                className={`inline-flex shrink-0 max-w-[60%] items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider sm:px-3 sm:text-[11px] sm:tracking-[0.18em] ${
-                  isVip
-                    ? "bg-[#155ca5]/10 text-[#155ca5]"
-                    : "bg-[#f7e3b7] text-[#8d5c06]"
-                }`}
-              >
-                {!isVip && <Lock className="h-3 w-3" />}
-                {isVip ? "VIP" : copy("Locked", "Bị khóa")}
-              </span>
-            </div>
-            <div className="mt-4 text-lg font-black text-[#1e2e51]">
-              {copy("ML Insights", "Phân tích ML")}
-            </div>
-            <div className="mt-1 text-sm leading-6 text-gray-500">
-              {copy(
-                "View the latest learning signals and recommendations on your dashboard.",
-                "Xem tín hiệu học tập và gợi ý mới nhất ngay trên dashboard.",
-              )}
-            </div>
-          </div>
         </div>
       </section>
     </main>
