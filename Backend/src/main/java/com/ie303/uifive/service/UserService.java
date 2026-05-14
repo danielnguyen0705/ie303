@@ -291,10 +291,9 @@ public class UserService implements UserDetailsService {
     }
 
     private void applyDefaultCosmetics(User user, String seedSource) {
-        String seed = (seedSource == null || seedSource.isBlank()) ? "user" : seedSource.trim();
 
         if (user.getAvatar() == null || user.getAvatar().isBlank()) {
-            user.setAvatar(defaultAvatarBaseUrl + seed);
+            user.setAvatar(defaultAvatarBaseUrl);
         }
 
         if (user.getBackground() == null || user.getBackground().isBlank()) {
