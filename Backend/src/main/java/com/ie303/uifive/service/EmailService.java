@@ -9,6 +9,7 @@ import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -18,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class EmailService {
 
@@ -26,7 +28,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${mail.from-email:noreply@uifive.local}")
+    @Value("${spring.mail.from:noreply@uifive.local}")
     private String fromEmail;
 
     public void sendVerificationEmail(String toEmail, String verifyLink) {
@@ -60,6 +62,7 @@ public class EmailService {
 
             mailSender.send(message);
         } catch (MessagingException | MailException e) {
+            log.error("Failed to send email to '{}' with subject '{}': {}", toEmail, subject, e.getMessage(), e);
             throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Failed to send email");
         }
     }
