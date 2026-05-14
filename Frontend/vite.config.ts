@@ -8,10 +8,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+
   resolve: {
     alias: {
-      // Trỏ @ vào thư mục src
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+
+  preview: {
+    host: "0.0.0.0",
+    allowedHosts: true,
   },
 });
