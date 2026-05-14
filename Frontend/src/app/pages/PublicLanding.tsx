@@ -4,13 +4,21 @@ import { useLanguage } from "@/context/LanguageContext";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
 
+type AuthMode = "login" | "register";
+
 export function PublicLanding() {
   const { language, setLanguage, copy } = useLanguage();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const authPopup = useNotificationPopup({
     autoClose: true,
     autoCloseDuration: 2500,
   });
+
+  const openAuthModal = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setIsAuthModalOpen(true);
+  };
 
   const handleRegisterSuccess = useCallback(() => {
     authPopup.success({
@@ -58,14 +66,14 @@ export function PublicLanding() {
 
             <button
               type="button"
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => openAuthModal("login")}
               className="font-['Lexend'] text-sm font-medium text-slate-600 transition-colors hover:text-blue-800"
             >
               {copy("Login", "Đăng nhập")}
             </button>
             <button
               type="button"
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => openAuthModal("register")}
               className="rounded-full bg-[#155ca5] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#155ca5]/20 transition-transform duration-200 active:scale-95"
             >
               {copy("Sign Up", "Đăng ký")}
@@ -100,14 +108,14 @@ export function PublicLanding() {
               <div className="flex flex-col items-center gap-6 sm:flex-row">
                 <button
                   type="button"
-                  onClick={() => setIsAuthModalOpen(true)}
+                  onClick={() => openAuthModal("register")}
                   className="w-full rounded-full bg-gradient-to-r from-[#155ca5] to-[#005095] px-10 py-5 text-lg font-bold text-white shadow-xl shadow-[#155ca5]/30 transition-transform hover:scale-105 active:scale-95 sm:w-auto"
                 >
                   {copy("Start Learning Now", "Bắt đầu học ngay")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsAuthModalOpen(true)}
+                  onClick={() => openAuthModal("login")}
                   className="group flex items-center gap-2 font-bold text-[#155ca5]"
                 >
                   {copy("Login", "Đăng nhập")}
@@ -200,6 +208,7 @@ export function PublicLanding() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onRegisterSuccess={handleRegisterSuccess}
+        initialMode={authMode}
       />
 
       <NotificationPopup

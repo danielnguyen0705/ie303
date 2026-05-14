@@ -2,20 +2,23 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 
+type AuthMode = "login" | "register";
+
 type AuthModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onRegisterSuccess?: () => void;
+  initialMode?: AuthMode;
 };
-
-type AuthMode = "login" | "register";
 
 export default function AuthModal({
   isOpen,
   onClose,
   onRegisterSuccess,
+  initialMode = "login",
 }: AuthModalProps) {
-  const { login, register, loginWithGoogle, loading, error } = useAuth();
+  const { login, register, loginWithGoogle, loading, error, clearError } =
+    useAuth();
   const { copy } = useLanguage();
 
   const [mode, setMode] = useState<AuthMode>("login");
@@ -51,6 +54,8 @@ export default function AuthModal({
       setVisible(false);
       requestAnimationFrame(() => setVisible(true));
       resetForm();
+      setMode(initialMode);
+      clearError();
     } else {
       setVisible(false);
     }
@@ -61,12 +66,14 @@ export default function AuthModal({
         switchTimeoutRef.current = null;
       }
     };
-  }, [isOpen]);
+  }, [isOpen, initialMode, clearError]);
 
   const switchMode = (nextMode: AuthMode): void => {
     if (nextMode === mode) return;
 
     setTabVisible(false);
+    setFormError(null);
+    clearError();
 
     if (switchTimeoutRef.current) {
       window.clearTimeout(switchTimeoutRef.current);
