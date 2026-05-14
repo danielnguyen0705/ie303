@@ -123,6 +123,46 @@ function getTrendMeta(trendLabel?: string | null) {
   }
 }
 
+function AIAssistantFigure() {
+  return (
+    <div className="relative mx-auto h-[220px] w-[220px] md:h-[250px] md:w-[250px]" aria-hidden="true">
+      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.24)_0%,rgba(255,255,255,0)_66%)] blur-2xl" />
+      <div className="absolute left-1/2 top-4 h-12 w-[2px] -translate-x-1/2 bg-gradient-to-b from-white to-[#7dd3fc]" />
+      <div className="absolute left-1/2 top-0 h-5 w-5 -translate-x-1/2 rounded-full border border-white/80 bg-[#f8fdff] shadow-[0_0_18px_rgba(125,211,252,0.55)]" />
+      <div className="lesson-hex-shell absolute inset-x-7 top-9 h-[112px] border border-white/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(221,243,255,0.96)_100%)] shadow-[0_24px_50px_rgba(21,92,165,0.16)]">
+        <div className="absolute inset-x-4 top-4 h-8 rounded-full bg-[#112847]">
+          <div className="flex h-full items-center justify-center gap-4">
+            <span className="h-2.5 w-7 rounded-full bg-[#67e8f9] shadow-[0_0_16px_rgba(103,232,249,0.7)]" />
+            <span className="h-2.5 w-7 rounded-full bg-[#67e8f9] shadow-[0_0_16px_rgba(103,232,249,0.7)]" />
+          </div>
+        </div>
+        <div className="absolute inset-x-8 bottom-6 h-10 rounded-[1.15rem] border border-[#c7e7fb] bg-[linear-gradient(180deg,#ffffff_0%,#e8f6ff_100%)]">
+          <div className="grid h-full grid-cols-4 place-items-center">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#7dd3fc]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#38bdf8]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0ea5e9]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#38bdf8]" />
+          </div>
+        </div>
+      </div>
+      <div className="absolute left-7 top-[95px] h-16 w-4 rounded-full bg-[linear-gradient(180deg,#f7fdff_0%,#c7ebff_100%)] shadow-[0_10px_20px_rgba(21,92,165,0.12)]" />
+      <div className="absolute right-7 top-[95px] h-16 w-4 rounded-full bg-[linear-gradient(180deg,#f7fdff_0%,#c7ebff_100%)] shadow-[0_10px_20px_rgba(21,92,165,0.12)]" />
+      <div className="absolute left-[58px] top-[152px] h-14 w-4 rotate-[18deg] rounded-full bg-[linear-gradient(180deg,#f7fdff_0%,#c7ebff_100%)] shadow-[0_10px_20px_rgba(21,92,165,0.12)]" />
+      <div className="absolute right-[58px] top-[152px] h-14 w-4 -rotate-[18deg] rounded-full bg-[linear-gradient(180deg,#f7fdff_0%,#c7ebff_100%)] shadow-[0_10px_20px_rgba(21,92,165,0.12)]" />
+      <div className="absolute left-[72px] bottom-8 h-12 w-4 rounded-full bg-[linear-gradient(180deg,#f7fdff_0%,#c7ebff_100%)] shadow-[0_10px_20px_rgba(21,92,165,0.12)]" />
+      <div className="absolute right-[72px] bottom-8 h-12 w-4 rounded-full bg-[linear-gradient(180deg,#f7fdff_0%,#c7ebff_100%)] shadow-[0_10px_20px_rgba(21,92,165,0.12)]" />
+      <div className="absolute left-[58px] bottom-1 h-4 w-10 rounded-full border border-white/75 bg-white/90" />
+      <div className="absolute right-[58px] bottom-1 h-4 w-10 rounded-full border border-white/75 bg-white/90" />
+      <div className="absolute right-2 top-10 rounded-full border border-white/75 bg-white/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#155ca5] shadow-sm">
+        AI
+      </div>
+      <div className="absolute left-0 top-14 rounded-full border border-[#cce9ff] bg-white/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#0f4c88] shadow-sm">
+        Smart
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
   const { copy } = useLanguage();
   const [grades, setGrades] = useState<Grade[]>([]);
@@ -283,8 +323,8 @@ export function Dashboard() {
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-5 pb-20 md:px-6 md:py-6 md:pb-12">
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="learner-tech-panel rounded-[2rem] p-5 md:p-7">
+        <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,1.2fr)_300px]">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
               {copy("Momentum", "Nhịp học")}
@@ -292,8 +332,32 @@ export function Dashboard() {
             <h1 className="mt-1 text-2xl font-black text-[#1e2e51]">
               {copy("Your learning rhythm today", "Nhịp học hôm nay")}
             </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#4a617d] md:text-base">
+              {copy(
+                "A cleaner dashboard for tracking progress, ML insights, and a more technology-forward study experience.",
+                "Dashboard gọn hơn để theo dõi tiến độ, xem insight ML và tạo cảm giác công nghệ rõ hơn khi học.",
+              )}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-[#4b6f97]">
+              <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+                AI assisted
+              </span>
+              <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+                Progress analytics
+              </span>
+              <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+                Adaptive learning
+              </span>
+            </div>
           </div>
 
+          <div className="flex justify-center lg:justify-end">
+            <AIAssistantFigure />
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <div />
           <span
             className={`inline-flex shrink-0 max-w-full items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider sm:px-4 sm:py-2 sm:text-xs sm:tracking-[0.18em] ${
               isVip
@@ -306,7 +370,7 @@ export function Dashboard() {
           </span>
         </div>
 
-        <div className="grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mt-5 grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           {quickStats.map((item) => {
             const Icon = item.icon;
             return (

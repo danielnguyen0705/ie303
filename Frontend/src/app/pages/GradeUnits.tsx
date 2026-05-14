@@ -362,7 +362,10 @@ export function GradeUnits() {
           {copy("Back", "Quay lại Grade")}
         </button>
 
-        <div className="mt-3">
+        <div className="learner-tech-panel mt-3 rounded-[2rem] px-6 py-6 md:px-8">
+          <span className="inline-block rounded-full bg-[#73aaf9]/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#155ca5]">
+            {gradeTitle ?? `Grade ${gradeId}`}
+          </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
             {copy("Choose a Unit", "Chọn Unit")}
           </h1>
@@ -372,6 +375,17 @@ export function GradeUnits() {
               "Đi theo lộ trình học. Các unit được sắp theo thứ tự và có progress riêng.",
             )}
           </p>
+          <div className="mt-5 flex flex-wrap gap-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#4b6f97]">
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Guided route
+            </span>
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Unit progress
+            </span>
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Exam ready
+            </span>
+          </div>
         </div>
       </section>
 

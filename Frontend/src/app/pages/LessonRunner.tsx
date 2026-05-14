@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Bookmark,
@@ -20,6 +27,7 @@ import {
   getLessonById,
   getLessonsBySectionProgress,
   getQuestionsByLesson,
+  getSection,
   submitEssay,
   submitEssayWithImage,
   submitQuestionHistory,
@@ -875,6 +883,7 @@ function LessonRunner() {
     null,
   );
   const [sectionId, setSectionId] = useState<number | null>(null);
+  const [unitId, setUnitId] = useState<number | null>(null);
   const [sectionLessons, setSectionLessons] = useState<
     SectionLessonProgressItem[]
   >([]);
@@ -903,6 +912,8 @@ function LessonRunner() {
   const speechRestartAttemptsRef = useRef(0);
   const speechManualStopRef = useRef(false);
   const speechTranscriptRef = useRef("");
+  const speechPreviewRef = useRef("");
+  const questionViewportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     answersRef.current = answers;
@@ -924,6 +935,7 @@ function LessonRunner() {
     setCompleteApiError(null);
     setLessonReward(null);
     setSectionId(null);
+    setUnitId(null);
     setSectionLessons([]);
     setSpeechPreview("");
     setSpeechSessionQuestionId(null);
@@ -997,6 +1009,25 @@ function LessonRunner() {
     };
 
     void loadSectionLessons();
+  }, [sectionId]);
+
+  useEffect(() => {
+    const loadSectionMeta = async () => {
+      if (!sectionId || Number.isNaN(sectionId)) {
+        setUnitId(null);
+        return;
+      }
+
+      const res = await getSection(sectionId);
+      if (res.success && res.data?.unitId) {
+        setUnitId(res.data.unitId);
+        return;
+      }
+
+      setUnitId(null);
+    };
+
+    void loadSectionMeta();
   }, [sectionId]);
 
   useEffect(() => {
@@ -1503,16 +1534,34 @@ function LessonRunner() {
       return [];
     }
 
-    if (question.questionData?.includes("/")) {
-      return question.questionData
+    const parseSlashSeparatedWords = (value?: string | null) => {
+      if (!value?.includes("/")) return [];
+
+      return value
         .split("/")
-        .map((w) => w.trim())
+        .map((word) => word.trim())
         .filter(Boolean);
+    };
+
+    const questionDataWords = parseSlashSeparatedWords(question.questionData);
+    if (questionDataWords.length > 0) {
+      return questionDataWords;
     }
 
     const questionData = getQuestionData(question);
     if (Array.isArray(questionData?.words)) {
       return questionData.words;
+    }
+
+    const contentLineWithWords =
+      question.content
+        ?.replace(/\r\n/g, "\n")
+        .split("\n")
+        .map((line) => line.trim())
+        .find((line) => line.includes("/")) ?? "";
+    const contentWords = parseSlashSeparatedWords(contentLineWithWords);
+    if (contentWords.length > 0) {
+      return contentWords;
     }
 
     return [];
@@ -1608,6 +1657,7 @@ function LessonRunner() {
     speechRecognitionRef.current = null;
     speechRestartAttemptsRef.current = 0;
     speechTranscriptRef.current = "";
+    speechPreviewRef.current = "";
     setIsListening(false);
     setSpeechPreview("");
     setSpeechSessionQuestionId(null);
@@ -1721,6 +1771,7 @@ function LessonRunner() {
     speechRestartAttemptsRef.current = 0;
     if (!options?.preserveExistingTranscript) {
       speechTranscriptRef.current = "";
+      speechPreviewRef.current = "";
     }
     // clear any existing recognition quietly (do not mark manual stop)
     try {
@@ -1754,12 +1805,15 @@ function LessonRunner() {
       }
 
       if (interimText.trim()) {
-        setSpeechPreview(interimText.trim());
+        const normalizedInterimText = interimText.trim();
+        speechPreviewRef.current = normalizedInterimText;
+        setSpeechPreview(normalizedInterimText);
       }
 
       const normalizedFinalText = finalText.replace(/\s+/g, " ").trim();
       if (normalizedFinalText) {
         speechTranscriptRef.current = normalizedFinalText;
+        speechPreviewRef.current = "";
         setAnswer(question.id, normalizedFinalText);
         setSpeechPreview("");
       }
@@ -1767,6 +1821,10 @@ function LessonRunner() {
 
     recognition.onerror = (event) => {
       const err = event?.error;
+      const hasCapturedSpeech = Boolean(
+        speechTranscriptRef.current.trim() || speechPreviewRef.current.trim(),
+      );
+
       if (err === "aborted") {
         if (!speechManualStopRef.current) {
           return;
@@ -1780,6 +1838,15 @@ function LessonRunner() {
         return;
       }
 
+      if (!speechManualStopRef.current && err === "network" && hasCapturedSpeech) {
+        setSpeechError(null);
+        setIsListening(false);
+        setSpeechSessionQuestionId(null);
+        speechRecognitionRef.current = null;
+        void finalizeSpeechAttempt(question);
+        return;
+      }
+
       setSpeechError(getSpeechErrorMessage(err));
 
       setIsListening(false);
@@ -1789,9 +1856,15 @@ function LessonRunner() {
     };
 
     recognition.onend = () => {
+      const hasCapturedSpeech = Boolean(
+        speechTranscriptRef.current.trim() || speechPreviewRef.current.trim(),
+      );
+
       // If user didn't manually stop and we haven't retried too many times, try restart
       const shouldRestart =
-        !speechManualStopRef.current && speechRestartAttemptsRef.current < 2;
+        !speechManualStopRef.current &&
+        !hasCapturedSpeech &&
+        speechRestartAttemptsRef.current < 2;
       if (shouldRestart) {
         speechRestartAttemptsRef.current += 1;
         setTimeout(() => {
@@ -1847,6 +1920,19 @@ function LessonRunner() {
 
     setCurrentGroupQuestionIndex(0);
   }, [currentIndex, pendingGroupQuestionIndex]);
+
+  useEffect(() => {
+    if (isCompactPassageItem || typeof window === "undefined") return;
+
+    const questionTop = questionViewportRef.current?.getBoundingClientRect().top;
+
+    if (questionTop == null || questionTop >= 96) return;
+
+    questionViewportRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [activeQuestionIndex, currentIndex, isCompactPassageItem]);
 
   const jumpToQuestion = (itemIndex: number, questionIndex: number) => {
     setPendingGroupQuestionIndex(questionIndex);
@@ -1911,6 +1997,18 @@ function LessonRunner() {
     const next = { ...current };
     delete next[leftItem];
     setAnswer(questionId, next);
+  };
+
+  const handleSubmitOnEnter = (
+    event: KeyboardEvent<HTMLInputElement>,
+    question: QuestionDto,
+  ) => {
+    if (event.key !== "Enter") return;
+    if (event.nativeEvent.isComposing) return;
+    if (!canSubmitQuestion(question) || submittingCurrent) return;
+
+    event.preventDefault();
+    void submitQuestion(question);
   };
 
   const appendWordBankWord = (questionId: number, word: string) => {
@@ -2615,6 +2713,7 @@ function LessonRunner() {
                 : ""
             }
             onChange={(e) => setAnswer(question.id, e.target.value)}
+            onKeyDown={(e) => handleSubmitOnEnter(e, question)}
             placeholder="Nhập câu trả lời..."
             className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5]"
           />
@@ -2668,6 +2767,7 @@ function LessonRunner() {
                 : ""
             }
             onChange={(e) => setAnswer(question.id, e.target.value)}
+            onKeyDown={(e) => handleSubmitOnEnter(e, question)}
             placeholder="Điền từ hoặc bấm từ trong Word Bank..."
             className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5]"
           />
@@ -2676,113 +2776,48 @@ function LessonRunner() {
     }
 
     if (question.questionType === "SENTENCE_REORDER") {
-      const selectedTokens = Array.isArray(currentAnswer?.answer)
-        ? currentAnswer.answer
-        : [];
-      const displayedSentence = getDisplayedReorderSentence(question.id);
+      const typedSentence =
+        typeof currentAnswer?.answer === "string"
+          ? currentAnswer.answer
+          : getDisplayedReorderSentence(question.id);
 
       return (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {isAdminPreview && reorderWords.length === 0 && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              This type does not have a word list for reordering yet. Admin
-              needs to provide `questionData` for `SENTENCE_REORDER`.
-            </div>
-          )}
-
-          {isAdminPreview && reorderWords.length > 0 && (
-            <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-sm text-[#155ca5]">
-              Admin preview: this question already contains split-word data in
-              `questionData`, but the learner view will still render it as
-              sentence rewrite.
+              This item is using free-text sentence input because no reorder
+              word list was provided in `questionData`.
             </div>
           )}
 
           <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-5 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
-                {copy("Your sentence", "Cau dang ghep")}
-              </p>
+            <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
+              {copy("Rewrite the full sentence", "Viet lai ca cau")}
+            </p>
+            <textarea
+              disabled={isAnswerLocked}
+              value={typedSentence}
+              onChange={(e) => setAnswer(question.id, e.target.value)}
+              placeholder={copy(
+                "Write the complete sentence here...",
+                "Nhap cau hoan chinh vao day...",
+              )}
+              rows={4}
+              className="min-h-[132px] w-full resize-none rounded-2xl border border-dashed border-[#9bc2ff] bg-white px-4 py-4 text-[#1e2e51] outline-none transition focus:border-[#155ca5] focus:ring-2 focus:ring-[#155ca5]/10 disabled:cursor-not-allowed disabled:bg-slate-50"
+            />
 
-              <div className="flex items-center gap-2">
+            {!isAnswerLocked && typedSentence && (
+              <div className="mt-3 flex justify-end">
                 <button
                   type="button"
-                  disabled={isAnswerLocked || selectedTokens.length === 0}
-                  onClick={() => removeLastReorderWord(question.id)}
-                  className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  onClick={() => setAnswer(question.id, "")}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                 >
-                  {copy("Undo", "Hoan tac")}
-                </button>
-                <button
-                  type="button"
-                  disabled={isAnswerLocked || selectedTokens.length === 0}
-                  onClick={() => resetReorderAnswer(question.id)}
-                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="h-4 w-4" />
                   {copy("Reset", "Dat lai")}
                 </button>
               </div>
-            </div>
-
-            <div className="min-h-[76px] rounded-2xl border border-dashed border-[#9bc2ff] bg-white p-4 text-[#1e2e51]">
-              {displayedSentence ? (
-                <div className="flex flex-wrap gap-2">
-                  {selectedTokens.map((token, tokenIndex) => {
-                    const word = token.split("|||")[1] ?? token;
-
-                    return (
-                      <button
-                        key={`${token}-${tokenIndex}`}
-                        type="button"
-                        disabled={isAnswerLocked}
-                        onClick={() =>
-                          removeReorderWord(question.id, tokenIndex)
-                        }
-                        className="rounded-full border border-[#bfd8ff] bg-[#eef6ff] px-4 py-2 text-sm font-bold text-[#155ca5] transition hover:bg-[#dfeeff] disabled:opacity-60"
-                      >
-                        {word}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <span className="text-sm text-slate-400">
-                  {copy(
-                    "Choose words below to build your sentence here...",
-                    "Chon tu ben duoi de ghep cau o day...",
-                  )}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
-              {copy("Available words", "Tu ben duoi")}
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {reorderWords.map((word, index) => {
-                const token = `${index}|||${word}`;
-                const selected = selectedTokens.includes(token);
-
-                return (
-                  <button
-                    key={token}
-                    type="button"
-                    disabled={isAnswerLocked || selected}
-                    onClick={() => appendReorderWord(question.id, word, index)}
-                    className={`px-4 py-2 rounded-xl border font-semibold transition-all ${
-                      selected
-                        ? "border-gray-300 bg-gray-100 text-gray-400"
-                        : "border-[#bfd8ff] bg-white text-[#155ca5] hover:bg-[#eef6ff]"
-                    }`}
-                  >
-                    {word}
-                  </button>
-                );
-              })}
-            </div>
+            )}
           </div>
         </div>
       );
@@ -3700,6 +3735,32 @@ function LessonRunner() {
     (question) => answers[question.id]?.submitted,
   );
 
+  const unansweredCurrentQuestionLabels = currentQuestions
+    .filter(
+      (question) =>
+        !answers[question.id]?.submitted && !canSubmitQuestion(question),
+    )
+    .map(
+      (question) =>
+        compactPassageBlankLabelByQuestionId.get(question.id) ??
+        String(
+          currentQuestions.findIndex((item) => item.id === question.id) + 1,
+        ),
+    );
+
+  const readyToSubmitCurrentQuestionLabels = currentQuestions
+    .filter(
+      (question) =>
+        !answers[question.id]?.submitted && canSubmitQuestion(question),
+    )
+    .map(
+      (question) =>
+        compactPassageBlankLabelByQuestionId.get(question.id) ??
+        String(
+          currentQuestions.findIndex((item) => item.id === question.id) + 1,
+        ),
+    );
+
   const canGoNext = isAdminPreview ? true : isCurrentItemComplete;
 
   if (loading) {
@@ -3812,10 +3873,10 @@ function LessonRunner() {
 
             {sectionId ? (
               <Link
-                to={`/sections/${sectionId}/lessons`}
+                to={unitId ? `/units/${unitId}/sections` : `/sections/${sectionId}/lessons`}
                 className="px-6 py-3 rounded-xl border border-gray-300 font-bold text-[#1e2e51] hover:bg-gray-50"
               >
-                {copy("Back to lesson list", "Ve danh sach lesson")}
+                {copy("Back to section", "Ve section")}
               </Link>
             ) : (
               <Link
@@ -3848,7 +3909,7 @@ function LessonRunner() {
                         ? "Review tiep theo"
                         : "Lesson tiep theo",
                     )
-                  : copy("Back to lesson list", "Ve danh sach lesson")}
+                  : copy("Back to dashboard", "Ve dashboard")}
               </button>
             )}
           </div>
@@ -4216,6 +4277,7 @@ function LessonRunner() {
               return (
                 <div
                   key={question.id}
+                  ref={questionIndex === activeQuestionIndex ? questionViewportRef : null}
                   className={`bg-white shadow-sm ${isCompactPassageItem ? "rounded-2xl p-4 space-y-4" : "rounded-3xl p-5 md:p-6 space-y-5"} ${isReadingPassageItem ? "border border-[#e3eefc]" : ""}`}
                 >
                   <div
@@ -4446,6 +4508,22 @@ function LessonRunner() {
                 : copy("Next question", "Cau tiep")}
           </button>
         </div>
+
+        {!isAdminPreview && isCompactPassageItem && !isCurrentItemComplete && (
+          <p className="w-full text-sm text-amber-700">
+            {unansweredCurrentQuestionLabels.length > 0
+              ? copy(
+                  `You still need to answer blank(s): ${unansweredCurrentQuestionLabels.join(", ")}.`,
+                  `Ban con thieu o: ${unansweredCurrentQuestionLabels.join(", ")}.`,
+                )
+              : readyToSubmitCurrentQuestionLabels.length > 0
+                ? copy(
+                    "All blanks are filled. Submit all questions to continue.",
+                    "Ban da dien du. Hay nop toan bo cau hoi de sang man tiep.",
+                  )
+                : null}
+          </p>
+        )}
 
         {submitApiError && (
           <p className="w-full text-sm text-red-600">{submitApiError}</p>

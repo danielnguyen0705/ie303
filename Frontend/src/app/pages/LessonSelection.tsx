@@ -376,7 +376,7 @@ export function LessonSelection() {
           {copy("Back", "Quay lại")}
         </button>
 
-        <div className="mt-3">
+        <div className="learner-tech-panel mt-3 rounded-[2rem] px-6 py-6 md:px-8">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
             {sectionTitle ?? `Section ${sectionDisplayNumber ?? sectionId}`}
           </span>
@@ -395,6 +395,17 @@ export function LessonSelection() {
               "Bài review sẽ xuất hiện trong lộ trình sau các bài thường đã được sắp cho section này.",
             )}
           </p>
+          <div className="mt-5 flex flex-wrap gap-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#4b6f97]">
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Adaptive flow
+            </span>
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Structured path
+            </span>
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Smart review
+            </span>
+          </div>
         </div>
       </section>
 

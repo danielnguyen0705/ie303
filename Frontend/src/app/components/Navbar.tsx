@@ -21,7 +21,7 @@ import { getMyShopItems, useSkipItem } from "@/api/shop";
 import type { UserItemResponse } from "@/api/types";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
 
 type InventoryItem = {
   id: string;
