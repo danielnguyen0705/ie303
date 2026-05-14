@@ -1,141 +1,242 @@
-# 🚀 Dự án IE303 - Nền Tảng Học Tập Tích Hợp AI
+# 🚀 UIFive Learning System (IE303)
 
-Dự án này là một nền tảng học tập trực tuyến được xây dựng với kiến trúc Microservices, bao gồm Backend (Spring Boot), Frontend (React) và một hệ thống Trí tuệ nhân tạo (Machine Learning Service) dự đoán kỹ năng của học sinh.
-
----
-
-## 🛠 Cấu Trúc Thư Mục
-- `/Backend`: Mã nguồn Java Spring Boot cung cấp RESTful API và quản lý Database.
-- `/Frontend`: Mã nguồn React/Vite cung cấp giao diện người dùng (UI/UX).
-- `/MLService`: Mã nguồn Python (FastAPI) chứa các Model Machine Learning dự đoán điểm mạnh/yếu của học viên.
+Một nền tảng học tập trực tuyến thông minh được thiết kế với kiến trúc Microservices, tích hợp Trí tuệ Nhân tạo (Generative AI) và Machine Learning để dự đoán năng lực học tập, tối ưu hóa quá trình học tập của học viên.
 
 ---
 
-## ⚙️ Yêu Cầu Hệ Thống (Prerequisites)
-Để chạy được toàn bộ dự án, máy tính của bạn cần cài đặt:
-1. **Node.js & npm** (Để chạy React UI và lệnh concurrently)
-2. **Java 21 & Maven** (Để chạy Spring Boot Backend)
-3. **Python 3** (Để chạy Machine Learning FastAPI)
-4. **PostgreSQL** (Hệ quản trị CSDL)
+## 🌟 1. Features
+
+- **Xác thực & Bảo mật (Authentication)**: Hỗ trợ đăng nhập truyền thống (JWT) và Google OAuth2.
+- **Quản lý Học tập**: Hệ thống Unit, Section, Lesson và Question đa dạng.
+- **Gamification**: Tích hợp hệ thống điểm kinh nghiệm (EXP), Coin, chuỗi ngày học (Streak), Leaderboard và Cửa hàng vật phẩm (Shop Items).
+- **AI Tích hợp (Generative AI)**: Sử dụng các mô hình ngôn ngữ lớn (Gemini, Llama qua NVIDIA API, OpenAI, Anthropic) để hỗ trợ học viên.
+- **Machine Learning Insights**: Phân tích dữ liệu học tập và dự đoán kỹ năng mạnh, yếu, cùng xu hướng học tập của học viên.
+- **Thanh toán Trực tuyến**: Tích hợp cổng thanh toán VNPAY và VietQR cho các gói VIP/Premium.
+- **Cloud Storage**: Quản lý hình ảnh và đa phương tiện bằng Cloudinary.
+- **Thông báo & Lịch trình (Cron Jobs)**: Nhắc nhở chuỗi ngày học và gói VIP.
 
 ---
 
-## 🚀 Hướng Dẫn Chạy Dự Án
+## 🏗️ 2. System Architecture
 
-### Bước 1: Cấu hình biến môi trường
-Hãy đảm bảo bạn đã có file `.env` nằm trong thư mục `Backend/`. File này chứa các cấu hình quan trọng như:
-- Kết nối cơ sở dữ liệu (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`)
-- Chữ ký bảo mật JWT (`JWT_SECRET`)
-- Cloudinary, Gemini API keys...
+Hệ thống hoạt động dưới dạng Microservices giao tiếp thông qua RESTful APIs:
 
-
-### Bước 2: Cài đặt môi trường và Huấn luyện mô hình AI
-Trước khi khởi động AI Server, bạn cần cài đặt các thư viện Python và huấn luyện mô hình dự đoán.
-Mở một cửa sổ Terminal (PowerShell) mới và chạy các lệnh sau:
-```powershell
-cd d:\ie303\MLService
-# Khởi tạo môi trường ảo (Bắt buộc cho lần chạy đầu tiên)
-python -m venv venv
-.\venv\Scripts\activate
-# Cài đặt các thư viện cần thiết
-pip install -r requirements.txt
-# Chạy script huấn luyện
-python train.py
+```mermaid
+graph TD
+    Client[Frontend: React/Vite] -->|REST API / JWT| Backend[Backend: Spring Boot]
+    Backend -->|PostgreSQL| DB[(Relational DB)]
+    Backend -->|Redis| Cache[(Redis Cache)]
+    Backend -->|HTTP POST| ML[ML Service: FastAPI]
+    ML -->|Random Forest Model| ML_Predict[Predict Skill & Trend]
+    Backend -->|API| GenAI[LLM APIs: Gemini, OpenAI, Llama]
+    Backend -->|Payment API| VNPAY[VNPAY / VietQR]
+    Backend -->|Image Upload| Cloudinary[Cloudinary]
 ```
-> 🧠 **Lưu ý:** Nếu trong thư mục `MLService/saved_models/` đã có sẵn các file `.pkl`, bạn **không cần chạy lệnh `python train.py`**, nhưng **vẫn phải chạy các lệnh cài tạo `venv` và `pip install`** ở trên cho lần đầu tiên cài đặt dự án. Khi chạy `train.py`, các file mô hình `.pkl` mới sẽ được tạo và lưu vào thư mục `MLService/saved_models/`.
 
-### Bước 3: Khởi động hệ thống chính (Backend & Frontend)
-Đầu tiên, bạn cần cài đặt các gói phụ thuộc (chỉ cần thực hiện 1 lần duy nhất). Mở Terminal tại thư mục gốc của dự án (`d:\ie303`) và chạy:
+---
+
+## 💻 3. Tech Stack
+
+### Frontend
+
+- **Framework**: React 18, TypeScript, Vite
+- **Styling**: TailwindCSS, Emotion
+- **UI Components**: Radix UI, Material UI, Lucide React (Icons)
+- **State/Form**: React Hook Form
+- **Animation/Charts**: Framer Motion, Recharts
+
+### Backend
+
+- **Framework**: Java 21, Spring Boot 3.4.0
+- **Database/Cache**: PostgreSQL, Spring Data Redis
+- **Security**: Spring Security, JWT, OAuth2 Client
+- **Mapping & Utilities**: MapStruct, Lombok
+- **Integrations**: JavaMailSender, Cloudinary, VNPAY
+
+### Machine Learning
+
+- **Framework**: Python 3, FastAPI, Uvicorn
+- **Data & Model**: Pandas, Scikit-learn (RandomForestClassifier), Joblib
+- **Dataset**: Dữ liệu học viên nội bộ (`student_skill_trend_dataset_2000.csv`)
+
+---
+
+## 📂 4. Project Structure
+
+```txt
+ie303/
+├── Backend/          # Source code Java Spring Boot (REST API)
+│   ├── src/          # Source code chính, Controllers, Services, Models
+│   ├── Dockerfile    # Cấu hình build Docker cho backend
+│   └── pom.xml       # Cấu hình Maven dependencies
+├── Frontend/         # Source code React + Vite (Giao diện người dùng)
+│   ├── src/          # Components, Pages, Assets
+│   ├── package.json  # Cấu hình dependencies Frontend
+│   └── vite.config.ts# Cấu hình Vite
+├── MLService/        # Source code Python (Machine Learning & FastAPI)
+│   ├── app.py        # Khởi chạy server FastAPI
+│   ├── train.py      # Script huấn luyện mô hình Random Forest
+│   └── saved_models/ # Chứa các file mô hình (.pkl) sau khi train
+└── DEPLOYMENT.md     # Hướng dẫn CI/CD và triển khai dự án
+```
+
+---
+
+## ⚙️ 5. Installation & Setup
+
+### Yêu cầu hệ thống
+
+- Node.js (v18+)
+- Java 21 & Maven
+- Python 3.9+
+- PostgreSQL & Redis
+
+### 5.1. Khởi chạy toàn bộ dự án bằng `concurrently` (Khuyên dùng)
+
+Tại thư mục gốc, hệ thống đã cấu hình để chạy đồng thời Frontend và Backend:
+
 ```bash
 npm install
-cd Frontend && npm install
-cd ..
-```
-
-Sau đó, khởi động toàn bộ dự án bằng lệnh:
-```bash
 npm run dev
 ```
-> 🎉 *Lệnh này sẽ tự động bật **Backend (cổng 8080)** và **Frontend (cổng 5173)***.
 
-### Bước 4: Khởi động AI Server (Machine Learning)
-Mở một cửa sổ Terminal (PowerShell) **MỚI**, di chuyển vào thư mục `MLService` và chạy file script khởi động:
-```powershell
-cd d:\ie303\MLService
-.\start.ps1
+### 5.2. Cài đặt chi tiết từng thành phần
+
+**Frontend (Port 5173)**:
+
+```bash
+cd Frontend
+npm install
+npm run dev
 ```
-> 🤖 *Máy chủ AI bằng FastAPI sẽ được khởi chạy tại **cổng 8000***. (*Lưu ý: File `start.ps1` đã được cấu hình tự động sử dụng môi trường ảo venv, nên bạn không cần gọi lệnh activate nữa*).
+
+**Backend (Port 8080)**:
+
+```bash
+cd Backend
+./mvnw spring-boot:run
+```
+
+**Machine Learning Service (Port 8000)**:
+
+```bash
+cd MLService
+# 1. Tạo môi trường ảo
+python -m venv venv
+# 2. Activate môi trường (Mac/Linux: source venv/bin/activate, Windows: .\venv\Scripts\activate)
+source venv/bin/activate
+# 3. Cài đặt dependencies
+pip install -r requirements.txt
+# 4. Huấn luyện mô hình (Tạo ra các file .pkl trong thư mục saved_models)
+python train.py
+# 5. Khởi động AI API Server
+python app.py
+```
+
 ---
 
-## 🧠 Tích Hợp Machine Learning (AI Insights)
+## 🔐 6. Environment Variables
 
-Trong phiên bản mới nhất, hệ thống đã được nâng cấp với khả năng dự đoán và phân tích dữ liệu học tập thông minh sử dụng mô hình học máy **RandomForestClassifier**.
+Tạo các file `.env` ở mỗi thư mục. Dưới đây là các file mẫu.
 
-### 1. Cơ chế và Kiến trúc AI:
-- **Huấn luyện mô hình (Training)**: Dữ liệu (từ `student_skill_trend_dataset_2000.csv`) được tiền xử lý và huấn luyện thông qua `train.py`. Các mô hình sau khi học xong được trích xuất thành các file `.pkl` lưu tại `saved_models/`.
-- **Microservice độc lập**: AI được tách thành một service riêng bằng **FastAPI** (`app.py`), có nhiệm vụ load các models lên RAM và lắng nghe yêu cầu từ Backend.
+**`Backend/.env`**:
 
-### 2. Quy Trình Dự Đoán Bằng Machine Learning (Chi tiết):
+```env
+PORT=8080
+DB_URL=jdbc:postgresql://<host>/<dbname>
+DB_USERNAME=
+DB_PASSWORD=
 
-Luồng dữ liệu từ lúc học viên hoàn thành bài học đến khi nhận được đánh giá từ AI đi qua các file mã nguồn cụ thể như sau:
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRATION=3600000
 
-**Bước 1: Ghi nhận kết quả (Frontend)**
-Học viên hoàn thành bài tập (Lesson) trên trình duyệt. Frontend sẽ gọi API gửi điểm số, thời gian làm bài, số câu đúng/sai về Backend.
+MAIL_SMTP_USERNAME=
+MAIL_SMTP_PASSWORD=
 
-**Bước 2: Tính toán & Chuẩn hóa dữ liệu (Spring Boot Backend)**
-File `LearningProgressService.java` tiếp nhận kết quả. Tại đây, hệ thống tính toán tiến độ (cộng dồn EXP, chuỗi ngày học) và chuẩn hóa các chỉ số thành định dạng đầu vào cho AI (tỷ lệ độ chính xác, tần suất học).
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 
-**Bước 3: Gửi dữ liệu cho AI Server (Spring Boot Backend)**
-File `MLPredictionService.java` lấy dữ liệu đã chuẩn hóa, đóng gói thành chuỗi JSON và gửi một `HTTP POST Request` sang AI Server (endpoint `http://localhost:8000/predict`).
-  
-**Bước 4: Xử lý & Dự đoán (AI Server - FastAPI)**
-Tại thư mục `MLService`, file `app.py` tiếp nhận JSON. Dữ liệu được đưa vào mô hình học máy **Random Forest** (đã được nạp từ các file `.pkl` trong `saved_models/`). Mô hình sẽ trả ra 3 dự đoán:
-  🔸 **Strong Skill**: Kỹ năng tốt nhất (*VD: Listening*)
-  🔸 **Weak Skill**: Kỹ năng cần trau dồi (*VD: Grammar*)
-  🔸 **Learning Trend**: Xu hướng học tập (*VD: IMPROVING*)
-  
-**Bước 5: Lưu trữ kết quả (Spring Boot Backend)**
-Kết quả trả về từ FastAPI được `MLPredictionService.java` đón nhận, cập nhật lại vào đối tượng `User` (hoặc Profile) và lưu xuống Database (PostgreSQL).
-  
-**Bước 6: Hiển thị giao diện (Frontend)**
-Khi người dùng mở trang Profile, Frontend sẽ tải dữ liệu mới nhất và đồng bộ vào khối **AI Learning Insights**, vẽ các biểu đồ/thẻ màu sắc báo cáo tình trạng học tập.
+GEMINI_API_KEY=
+NVIDIA_API_KEY=
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
 
-### 3. Giao diện thân thiện (UI/UX):
-Dữ liệu AI sau đó được đồng bộ lên trang **Profile** của người dùng. Hệ thống sẽ hiển thị một khối **AI Learning Insights** bằng các thẻ (Cards) rực rỡ và trực quan. Từ đó, học viên có thể nhìn vào Profile của mình để biết được điểm yếu cần khắc phục, giúp cá nhân hóa quá trình tự học một cách hiệu quả nhất!
+CLOUD_NAME=
+API_KEY=
+API_SECRET=
 
-### 4. TEST trên postman:
+PAYMENT_VNPAY_TMN_CODE=
+PAYMENT_VNPAY_SECRET=
 
-**Bước 1:  Cấu hình Request trên Postman**
-
-1. Mở Postman lên.
-2. Đổi phương thức (Method) từ GET sang POST.
-3. Nhập URL của AI Server: `http://localhost:8000/predict`
-
-**Bước 2: Chuẩn bị dữ liệu mẫu (JSON)**
-
-1. Ngay bên dưới thanh URL, bạn chọn tab **Body**.
-2. Chọn tiếp mục **raw**.
-3. Ở góc phải của khung chọn (chỗ có chữ **Text**), bấm vào mũi tên xổ xuống và chọn **JSON**.
-4. Copy đoạn mã JSON giả lập dữ liệu học tập của một học viên dưới đây và dán vào ô trống:
-```json
-{
-    "role": "USER",
-    "score": 1500,
-    "streak": 5,
-    "days_since_last_study": 1,
-    "active_days_7d": 4,
-    "accuracy_7d": 85.5,
-    "listening_accuracy_30d": 75.0,
-    "speaking_accuracy_30d": 35.0,
-    "reading_accuracy_30d": 95.0,
-    "writing_accuracy_30d": 60.0,
-    "vocabulary_accuracy_30d": 80.0,
-    "grammar_accuracy_30d": 70.0
-}
+ML_API_URL=http://localhost:8000/predict
+FRONTEND_BASE_URL=http://localhost:5173
+UPSTASH_REDIS_URL=
 ```
 
-**Bước 3: Gửi request**
-Nhấn nút Send màu xanh. Ở khung Response (kết quả trả về) phía bên dưới, bạn sẽ nhận được một JSON phản hồi từ AI.
+**`Frontend/.env`**:
 
-**Bước 4: Ảnh kết quả mô phỏng:**
-![image](MLService/ket_qua_postman.png)
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+
+---
+
+## 🔌 7. API Documentation (Backend)
+
+Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy cập Swagger UI (khi chạy backend) qua cổng 8080. Một số endpoint chính:
+
+- `POST /api/auth/*` - Đăng ký, đăng nhập, xác thực OAuth2.
+- `GET /api/users/*` - Quản lý thông tin và profile người dùng.
+- `GET/POST /api/ai/*` - Giao tiếp với LLMs (Gemini, Llama) để tạo nội dung học.
+- `GET/POST /api/units/*`, `/api/lessons/*` - Truy xuất bài học, lý thuyết.
+- `GET/POST /api/payments/*` - Tạo giao dịch VNPAY, webhook thanh toán.
+- `GET /api/leaderboards/*` - Lấy bảng xếp hạng theo EXP/Coin.
+
+---
+
+## 🧠 8. Machine Learning Details
+
+Module ML được viết bằng Python/FastAPI, chịu trách nhiệm nhận dữ liệu học viên (điểm, chuỗi ngày học, tần suất, độ chính xác các kỹ năng) và trả về phân tích.
+
+- **Mô hình**: `RandomForestClassifier` (300 estimators, max depth 12).
+- **Features chính**: `score`, `streak`, `accuracy_7d`, `accuracy_30d` (chia theo listening, speaking, reading, writing, vocabulary, grammar), v.v.
+- **Targets (Dự đoán)**:
+  - `strong_skill`: Kỹ năng người học tốt nhất.
+  - `weak_skill`: Kỹ năng người học cần cải thiện.
+  - `trend_label`: Xu hướng học tập (Đang tiến bộ, đi lùi, v.v.).
+- **Endpoint**: `POST /predict` (Nhận JSON và trả về 3 dự đoán).
+
+---
+
+## 🚀 9. Deployment
+
+Dự án được triển khai hoàn chỉnh trên **Render** và sử dụng domain riêng:
+
+- **Hosting Platform**: Render.
+- **Frontend**: Render Static Site.
+- **Backend**: Render Web Service cho Java Spring Boot.
+- **ML Service**: Render Web Service .
+- **Database**: PostgreSQL trên Neon.
+- **Domain**: [https://uifive.io.vn/](https://uifive.io.vn/)
+
+---
+
+## 👥 10. Contributors
+
+Phát triển bởi:
+
+| STT | Họ và tên        | Vai trò            | GitHub                                        |
+| --- | ---------------- | ------------------ | --------------------------------------------- |
+| 1   | Huỳnh Tuấn Phi   | Backend Developer  | [GitHub](https://github.com/bincasau)         |
+| 2   | Nguyễn Lý Anh Vũ | Frontend Developer | [GitHub](https://github.com/NguyenVu3105)     |
+| 3   | Võ Thành Nhân    | Frontend Developer | [GitHub](https://github.com/NhanVT24)         |
+| 4   | Nguyễn Cao Cường | AI/ML Engineer     | [GitHub](https://github.com/nguyencuong335)   |
+| 5   | Nguyễn Quốc Đạt  | Leader             | [GitHub](https://github.com/danielnguyen0705) |
+
+GitHub: [UIFIVE](https://github.com/danielnguyen0705/ie303)
+
+---
+
+## 📜 11. License
+
+Dự án được phân phối dưới giấy phép **MIT License**. Bạn có quyền tự do sử dụng, chỉnh sửa và phân phối mã nguồn này cho mục đích học tập và thương mại.

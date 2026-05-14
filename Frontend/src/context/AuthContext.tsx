@@ -52,6 +52,7 @@ type AuthContextValue = {
   ) => Promise<RegisterResult>;
   loginWithGoogle: () => void;
   logout: () => Promise<boolean>;
+  clearError: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -90,10 +91,7 @@ function storeUser(user: AuthUser | null): void {
 
   try {
     if (user) {
-      window.localStorage.setItem(
-        AUTH_USER_STORAGE_KEY,
-        JSON.stringify(user),
-      );
+      window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
     } else {
       window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
     }
@@ -324,6 +322,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = getGoogleOAuth2AuthorizeUrl();
   }, []);
 
+  const clearError = useCallback((): void => {
+    setError(null);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -336,6 +338,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       loginWithGoogle,
       logout,
+      clearError,
     }),
     [
       user,
@@ -348,6 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       loginWithGoogle,
       logout,
+      clearError,
     ],
   );
 

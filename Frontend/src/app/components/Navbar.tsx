@@ -21,7 +21,13 @@ import { getMyShopItems, useSkipItem } from "@/api/shop";
 import type { UserItemResponse } from "@/api/types";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
-import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/app/components/ui/avatar";
+
+type AuthMode = "login" | "register";
 
 type InventoryItem = {
   id: string;
@@ -146,6 +152,7 @@ function NavbarContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
@@ -161,7 +168,8 @@ function NavbarContent() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const { language, setLanguage, copy } = useLanguage();
   const userProfile = (user ?? null) as Record<string, unknown> | null;
-  const isVipUser = Boolean(userProfile?.isVip) || Boolean(userProfile?.vipExpiredAt);
+  const isVipUser =
+    Boolean(userProfile?.isVip) || Boolean(userProfile?.vipExpiredAt);
   const userAvatar =
     typeof user?.avatar === "string" && user.avatar.length > 0
       ? user.avatar
@@ -523,7 +531,10 @@ function NavbarContent() {
             ) : (
               <button
                 type="button"
-                onClick={() => setIsAuthModalOpen(true)}
+                onClick={() => {
+                  setAuthMode("login");
+                  setIsAuthModalOpen(true);
+                }}
                 disabled={loading}
                 className="rounded-lg bg-[#155ca5] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#124e8b] disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -577,6 +588,7 @@ function NavbarContent() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onRegisterSuccess={handleRegisterSuccess}
+        initialMode={authMode}
       />
 
       <NotificationPopup
