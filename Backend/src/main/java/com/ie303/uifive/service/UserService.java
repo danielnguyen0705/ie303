@@ -378,7 +378,7 @@ public class UserService implements UserDetailsService {
 
             boolean isVip = savedUser.getVipExpiredAt() != null && savedUser.getVipExpiredAt().isAfter(LocalDateTime.now());
 
-            return new UserProfileResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail(), savedUser.getRole(), savedUser.getCoin(), savedUser.getExp(), savedUser.getScore(), savedUser.getStreak(), savedUser.getLastStudyDate(), savedUser.getVipExpiredAt(), isVip, savedUser.getCreatedAt(), studyingGrades, savedUser.getStrongSkill(), savedUser.getWeakSkill(), savedUser.getTrendLabel());
+            return new UserProfileResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail(), savedUser.getAvatar(), savedUser.getRole(), savedUser.getCoin(), savedUser.getExp(), savedUser.getScore(), savedUser.getStreak(), savedUser.getLastStudyDate(), savedUser.getVipExpiredAt(), isVip, savedUser.getCreatedAt(), studyingGrades, savedUser.getStrongSkill(), savedUser.getWeakSkill(), savedUser.getTrendLabel());
     }
 
     public UserProfileResponse getMyProfile(String username) {
@@ -403,7 +403,7 @@ public class UserService implements UserDetailsService {
 
             boolean isVip = finalUser.getVipExpiredAt() != null && finalUser.getVipExpiredAt().isAfter(LocalDateTime.now());
 
-            return new UserProfileResponse(finalUser.getId(), finalUser.getUsername(), finalUser.getEmail(), finalUser.getRole(), finalUser.getCoin(), finalUser.getExp(), finalUser.getScore(), finalUser.getStreak(), finalUser.getLastStudyDate(), finalUser.getVipExpiredAt(), isVip, finalUser.getCreatedAt(), studyingGrades, finalUser.getStrongSkill(), finalUser.getWeakSkill(), finalUser.getTrendLabel());
+            return new UserProfileResponse(finalUser.getId(), finalUser.getUsername(), finalUser.getEmail(), finalUser.getAvatar(), finalUser.getRole(), finalUser.getCoin(), finalUser.getExp(), finalUser.getScore(), finalUser.getStreak(), finalUser.getLastStudyDate(), finalUser.getVipExpiredAt(), isVip, finalUser.getCreatedAt(), studyingGrades, finalUser.getStrongSkill(), finalUser.getWeakSkill(), finalUser.getTrendLabel());
     }
 
     private User reconcileStreakState(User user) {

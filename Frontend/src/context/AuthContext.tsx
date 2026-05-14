@@ -17,10 +17,17 @@ import {
 import { getCurrentUser } from "@/api/users";
 import { clearCache } from "@/api/utils/cache";
 
+const AUTH_USER_STORAGE_KEY = "uifive-auth-user";
+
+function buildDefaultAvatar(seed: string): string {
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+}
+
 type AuthUser = {
   id?: string;
   username: string;
   email?: string;
+  avatar?: string;
   role?: string;
   [key: string]: unknown;
 };
@@ -48,6 +55,52 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+function readStoredUser(): AuthUser | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const candidate = parsed as Record<string, unknown>;
+    if (typeof candidate.username !== "string") {
+      return null;
+    }
+
+    return candidate as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
+function storeUser(user: AuthUser | null): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (user) {
+      window.localStorage.setItem(
+        AUTH_USER_STORAGE_KEY,
+        JSON.stringify(user),
+      );
+    } else {
+      window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage failures and keep auth working in memory.
+  }
+}
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) {
@@ -79,11 +132,17 @@ function extractUser(payload: unknown): AuthUser | null {
       typeof candidate.username === "string" ||
       typeof candidate.name === "string"
     ) {
+      const username =
+        (candidate.username as string | undefined) ||
+        (candidate.name as string);
+
       return {
         ...candidate,
-        username:
-          (candidate.username as string | undefined) ||
-          (candidate.name as string),
+        username,
+        avatar:
+          typeof candidate.avatar === "string" && candidate.avatar.length > 0
+            ? candidate.avatar
+            : buildDefaultAvatar(username),
       } as AuthUser;
     }
   }
@@ -92,16 +151,26 @@ function extractUser(payload: unknown): AuthUser | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [isReady, setIsReady] = useState<boolean>(false);
+  const [initialStoredUser] = useState<AuthUser | null>(() => readStoredUser());
+  const [user, setUser] = useState<AuthUser | null>(() => initialStoredUser);
+  const [loading, setLoading] = useState<boolean>(() => !initialStoredUser);
+  const [isReady, setIsReady] = useState<boolean>(Boolean(initialStoredUser));
   const [error, setError] = useState<string | null>(null);
 
   const isAuthenticated = Boolean(user);
 
   const loadCurrentUser = useCallback(
-    async (showError: boolean = true): Promise<boolean> => {
-      setLoading(true);
+    async (
+      showError: boolean = true,
+      options?: { setLoading?: boolean; preserveExistingUser?: boolean },
+    ): Promise<boolean> => {
+      const shouldSetLoading = options?.setLoading ?? true;
+      const preserveExistingUser = options?.preserveExistingUser ?? false;
+
+      if (shouldSetLoading) {
+        setLoading(true);
+      }
+
       if (showError) {
         setError(null);
       }
@@ -113,16 +182,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (resolvedUser) {
           setUser(resolvedUser);
-          setLoading(false);
+          storeUser(resolvedUser);
+          if (shouldSetLoading) {
+            setLoading(false);
+          }
           return true;
         } else {
-          setUser(null);
+          if (!preserveExistingUser) {
+            setUser(null);
+            storeUser(null);
+          }
           if (showError) {
             setError("Unable to resolve user profile.");
           }
         }
       } else {
-        setUser(null);
+        if (!preserveExistingUser) {
+          setUser(null);
+          storeUser(null);
+        }
         if (showError) {
           setError(
             response.error?.message ?? "Session expired. Please log in again.",
@@ -130,17 +208,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      setLoading(false);
+      if (shouldSetLoading) {
+        setLoading(false);
+      }
       return false;
     },
     [],
   );
 
   useEffect(() => {
-    void loadCurrentUser(false).finally(() => {
+    void loadCurrentUser(false, {
+      setLoading: false,
+      preserveExistingUser: Boolean(initialStoredUser),
+    }).finally(() => {
+      setLoading(false);
       setIsReady(true);
     });
-  }, [loadCurrentUser]);
+  }, [initialStoredUser, loadCurrentUser]);
 
   const login = useCallback(
     async (username: string, password: string): Promise<boolean> => {
@@ -156,7 +240,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         clearCache();
-        return await loadCurrentUser(true);
+        const success = await loadCurrentUser(true);
+        if (success) {
+          return true;
+        }
+
+        return false;
       } catch (unknownError: unknown) {
         setError(getErrorMessage(unknownError));
         return false;
@@ -189,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setUser(null);
+        storeUser(null);
         setError(null);
 
         return {
@@ -218,6 +308,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(null);
+      storeUser(null);
       clearCache();
       return true;
     } catch (unknownError: unknown) {

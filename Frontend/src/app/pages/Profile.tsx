@@ -37,6 +37,7 @@ type CurrentUserProfile = {
   id: number;
   username: string;
   email: string;
+  avatar?: string | null;
   role: string;
   coin: number;
   exp: number;
@@ -287,6 +288,7 @@ export function Profile() {
           email: currentUser.email,
           role: currentUser.role,
           avatar:
+            currentUser.avatar ||
             equippedAvatarImage ||
             `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.username || "User")}`,
           avatarItemId: equippedAvatarId,

@@ -11,6 +11,7 @@ public record UserProfileResponse(
         Long id,
         String username,
         String email,
+        String avatar,
         Role role,
         int coin,
         int exp,

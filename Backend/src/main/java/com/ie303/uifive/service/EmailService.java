@@ -5,6 +5,7 @@ import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -58,7 +59,7 @@ public class EmailService {
             helper.setText(content, true);
 
             mailSender.send(message);
-        } catch (MessagingException e) {
+        } catch (MessagingException | MailException e) {
             throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Failed to send email");
         }
     }

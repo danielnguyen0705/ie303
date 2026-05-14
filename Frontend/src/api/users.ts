@@ -13,6 +13,7 @@ type UserProfilePayload = {
   id: number;
   username: string;
   email: string;
+  avatar?: string | null;
   role: string;
   coin: number;
   exp: number;
@@ -152,7 +153,9 @@ export async function getUserProfile(): Promise<
       id: String(user.id),
       name: user.username,
       email: user.email,
-      avatar: buildDefaultAvatar(user.username || user.email || "user"),
+      avatar:
+        user.avatar ||
+        buildDefaultAvatar(user.username || user.email || "user"),
       level: calculateLevel(user.exp),
       xp: user.exp,
       coins: user.coin,
