@@ -504,7 +504,7 @@ export function SectionSelection() {
           {copy("Back", "Quay lại")}
         </button>
 
-        <div className="mt-3">
+        <div className="learner-tech-panel mt-3 rounded-[2rem] px-6 py-6 md:px-8">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
             {unitTitle ?? `Unit ${unitDisplayNumber ?? unitId}`}
           </span>
@@ -514,6 +514,17 @@ export function SectionSelection() {
           <p className="text-gray-600 mt-2 text-lg">
             {copy("Choose a section to continue into lessons.", "Chọn 1 section để tiếp tục qua lesson.")}
           </p>
+          <div className="mt-5 flex flex-wrap gap-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#4b6f97]">
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Modular path
+            </span>
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Progress map
+            </span>
+            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
+              Review gateway
+            </span>
+          </div>
         </div>
       </section>
 
@@ -570,7 +581,7 @@ export function SectionSelection() {
                       className="absolute"
                       style={{
                         left: `${section.cx - NODE_WIDTH / 2}px`,
-                        top: `${section.cy - NODE_RADIUS}px`,
+                      top: `${section.cy - NODE_RADIUS}px`,
                         width: `${NODE_WIDTH}px`,
                       }}
                     >

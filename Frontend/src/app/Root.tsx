@@ -38,7 +38,7 @@ export function Root() {
 
   if (!isReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f6ff]">
+      <div className="learner-tech-shell flex min-h-screen items-center justify-center">
         <div className="rounded-2xl bg-white px-6 py-4 text-sm font-semibold text-[#155ca5] shadow-sm">
           {copy("Loading...", "Đang tải...")}
         </div>
@@ -55,7 +55,7 @@ export function Root() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f8fc] flex flex-col">
+    <div className="learner-tech-shell min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
         <Outlet />
