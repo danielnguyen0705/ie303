@@ -257,6 +257,7 @@ export function SectionSelection() {
   const [sectionLessons, setSectionLessons] = useState<Record<number, SectionLessonProgressItem[]>>({});
   const [unitReviews, setUnitReviews] = useState<UnitReviewResponse[]>([]);
   const [unitDisplayNumber, setUnitDisplayNumber] = useState<number | null>(null);
+  const [unitTitle, setUnitTitle] = useState<string | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -267,11 +268,18 @@ export function SectionSelection() {
     const loadUnitMeta = async () => {
       if (!unitIdNumber || Number.isNaN(unitIdNumber)) {
         setUnitDisplayNumber(null);
+        setUnitTitle(null);
         return;
       }
 
       const response = await getUnit(unitIdNumber);
-      setUnitDisplayNumber(response.success && response.data ? response.data.unitNumber : null);
+      if (response.success && response.data) {
+        setUnitDisplayNumber(response.data.unitNumber);
+        setUnitTitle(response.data.title);
+      } else {
+        setUnitDisplayNumber(null);
+        setUnitTitle(null);
+      }
     };
 
     void loadUnitMeta();
@@ -498,7 +506,7 @@ export function SectionSelection() {
 
         <div className="mt-3">
           <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
-            Unit {unitDisplayNumber ?? unitId}
+            {unitTitle ?? `Unit ${unitDisplayNumber ?? unitId}`}
           </span>
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
             {copy("Choose a Section", "Chọn Section")}
