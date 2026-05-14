@@ -1,99 +1,96 @@
-# CI/CD Setup
+# Deployment & CI/CD Setup
 
-This repo uses:
+Dự án được triển khai toàn bộ trên nền tảng **Render** và sử dụng **GitHub Actions** cho CI/CD.
 
-- GitHub Actions for CI
-- Vercel for Frontend
-- Railway for Backend
-- Render for MLService
+## Tổng quan kiến trúc triển khai
+
+- **GitHub Actions**: Chạy tự động kiểm tra lỗi (CI) khi có push hoặc pull request.
+- **Render PostgreSQL**: Dịch vụ cơ sở dữ liệu.
+- **Render Web Service (Java/Spring Boot)**: Backend API.
+- **Render Web Service (Python/FastAPI)**: Machine Learning Service.
+- **Render Static Site (React/Vite)**: Frontend Web.
+- **Domain**: `https://uifive.io.vn/`
+
+---
 
 ## 1) GitHub Actions CI
 
-Workflow: `.github/workflows/ci.yml`
+Workflow được định nghĩa tại: `.github/workflows/ci.yml`
 
-It currently runs:
+Hệ thống tự động chạy trên các nhánh `main` và `dev` để đảm bảo code ổn định trước khi deploy:
+- Chạy unit test cho Backend (`mvn test`).
+- Build thử nghiệm cho Frontend (`npm run build`).
+- Cài đặt và chạy script huấn luyện mô hình ML (`python train.py`), kiểm tra sự tồn tại của các file `.pkl`.
 
-- Backend tests with Maven
-- Frontend production build with Vite
-- ML model training check
+---
 
-## 2) Frontend on Vercel
+## 2) Khởi tạo Database (Render PostgreSQL)
 
-Connect the `Frontend/` app to Vercel and set:
+1. Tạo một PostgreSQL instance trên dashboard của Render.
+2. Lấy thông tin cấu hình: **Internal Database URL** (khuyến nghị cho Backend dùng chung trên Render) hoặc **External Database URL**.
+3. Các thông tin cần thiết để truyền vào biến môi trường Backend: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`.
 
-- Build command: `npm run build`
-- Output directory: `dist`
-- Root directory: `Frontend`
+---
 
-Environment variables:
+## 3) Triển khai Backend (Render Web Service)
 
-- `VITE_API_BASE_URL=<your-railway-backend-url>/api`
-- `VITE_BACKEND_BASE_URL=<your-railway-backend-url>`
+Kết nối thư mục `Backend/` với Render:
 
-Notes:
+- **Environment**: Docker (Render sẽ tự động dùng `Dockerfile` có trong thư mục)
+- **Root directory**: `Backend`
+- **Branch**: `main`
+- Bật `Auto-Deploy` (có thể kết hợp Wait for CI).
 
-- Vercel can deploy automatically from Git when the repo is connected.
-- Use `main` as the production branch.
+**Biến môi trường cần thiết (Environment Variables)**:
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (từ bước 2)
+- `JWT_SECRET`, `JWT_EXPIRATION`
+- `MAIL_USERNAME`, `MAIL_PASSWORD` (SMTP)
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- Các biến API Key cho AI: `GEMINI_API_KEY`, `NVIDIA_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
+- Tích hợp Cloudinary: `CLOUD_NAME`, `API_KEY`, `API_SECRET`
+- Tích hợp VNPAY: `PAYMENT_VNPAY_TMN_CODE`, `PAYMENT_VNPAY_SECRET`, `PAYMENT_VNPAY_PAY_URL`, v.v.
+- Giao tiếp nội bộ:
+  - `FRONTEND_BASE_URL=https://uifive.io.vn`
+  - `CORS_ALLOWED_ORIGINS=https://uifive.io.vn`
+  - `BACKEND_PUBLIC_BASE_URL=<your-render-backend-url>`
+  - `ML_API_URL=<your-render-ml-service-url>/predict`
 
-## 3) Backend on Railway
+---
 
-Connect the `Backend/` app to Railway and set:
+## 4) Triển khai MLService (Render Web Service)
 
-- Root directory: `Backend`
-- Start command: `./mvnw spring-boot:run`
-- Production branch: `main`
-- Enable `Wait for CI` in Railway so GitHub Actions must pass first
+Kết nối thư mục `MLService/` với Render:
 
-Environment variables:
+- **Environment**: Python
+- **Root directory**: `MLService`
+- **Build command**: `pip install -r requirements.txt && python train.py` (cần train model trước khi chạy server)
+- **Start command**: `uvicorn app:app --host 0.0.0.0 --port $PORT` (hoặc lệnh chạy phù hợp với FastAPI)
+- **Branch**: `main`
 
-- `DB_URL`
-- `DB_USERNAME`
-- `DB_PASSWORD`
-- `JWT_SECRET`
-- `JWT_EXPIRATION`
-- `MAIL_USERNAME`
-- `MAIL_PASSWORD`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `NVIDIA_API_KEY`
-- `NVIDIA_BASE_URL`
-- `NVIDIA_TEXT_MODEL`
-- `NVIDIA_VISION_MODEL`
-- `CLOUD_NAME`
-- `API_KEY`
-- `API_SECRET`
-- `PAYMENT_WEBHOOK_SECRET`
-- `PAYMENT_VNPAY_TMN_CODE`
-- `PAYMENT_VNPAY_SECRET`
-- `PAYMENT_VNPAY_PAY_URL`
-- `PAYMENT_BANK_BIN`
-- `PAYMENT_BANK_QR_BASE_URL`
-- `PAYMENT_BANK_ACCOUNT_NUMBER`
-- `PAYMENT_BANK_SECRET`
-- `PAYMENT_MOMO_ENABLED`
-- `PAYMENT_MOCK_CONFIRM_ENABLED`
-- `FRONTEND_BASE_URL=<your-frontend-url>`
-- `CORS_ALLOWED_ORIGINS=<your-frontend-url>`
-- `BACKEND_PUBLIC_BASE_URL=<your-railway-backend-url>`
-- `ML_API_URL=https://ie303.onrender.com/predict`
+*(Lưu ý: Bạn cũng có thể tạo file `Dockerfile` riêng cho MLService nếu muốn Render chạy theo dạng Docker thay vì Python native).*
 
-## 4) MLService on Render
+---
 
-Connect the `MLService/` app to Render and set:
+## 5) Triển khai Frontend (Render Static Site)
 
-- Root directory: `MLService`
-- Build command: `pip install -r requirements.txt`
-- Start command: use the same command your existing Render service already uses
-- Production branch: `main`
+Kết nối thư mục `Frontend/` với Render:
 
-If you prefer webhook deploys on Render, create a deploy hook in the Render dashboard and trigger it after CI passes.
+- **Environment**: Static Site
+- **Root directory**: `Frontend`
+- **Build command**: `npm install && npm run build`
+- **Publish directory**: `dist`
+- **Branch**: `main`
 
-## 5) How the flow works
+**Biến môi trường cần thiết**:
+- `VITE_API_BASE_URL=<your-render-backend-url>/api`
+- `VITE_BACKEND_BASE_URL=<your-render-backend-url>`
 
-1. Push code to `main`
-2. GitHub Actions runs CI
-3. If CI passes:
-   - Vercel deploys the frontend
-   - Railway deploys the backend
-   - Render deploys MLService
-4. Backend calls ML using `ML_API_URL`
+---
+
+## 6) Flow hoạt động
+
+1. Developer thực hiện push code lên nhánh `main`.
+2. **GitHub Actions** tự động chạy pipeline để test Backend, build Frontend và test MLService.
+3. Nếu GitHub Actions thành công (Passed) và Render được cấu hình Auto-deploy, Render sẽ tự động kéo code mới nhất về.
+4. Render tiến hành build và khởi động lại các dịch vụ tương ứng.
+5. Ứng dụng Frontend cập nhật UI mới và giao tiếp trơn tru với Backend và MLService qua các URL đã cấu hình.
