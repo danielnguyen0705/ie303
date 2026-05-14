@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Bookmark,
   BookmarkCheck,
@@ -843,10 +843,13 @@ function LessonRunner() {
   const { lessonId } = useParams();
   const { copy } = useLanguage();
   const { refreshCurrentUser } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const lessonIdNumber = useMemo(() => Number(lessonId), [lessonId]);
-  const isAdminPreview = searchParams.get("preview") === "admin";
+  const isAdminPreview =
+    searchParams.get("preview") === "admin" ||
+    location.pathname.startsWith("/admin/content/preview/");
 
   const [data, setData] = useState<LessonQuestionResponse | null>(null);
   const [items, setItems] = useState<RunnerItem[]>([]);
@@ -1191,7 +1194,7 @@ function LessonRunner() {
 
   const buildLessonPath = (targetLessonId: number) =>
     isAdminPreview
-      ? `/lessons/${targetLessonId}?preview=admin`
+      ? `/admin/content/preview/${targetLessonId}`
       : `/lessons/${targetLessonId}`;
   useEffect(() => {
     if (!items.length || hasRestoredRunnerPositionRef.current) return;

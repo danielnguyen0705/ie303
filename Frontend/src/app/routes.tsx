@@ -97,6 +97,7 @@ export const router = createBrowserRouter([
           { index: true, Component: AdminDashboard },
           { path: "users", Component: UserManagement },
           { path: "content", Component: ContentManagement },
+          { path: "content/preview/:lessonId", Component: LessonRunner },
           { path: "questions", Component: QuestionBank },
           // Unit/Group review admin pages removed (use Lesson with isReviewLesson)
           { path: "semester-tests", Component: SemesterTests },
