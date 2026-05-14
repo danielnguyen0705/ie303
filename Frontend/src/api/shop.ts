@@ -9,6 +9,7 @@ import type {
   UserItemResponse,
 } from "./types";
 import { createError, request } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
 
 const TYPE_TO_DISPLAY: Record<ShopItemType, ShopItem["type"]> = {
   SKIP: "powerup",
@@ -41,11 +42,17 @@ const toNumberId = (value: string | number): number => {
 
 const fetchActiveShopItems = async (): Promise<
   ApiResponse<ShopItemResponse[]>
-> => request<ShopItemResponse[]>("/shop-items", { method: "GET" });
+> => request<ShopItemResponse[]>("/shop-items", { method: "GET" }, {
+  key: "shop:active-items",
+  ttlMs: 5 * 60 * 1000,
+});
 
 const fetchMyShopItems = async (): Promise<ApiResponse<UserItemResponse[]>> =>
   request<UserItemResponse[]>("/shop-items/my-items", {
     method: "GET",
+  }, {
+    key: "shop:my-items",
+    ttlMs: 2 * 60 * 1000,
   });
 
 const toDisplayItem = (
@@ -220,6 +227,10 @@ export async function buyShopItem(
     );
   }
 
+  clearCachePrefix("shop:");
+  clearCachePrefix("users:");
+  clearCachePrefix("leaderboard:");
+
   return {
     success: true,
     data: buyResponse.data,
@@ -304,9 +315,16 @@ export async function useSkipItem(
     return createError("Invalid user item id", "VALIDATION_ERROR");
   }
 
-  return request<string>(`/shop-items/use-skip/${parsedUserItemId}`, {
+  const response = await request<string>(`/shop-items/use-skip/${parsedUserItemId}`, {
     method: "POST",
   });
+
+  if (response.success) {
+    clearCachePrefix("shop:");
+    clearCachePrefix("users:");
+  }
+
+  return response;
 }
 
 /**
@@ -321,9 +339,16 @@ export async function equipAvatar(
     return createError("Invalid shop item id", "VALIDATION_ERROR");
   }
 
-  return request<string>(`/shop-items/equip/avatar/${parsedShopItemId}`, {
+  const response = await request<string>(`/shop-items/equip/avatar/${parsedShopItemId}`, {
     method: "POST",
   });
+
+  if (response.success) {
+    clearCachePrefix("shop:");
+    clearCachePrefix("users:");
+  }
+
+  return response;
 }
 
 /**
@@ -338,9 +363,16 @@ export async function equipBackground(
     return createError("Invalid shop item id", "VALIDATION_ERROR");
   }
 
-  return request<string>(`/shop-items/equip/background/${parsedShopItemId}`, {
+  const response = await request<string>(`/shop-items/equip/background/${parsedShopItemId}`, {
     method: "POST",
   });
+
+  if (response.success) {
+    clearCachePrefix("shop:");
+    clearCachePrefix("users:");
+  }
+
+  return response;
 }
 
 /**

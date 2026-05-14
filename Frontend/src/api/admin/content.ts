@@ -174,7 +174,10 @@ function appendMediaField(
    GRADE
 ========================= */
 export async function getAllGrades(): Promise<AdminApiResponse<Grade[]>> {
-  return request<Grade[]>("/grades", { method: "GET" });
+  return request<Grade[]>("/grades", { method: "GET" }, {
+    key: "admin:grades:all",
+    ttlMs: 30 * 60 * 1000,
+  });
 }
 
 export async function getGrade(params: {

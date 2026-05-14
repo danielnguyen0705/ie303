@@ -27,9 +27,15 @@ const computeCategoryCount = (entry: {
   return Number(entry.avatarCount > 0) + Number(entry.backgroundCount > 0);
 };
 
+const leaderboardCacheKey = (scope: string, limit: number): string =>
+  `leaderboard:${scope}:${limit}`;
+
 const ensureAuthenticated = async (): Promise<ApiResponse<true>> => {
   const response = await request<{ id: number }>("/users/me", {
     method: "GET",
+  }, {
+    key: "users:current-user",
+    ttlMs: 60 * 1000,
   });
 
   if (!response.success) {
@@ -58,6 +64,10 @@ export async function getCoinLeaderboard(
     `/leaderboards/coins?limit=${safeLimit}`,
     {
       method: "GET",
+    },
+    {
+      key: leaderboardCacheKey("coins", safeLimit),
+      ttlMs: 2 * 60 * 1000,
     },
   );
 
@@ -101,6 +111,10 @@ export async function getCollectorLeaderboard(
     `/leaderboards/collectors?limit=${safeLimit}`,
     {
       method: "GET",
+    },
+    {
+      key: leaderboardCacheKey("collectors", safeLimit),
+      ttlMs: 2 * 60 * 1000,
     },
   );
 
@@ -174,6 +188,10 @@ export async function getExpLeaderboard(
     `/leaderboards/exp?limit=${safeLimit}`,
     {
       method: "GET",
+    },
+    {
+      key: leaderboardCacheKey("exp", safeLimit),
+      ttlMs: 2 * 60 * 1000,
     },
   );
 

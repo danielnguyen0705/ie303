@@ -1,5 +1,6 @@
 import type { ApiResponse } from "./types";
 import { createError, request } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
 
 const PASSWORD_MIN_LENGTH = 6;
 
@@ -81,6 +82,9 @@ function buildDefaultAvatar(seed: string): string {
 export async function getCurrentUser(): Promise<ApiResponse<any>> {
   return request<any>("/users/me", {
     method: "GET",
+  }, {
+    key: "users:current-user",
+    ttlMs: 60 * 1000,
   });
 }
 
@@ -114,6 +118,8 @@ export async function changePassword(
       message: response.message,
     };
   }
+
+  clearCachePrefix("users:");
 
   return {
     success: true,

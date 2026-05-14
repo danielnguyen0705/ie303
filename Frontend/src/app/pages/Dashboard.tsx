@@ -22,7 +22,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { getCurrentUser, getMyLearningAnalysis, getUserStats, refreshMyLearningAnalysis } from "@/api";
+import { getCurrentUser, getMyLearningAnalysis, refreshMyLearningAnalysis } from "@/api";
 import { getAllGrades } from "@/api/admin";
 import type { Grade } from "@/api/admin/types";
 import type { AILearningAnalysis } from "@/api/types";
@@ -82,6 +82,20 @@ const emptyStats = {
   currentStreak: 0,
   accuracy: 0,
 };
+
+function buildStatsFromUser(user: UserProfile | null) {
+  if (!user) {
+    return emptyStats;
+  }
+
+  return {
+    totalLessonsCompleted: 0,
+    totalXP: user.exp,
+    totalCoins: user.coin,
+    currentStreak: user.streak,
+    accuracy: 0,
+  };
+}
 
 function clampProgress(value?: number | null) {
   if (!Number.isFinite(value)) return 0;
@@ -207,16 +221,16 @@ export function Dashboard() {
       setLoading(true);
       setError(null);
 
-      const [gradesResponse, userResponse, statsResponse] = await Promise.all([
+      const [gradesResponse, userResponse] = await Promise.all([
         getAllGrades(),
         getCurrentUser(),
-        getUserStats(),
       ]);
 
       if (gradesResponse.success && userResponse.success) {
+        const nextUser = (userResponse.data ?? null) as UserProfile | null;
         setGrades(gradesResponse.data ?? []);
-        setUser((userResponse.data ?? null) as UserProfile | null);
-        setStats(statsResponse.data ?? emptyStats);
+        setUser(nextUser);
+        setStats(buildStatsFromUser(nextUser));
       } else {
         setError("Failed to load dashboard data");
       }

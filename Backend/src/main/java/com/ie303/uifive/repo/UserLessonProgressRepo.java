@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 
 public interface UserLessonProgressRepo extends JpaRepository<UserLessonProgress, Long> {
     Optional<UserLessonProgress> findByUserIdAndLessonId(Long userId, Long lessonId);
+    List<UserLessonProgress> findByUserId(Long userId);
     void deleteByLessonId(Long lessonId);
 
     @Query("""

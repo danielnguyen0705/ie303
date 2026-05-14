@@ -46,15 +46,9 @@ public class StudentFeatureService {
     @Transactional(readOnly = true)
     public MLPredictionRequest buildPredictionRequest(User user) {
         List<UserQuestionHistory> histories = userQuestionHistoryRepo.findByUserId(user.getId());
-        List<UserLessonProgress> progresses = userLessonProgressRepo.findAll().stream()
-                .filter(progress -> progress.getUser() != null && user.getId().equals(progress.getUser().getId()))
-                .toList();
-        List<AIWritingEvaluation> writingEvaluations = aiWritingEvalutionRepo.findAll().stream()
-                .filter(evaluation -> evaluation.getUser() != null && user.getId().equals(evaluation.getUser().getId()))
-                .toList();
-        List<AISpeakingEvaluation> speakingEvaluations = aiSpeakingEvaluationRepo.findAll().stream()
-                .filter(evaluation -> evaluation.getUser() != null && user.getId().equals(evaluation.getUser().getId()))
-                .toList();
+        List<UserLessonProgress> progresses = userLessonProgressRepo.findByUserId(user.getId());
+        List<AIWritingEvaluation> writingEvaluations = aiWritingEvalutionRepo.findByUserId(user.getId());
+        List<AISpeakingEvaluation> speakingEvaluations = aiSpeakingEvaluationRepo.findByUserId(user.getId());
         List<UserItem> userItems = userItemRepo.findByUser(user);
 
         LocalDate today = LocalDate.now();

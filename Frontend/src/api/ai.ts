@@ -11,6 +11,7 @@
 } from "./types";
 import type { QuestionDto } from "./questions";
 import { createError, request } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
 
 const hasPositiveNumber = (value: number): boolean =>
   Number.isFinite(value) && value > 0;
@@ -110,14 +111,23 @@ export async function getPersonalizedQuestions(
 export async function getMyLearningAnalysis(): Promise<ApiResponse<AILearningAnalysis | null>> {
   return request<AILearningAnalysis | null>("/ai/learning-analysis/me", {
     method: "GET",
+  }, {
+    key: "ai:learning-analysis:me",
+    ttlMs: 2 * 60 * 1000,
   });
 }
 
 export async function refreshMyLearningAnalysis(): Promise<ApiResponse<AILearningAnalysis | null>> {
-  return request<AILearningAnalysis | null>("/ai/learning-analysis/me/refresh", {
+  const response = await request<AILearningAnalysis | null>("/ai/learning-analysis/me/refresh", {
     method: "POST",
     body: JSON.stringify({}),
   });
+
+  if (response.success) {
+    clearCachePrefix("ai:learning-analysis:");
+  }
+
+  return response;
 }
 
 export async function getMyLearningAnalysisHistory(): Promise<
@@ -125,5 +135,8 @@ export async function getMyLearningAnalysisHistory(): Promise<
 > {
   return request<AILearningAnalysis[]>("/ai/learning-analysis/me/history", {
     method: "GET",
+  }, {
+    key: "ai:learning-analysis:history",
+    ttlMs: 2 * 60 * 1000,
   });
 }

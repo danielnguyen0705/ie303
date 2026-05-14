@@ -155,18 +155,14 @@ public class NotificationService {
     }
 
     private List<User> findNotificationCandidates() {
-        return userRepo.findAll()
+        return userRepo.findByRoleAndEmailIsNotNull(Role.USER)
                 .stream()
-                .filter(user -> Role.USER.equals(user.getRole()))
                 .filter(user -> user.getEmail() != null && !user.getEmail().isBlank())
                 .toList();
     }
 
     private List<User> findAllUsers() {
-        return userRepo.findAll()
-                .stream()
-                .filter(user -> Role.USER.equals(user.getRole()))
-                .toList();
+        return userRepo.findByRole(Role.USER);
     }
 
     private void sendSafely(User user, Runnable action) {

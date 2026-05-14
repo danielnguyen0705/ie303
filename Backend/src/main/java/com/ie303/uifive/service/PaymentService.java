@@ -22,6 +22,8 @@ import com.ie303.uifive.service.payment.gateway.PaymentGateway;
 import com.ie303.uifive.service.payment.gateway.VnpayPaymentGateway;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +48,7 @@ public class PaymentService {
     @Value("${payment.mock-confirm-enabled:false}")
     private boolean mockConfirmEnabled;
 
+    @CacheEvict(cacheNames = {"payment-offers-all", "payment-offers-active"}, allEntries = true)
     public PaymentOfferResponse createOffer(PaymentOfferRequest request) {
         PaymentOffer offer = new PaymentOffer();
         applyOfferRequest(offer, request);
@@ -53,6 +56,7 @@ public class PaymentService {
         return toOfferResponse(offer);
     }
 
+    @CacheEvict(cacheNames = {"payment-offers-all", "payment-offers-active"}, allEntries = true)
     public PaymentOfferResponse updateOffer(Long id, PaymentOfferRequest request) {
         PaymentOffer offer = offerRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_OFFER_NOT_FOUND));
@@ -62,6 +66,7 @@ public class PaymentService {
         return toOfferResponse(offer);
     }
 
+    @CacheEvict(cacheNames = {"payment-offers-all", "payment-offers-active"}, allEntries = true)
     public void deleteOffer(Long id) {
         PaymentOffer offer = offerRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_OFFER_NOT_FOUND));
@@ -75,10 +80,12 @@ public class PaymentService {
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_OFFER_NOT_FOUND));
     }
 
+    @Cacheable(cacheNames = "payment-offers-all")
     public List<PaymentOfferResponse> getAllOffers() {
         return offerRepo.findAll().stream().map(this::toOfferResponse).toList();
     }
 
+    @Cacheable(cacheNames = "payment-offers-active")
     public List<PaymentOfferResponse> getActiveOffers() {
         return offerRepo.findByActiveTrue().stream().map(this::toOfferResponse).toList();
     }

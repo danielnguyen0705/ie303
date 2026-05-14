@@ -5,12 +5,18 @@ import type { Grade } from "@/api/content";
 export async function getAllGrades(): Promise<ApiResponse<Grade[]>> {
   return request<Grade[]>("/grades", {
     method: "GET",
+  }, {
+    key: "grades:all",
+    ttlMs: 30 * 60 * 1000,
   });
 }
 
 export async function getGrade(id: number): Promise<ApiResponse<Grade>> {
   return request<Grade>(`/grades/${id}`, {
     method: "GET",
+  }, {
+    key: `grades:${id}`,
+    ttlMs: 30 * 60 * 1000,
   });
 }
 

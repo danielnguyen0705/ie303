@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -80,7 +81,7 @@ public class LeaderboardService {
     @Cacheable(cacheNames = "leaderboard-exp", key = "#limit + ':' + @userService.getCurrentUser().id")
     public ExpLeaderboardResponse getExpLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
-        List<User> users = getLeaderboardUsers();
+        List<User> users = getExpLeaderboardUsers();
         User currentUser = userService.getCurrentUser();
 
         List<ExpLeaderboardEntryResponse> rankedEntries = buildExpEntries(users, currentUser);
@@ -92,23 +93,13 @@ public class LeaderboardService {
     }
 
     private List<User> getLeaderboardUsers() {
-        return userRepo.findByRoleAndVerifiedTrueOrderByCoinDescScoreDescCreatedAtAsc(Role.USER);
+        return userRepo.findByRoleAndVerifiedTrueOrderByCoinDescScoreDescStreakDescCreatedAtAsc(Role.USER);
     }
 
     private List<CoinLeaderboardEntryResponse> buildCoinEntries(List<User> users, User currentUser) {
-        Comparator<User> comparator = Comparator
-                .comparingInt(User::getCoin).reversed()
-                .thenComparing(Comparator.comparingInt(User::getScore).reversed())
-                .thenComparing(Comparator.comparingInt(User::getStreak).reversed())
-                .thenComparing(User::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
-
-        List<User> sortedUsers = users.stream()
-                .sorted(comparator)
-                .toList();
-
         List<CoinLeaderboardEntryResponse> entries = new ArrayList<>();
-        for (int i = 0; i < sortedUsers.size(); i++) {
-            User user = sortedUsers.get(i);
+        for (int i = 0; i < users.size(); i++) {
+            User user = users.get(i);
             entries.add(new CoinLeaderboardEntryResponse(
                     user.getId(),
                     i + 1,
@@ -124,23 +115,24 @@ public class LeaderboardService {
         return entries;
     }
 
+    private List<User> getExpLeaderboardUsers() {
+        return userRepo.findByRoleAndVerifiedTrueOrderByExpDescStreakDescCoinDescCreatedAtAsc(Role.USER);
+    }
+
     private Map<Long, CollectorStats> buildCollectorStats(List<User> users) {
         Map<Long, CollectorStats> statsByUserId = new HashMap<>();
         users.forEach(user -> statsByUserId.put(user.getId(), new CollectorStats()));
 
-        List<UserItem> userItems = userItemRepo.findByUserIn(users);
-        for (UserItem userItem : userItems) {
-            if (userItem.getQuantity() <= 0 || userItem.getItem() == null) {
-                continue;
-            }
+        List<Long> userIds = users.stream().map(User::getId).toList();
+        List<Object[]> rows = userItemRepo.countCollectorItemsByUserIds(userIds, List.copyOf(COLLECTIBLE_TYPES));
 
-            ItemType type = userItem.getItem().getType();
-            if (!COLLECTIBLE_TYPES.contains(type)) {
-                continue;
-            }
+        for (Object[] row : rows) {
+            Long userId = ((Number) row[0]).longValue();
+            ItemType type = (ItemType) row[1];
+            int count = ((Number) row[2]).intValue();
 
-            CollectorStats stats = statsByUserId.computeIfAbsent(userItem.getUser().getId(), ignored -> new CollectorStats());
-            stats.collectItem(type, userItem.getItem().getId());
+            CollectorStats stats = statsByUserId.computeIfAbsent(userId, ignored -> new CollectorStats());
+            stats.collectItem(type, count);
         }
 
         return statsByUserId;
@@ -197,20 +189,10 @@ public class LeaderboardService {
                 .orElse(null);
     }
 
-        private List<ExpLeaderboardEntryResponse> buildExpEntries(List<User> users, User currentUser) {
-        Comparator<User> comparator = Comparator
-            .comparingInt(User::getExp).reversed()
-            .thenComparing(Comparator.comparingInt(User::getStreak).reversed())
-            .thenComparing(Comparator.comparingInt(User::getCoin).reversed())
-            .thenComparing(User::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
-
-        List<User> sortedUsers = users.stream()
-            .sorted(comparator)
-            .toList();
-
+    private List<ExpLeaderboardEntryResponse> buildExpEntries(List<User> users, User currentUser) {
         List<ExpLeaderboardEntryResponse> entries = new ArrayList<>();
-        for (int i = 0; i < sortedUsers.size(); i++) {
-            User user = sortedUsers.get(i);
+        for (int i = 0; i < users.size(); i++) {
+            User user = users.get(i);
             entries.add(new ExpLeaderboardEntryResponse(
                 user.getId(),
                 i + 1,
@@ -223,7 +205,7 @@ public class LeaderboardService {
         }
 
         return entries;
-        }
+    }
 
     private CollectorStats getStats(Map<Long, CollectorStats> statsByUserId, User user) {
         return statsByUserId.getOrDefault(user.getId(), new CollectorStats());
@@ -267,42 +249,42 @@ public class LeaderboardService {
     }
 
     private static class CollectorStats {
-        private final Set<Long> avatarIds = new java.util.HashSet<>();
-        private final Set<Long> backgroundIds = new java.util.HashSet<>();
+        private int avatarCount;
+        private int backgroundCount;
 
-        void collectItem(ItemType type, Long itemId) {
+        void collectItem(ItemType type, int count) {
             if (type == ItemType.AVATAR) {
-                avatarIds.add(itemId);
+                avatarCount += count;
             } else if (type == ItemType.BACKGROUND) {
-                backgroundIds.add(itemId);
+                backgroundCount += count;
             }
         }
 
         int getAvatarCount() {
-            return avatarIds.size();
+            return avatarCount;
         }
 
         int getBackgroundCount() {
-            return backgroundIds.size();
+            return backgroundCount;
         }
 
         int getCollectibleCount() {
-            return avatarIds.size() + backgroundIds.size();
+            return avatarCount + backgroundCount;
         }
 
         int getCategoryCount() {
             int count = 0;
-            if (!avatarIds.isEmpty()) {
+            if (avatarCount > 0) {
                 count++;
             }
-            if (!backgroundIds.isEmpty()) {
+            if (backgroundCount > 0) {
                 count++;
             }
             return count;
         }
 
         boolean isShowcaseReady() {
-            return !avatarIds.isEmpty() && !backgroundIds.isEmpty();
+            return avatarCount > 0 && backgroundCount > 0;
         }
     }
 }
