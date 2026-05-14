@@ -1718,9 +1718,7 @@ export default function QuestionPanel({
 
             <Button variant="outline" asChild>
               <Link
-                to={`/lessons/${selectedLesson.id}?preview=admin`}
-                target="_blank"
-                rel="noreferrer"
+                to={`/admin/content/preview/${selectedLesson.id}`}
               >
                 <PlayCircle className="w-4 h-4 mr-2" />
                 Preview Lesson
