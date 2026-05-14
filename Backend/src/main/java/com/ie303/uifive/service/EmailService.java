@@ -3,32 +3,45 @@ package com.ie303.uifive.service;
 import com.ie303.uifive.entity.ShopItem;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class EmailService {
 
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(20))
+            .build();
+
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    private final JavaMailSender mailSender;
+    private final ObjectMapper objectMapper;
 
-    @Value("${spring.mail.from:noreply@uifive.local}")
+    @Value("${resend.api-key:}")
+    private String resendApiKey;
+
+    @Value("${resend.api-url:https://api.resend.com/emails}")
+    private String resendApiUrl;
+
+    @Value("${resend.from-email:noreply@uifive.local}")
     private String fromEmail;
 
     public void sendVerificationEmail(String toEmail, String verifyLink) {
@@ -52,16 +65,39 @@ public class EmailService {
 
     private void sendHtmlEmail(String toEmail, String subject, String content) {
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            if (resendApiKey == null || resendApiKey.isBlank()) {
+                throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Resend API key is not configured");
+            }
 
-            helper.setTo(toEmail);
-            helper.setFrom(fromEmail);
-            helper.setSubject(subject);
-            helper.setText(content, true);
+            Map<String, Object> payload = Map.of(
+                    "from", fromEmail,
+                    "to", List.of(toEmail),
+                    "subject", subject,
+                    "html", content
+            );
 
-            mailSender.send(message);
-        } catch (MessagingException | MailException e) {
+            String body = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(resendApiUrl))
+                    .timeout(java.time.Duration.ofSeconds(20))
+                    .header("Authorization", "Bearer " + resendApiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.error("Resend API returned status {} for '{}' with subject '{}': {}",
+                        response.statusCode(), toEmail, subject, response.body());
+                throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Failed to send email");
+            }
+        } catch (IOException e) {
+            log.error("Failed to send email to '{}' with subject '{}': {}", toEmail, subject, e.getMessage(), e);
+            throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Failed to send email");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             log.error("Failed to send email to '{}' with subject '{}': {}", toEmail, subject, e.getMessage(), e);
             throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Failed to send email");
         }
