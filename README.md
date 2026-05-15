@@ -134,51 +134,16 @@ python app.py
 
 ---
 
-## 6. Các biến môi trường
+## 6. Cấu hình biến môi trường
 
-Tạo các file `.env` ở mỗi thư mục. Dưới đây là các file mẫu.
+Dự án đã cung cấp sẵn file `.env.example` trong mỗi thư mục.
 
-**`Backend/.env`**:
+Chỉ cần sao chép và đổi tên:
 
-```env
-PORT=8080
-DB_URL=jdbc:postgresql://<host>/<dbname>
-DB_USERNAME=
-DB_PASSWORD=
+- `Backend/.env.example` → `Backend/.env`
+- `Frontend/.env.example` → `Frontend/.env`
 
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRATION=3600000
-
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=
-
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-
-GEMINI_API_KEY=
-NVIDIA_API_KEY=
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-
-CLOUD_NAME=
-API_KEY=
-API_SECRET=
-
-PAYMENT_VNPAY_TMN_CODE=
-PAYMENT_VNPAY_SECRET=
-
-ML_API_URL=http://localhost:8000/predict
-FRONTEND_BASE_URL=http://localhost:5173
-UPSTASH_REDIS_URL=
-```
-
-**`Frontend/.env`**:
-
-```env
-VITE_API_BASE_URL=http://localhost:8080/api
-```
-
----
+Sau đó cập nhật lại các giá trị cấu hình phù hợp với môi trường chạy thực tế.
 
 ## 7. API Documentation (Backend)
 
@@ -232,8 +197,6 @@ Phát triển bởi:
 | 4   | Nguyễn Lý Anh Vũ | Frontend Developer | [GitHub](https://github.com/NguyenVu3105)     |
 | 5   | Võ Thành Nhân    | Frontend Developer | [GitHub](https://github.com/NhanVT24)         |
 
-
-GitHub: [UIFIVE](https://github.com/danielnguyen0705/ie303)
 
 ---
 
