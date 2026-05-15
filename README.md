@@ -1,10 +1,10 @@
-# UIFIVE Learning System (IE303)
+# Hệ thống học tập trực tuyến UIFIVE
 
-Một nền tảng học tập trực tuyến thông minh được thiết kế với kiến trúc Microservices, tích hợp Trí tuệ Nhân tạo (Generative AI) và Machine Learning để dự đoán năng lực học tập, tối ưu hóa quá trình học tập của học viên.
+UIFIVE là một nền tảng học tập trực tuyến thông minh được thiết kế với kiến trúc Microservices, tích hợp Trí tuệ Nhân tạo (Generative AI) và Machine Learning để dự đoán năng lực học tập, tối ưu hóa quá trình học tập của học viên.
 
 ---
 
-## 1. Features
+## 1. Các chức năng của hệ thống
 
 - **Xác thực & Bảo mật (Authentication)**: Hỗ trợ đăng nhập truyền thống (JWT) và Google OAuth2.
 - **Quản lý Học tập**: Hệ thống Unit, Section, Lesson và Question đa dạng.
@@ -17,8 +17,7 @@ Một nền tảng học tập trực tuyến thông minh được thiết kế 
 
 ---
 
-## 2. System Architecture
-
+## 2. Kiến trúc hệ thống
 Hệ thống hoạt động dưới dạng Microservices giao tiếp thông qua RESTful APIs:
 
 ```mermaid
@@ -61,7 +60,7 @@ graph TD
 
 ---
 
-## 4. Project Structure
+## 4. Cấu trúc thư mục dự án
 
 ```txt
 ie303/
@@ -82,7 +81,7 @@ ie303/
 
 ---
 
-## 5. Installation & Setup
+## 5. Cài đặt
 
 ### Yêu cầu hệ thống
 
@@ -117,7 +116,7 @@ cd Backend
 ./mvnw spring-boot:run
 ```
 
-**Machine Learning Service (Port 8000)**:
+**Tích hợp Machine Learning (Port 8000)**:
 
 ```bash
 cd MLService
@@ -135,7 +134,7 @@ python app.py
 
 ---
 
-## 6. Environment Variables
+## 6. Các biến môi trường
 
 Tạo các file `.env` ở mỗi thư mục. Dưới đây là các file mẫu.
 
@@ -194,7 +193,7 @@ Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy
 
 ---
 
-## 8. Machine Learning Details
+## 8. Mô tả về Machine Learning
 
 Module ML được viết bằng Python/FastAPI, chịu trách nhiệm nhận dữ liệu học viên (điểm, chuỗi ngày học, tần suất, độ chính xác các kỹ năng) và trả về phân tích.
 
@@ -238,6 +237,6 @@ GitHub: [UIFIVE](https://github.com/danielnguyen0705/ie303)
 
 ---
 
-## 11. License
+## 11. Giấy phép sử dụng
 
 Dự án được phân phối dưới giấy phép **MIT License**. Bạn có quyền tự do sử dụng, chỉnh sửa và phân phối mã nguồn này cho mục đích học tập và thương mại.
