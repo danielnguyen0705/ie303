@@ -20,11 +20,18 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class EmailService {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    private static final Pattern DISPLAY_NAME_EMAIL_PATTERN = Pattern.compile("^.*<([^<>\\s@]+@[^<>\\s@]+\\.[^<>\\s@]+)>\\s*$");
+    private static final Object RATE_LIMIT_LOCK = new Object();
+    private static final long MIN_SEND_INTERVAL_MS = 550L;
+    private static long nextAllowedSendAtMs = 0L;
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(20))
@@ -66,8 +73,26 @@ public class EmailService {
     private void sendHtmlEmail(String toEmail, String subject, String content) {
         try {
             if (resendApiKey == null || resendApiKey.isBlank()) {
-                throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Resend API key is not configured");
+                throw new AppException(ErrorCode.EMAIL_SEND_FAILED,
+                        "Resend API key is not configured. Set RESEND_API_KEY in the deployment environment.");
             }
+
+            if (fromEmail == null || fromEmail.isBlank()) {
+                throw new AppException(ErrorCode.EMAIL_SEND_FAILED,
+                        "Resend sender email is not configured. Set RESEND_FROM_EMAIL to a verified sender.");
+            }
+
+            if (!isValidEmail(toEmail)) {
+                throw new AppException(ErrorCode.EMAIL_SEND_FAILED,
+                        "Recipient email is invalid: " + toEmail);
+            }
+
+            if (!isValidSenderEmail(fromEmail)) {
+                throw new AppException(ErrorCode.EMAIL_SEND_FAILED,
+                        "Resend sender email is invalid: " + fromEmail);
+            }
+
+            enforceSendRateLimit();
 
             Map<String, Object> payload = Map.of(
                     "from", fromEmail,
@@ -91,6 +116,10 @@ public class EmailService {
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 log.error("Resend API returned status {} for '{}' with subject '{}': {}",
                         response.statusCode(), toEmail, subject, response.body());
+                if (response.statusCode() == 429) {
+                    throw new AppException(ErrorCode.EMAIL_SEND_FAILED,
+                            "Resend rate limit exceeded. Try again later or reduce bulk send rate.");
+                }
                 throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Failed to send email");
             }
         } catch (IOException e) {
@@ -101,6 +130,34 @@ public class EmailService {
             log.error("Failed to send email to '{}' with subject '{}': {}", toEmail, subject, e.getMessage(), e);
             throw new AppException(ErrorCode.EMAIL_SEND_FAILED, "Failed to send email");
         }
+    }
+
+    private void enforceSendRateLimit() throws InterruptedException {
+        synchronized (RATE_LIMIT_LOCK) {
+            long now = System.currentTimeMillis();
+            long waitMs = nextAllowedSendAtMs - now;
+            if (waitMs > 0) {
+                Thread.sleep(waitMs);
+            }
+            nextAllowedSendAtMs = Math.max(System.currentTimeMillis(), nextAllowedSendAtMs) + MIN_SEND_INTERVAL_MS;
+        }
+    }
+
+    private boolean isValidEmail(String email) {
+        return email != null && EMAIL_PATTERN.matcher(email.trim()).matches();
+    }
+
+    private boolean isValidSenderEmail(String sender) {
+        if (sender == null || sender.isBlank()) {
+            return false;
+        }
+
+        String trimmed = sender.trim();
+        if (isValidEmail(trimmed)) {
+            return true;
+        }
+
+        return DISPLAY_NAME_EMAIL_PATTERN.matcher(trimmed).matches();
     }
 
     private String buildVerificationContent(String verifyLink) {

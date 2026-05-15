@@ -16,11 +16,14 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationService {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final UserRepo userRepo;
     private final EmailService emailService;
@@ -64,6 +67,10 @@ public class NotificationService {
 
         for (User user : users) {
             if (user.getLastStudyDate() == null) {
+                continue;
+            }
+
+            if (!isValidEmail(user.getEmail())) {
                 continue;
             }
 
@@ -157,7 +164,7 @@ public class NotificationService {
     private List<User> findNotificationCandidates() {
         return userRepo.findByRoleAndEmailIsNotNull(Role.USER)
                 .stream()
-                .filter(user -> user.getEmail() != null && !user.getEmail().isBlank())
+                .filter(user -> isValidEmail(user.getEmail()))
                 .toList();
     }
 
@@ -179,5 +186,9 @@ public class NotificationService {
         }
 
         return user.getEmail();
+    }
+
+    private boolean isValidEmail(String email) {
+        return email != null && EMAIL_PATTERN.matcher(email.trim()).matches();
     }
 }

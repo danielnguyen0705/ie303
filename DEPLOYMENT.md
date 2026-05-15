@@ -44,7 +44,7 @@ Kết nối thư mục `Backend/` với Render:
 **Biến môi trường cần thiết (Environment Variables)**:
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (từ bước 2)
 - `JWT_SECRET`, `JWT_EXPIRATION`
-- `MAIL_USERNAME`, `MAIL_PASSWORD` (SMTP)
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (địa chỉ gửi phải là sender đã verify trên Resend)
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - Các biến API Key cho AI: `GEMINI_API_KEY`, `NVIDIA_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
 - Tích hợp Cloudinary: `CLOUD_NAME`, `API_KEY`, `API_SECRET`
