@@ -51,7 +51,9 @@ public class EssayService {
         history.setCorrect(aiResult.score() >= 5.0);
         historyRepo.save(history);
 
-        AIWritingEvaluation evaluation = new AIWritingEvaluation();
+        AIWritingEvaluation evaluation = evaluationRepo
+                .findByUserIdAndQuestionId(user.getId(), question.getId())
+                .orElseGet(AIWritingEvaluation::new);
         evaluation.setUser(user);
         evaluation.setQuestion(question);
         evaluation.setAiScore(aiResult.score());
@@ -86,7 +88,9 @@ public class EssayService {
         history.setCorrect(aiResult.score() >= 5.0);
         historyRepo.save(history);
 
-        AIWritingEvaluation evaluation = new AIWritingEvaluation();
+        AIWritingEvaluation evaluation = evaluationRepo
+                .findByUserIdAndQuestionId(user.getId(), question.getId())
+                .orElseGet(AIWritingEvaluation::new);
         evaluation.setUser(user);
         evaluation.setQuestion(question);
         evaluation.setAiScore(aiResult.score());
