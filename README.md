@@ -1,10 +1,10 @@
-# 🚀 UIFive Learning System (IE303)
+# UIFIVE Learning System (IE303)
 
 Một nền tảng học tập trực tuyến thông minh được thiết kế với kiến trúc Microservices, tích hợp Trí tuệ Nhân tạo (Generative AI) và Machine Learning để dự đoán năng lực học tập, tối ưu hóa quá trình học tập của học viên.
 
 ---
 
-## 🌟 1. Features
+## 1. Features
 
 - **Xác thực & Bảo mật (Authentication)**: Hỗ trợ đăng nhập truyền thống (JWT) và Google OAuth2.
 - **Quản lý Học tập**: Hệ thống Unit, Section, Lesson và Question đa dạng.
@@ -17,7 +17,7 @@ Một nền tảng học tập trực tuyến thông minh được thiết kế 
 
 ---
 
-## 🏗️ 2. System Architecture
+## 2. System Architecture
 
 Hệ thống hoạt động dưới dạng Microservices giao tiếp thông qua RESTful APIs:
 
@@ -35,7 +35,7 @@ graph TD
 
 ---
 
-## 💻 3. Tech Stack
+## 3. Tech Stack
 
 ### Frontend
 
@@ -61,7 +61,7 @@ graph TD
 
 ---
 
-## 📂 4. Project Structure
+## 4. Project Structure
 
 ```txt
 ie303/
@@ -82,7 +82,7 @@ ie303/
 
 ---
 
-## ⚙️ 5. Installation & Setup
+## 5. Installation & Setup
 
 ### Yêu cầu hệ thống
 
@@ -135,7 +135,7 @@ python app.py
 
 ---
 
-## 🔐 6. Environment Variables
+## 6. Environment Variables
 
 Tạo các file `.env` ở mỗi thư mục. Dưới đây là các file mẫu.
 
@@ -181,7 +181,7 @@ VITE_API_BASE_URL=http://localhost:8080/api
 
 ---
 
-## 🔌 7. API Documentation (Backend)
+## 7. API Documentation (Backend)
 
 Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy cập Swagger UI (khi chạy backend) qua cổng 8080. Một số endpoint chính:
 
@@ -194,7 +194,7 @@ Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy
 
 ---
 
-## 🧠 8. Machine Learning Details
+## 8. Machine Learning Details
 
 Module ML được viết bằng Python/FastAPI, chịu trách nhiệm nhận dữ liệu học viên (điểm, chuỗi ngày học, tần suất, độ chính xác các kỹ năng) và trả về phân tích.
 
@@ -208,7 +208,7 @@ Module ML được viết bằng Python/FastAPI, chịu trách nhiệm nhận d�
 
 ---
 
-## 🚀 9. Deployment
+## 9. Deployment
 
 Dự án được triển khai hoàn chỉnh trên **Render** và sử dụng domain riêng:
 
@@ -221,17 +221,18 @@ Dự án được triển khai hoàn chỉnh trên **Render** và sử dụng do
 
 ---
 
-## 👥 10. Contributors
+## 10. Các thành viên của nhóm
 
 Phát triển bởi:
 
 | STT | Họ và tên        | Vai trò            | GitHub                                        |
 | --- | ---------------- | ------------------ | --------------------------------------------- |
-| 1   | Huỳnh Tuấn Phi   | Backend Developer  | [GitHub](https://github.com/bincasau)         |
-| 2   | Nguyễn Lý Anh Vũ | Frontend Developer | [GitHub](https://github.com/NguyenVu3105)     |
-| 3   | Võ Thành Nhân    | Frontend Developer | [GitHub](https://github.com/NhanVT24)         |
-| 4   | Nguyễn Cao Cường | AI/ML Engineer     | [GitHub](https://github.com/nguyencuong335)   |
-| 5   | Nguyễn Quốc Đạt  | Leader             | [GitHub](https://github.com/danielnguyen0705) |
+| 1   | Nguyễn Quốc Đạt  | Nhóm trưởng, AI/ML Engineer  | [GitHub](https://github.com/danielnguyen0705) |
+| 2   | Nguyễn Cao Cường | AI/ML Engineer     | [GitHub](https://github.com/nguyencuong335)   |
+| 3   | Huỳnh Tuấn Phi   | Backend Developer  | [GitHub](https://github.com/bincasau)         |
+| 4   | Nguyễn Lý Anh Vũ | Frontend Developer | [GitHub](https://github.com/NguyenVu3105)     |
+| 5   | Võ Thành Nhân    | Frontend Developer | [GitHub](https://github.com/NhanVT24)         |
+
 
 GitHub: [UIFIVE](https://github.com/danielnguyen0705/ie303)
 
