@@ -99,7 +99,9 @@ public class SpeakingService {
                                         String audioUrl,
                                         String transcriptText,
                                         SpeakingEvaluationResponse aiResult) {
-        AISpeakingEvaluation evaluation = new AISpeakingEvaluation();
+        AISpeakingEvaluation evaluation = evaluationRepo
+                .findByUserIdAndQuestionId(user.getId(), question.getId())
+                .orElseGet(AISpeakingEvaluation::new);
         evaluation.setUser(user);
         evaluation.setQuestion(question);
         evaluation.setAudioUrl(audioUrl);
