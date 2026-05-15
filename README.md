@@ -238,6 +238,6 @@ GitHub: [UIFIVE](https://github.com/danielnguyen0705/ie303)
 
 ---
 
-## 📜 11. License
+## 11. License
 
 Dự án được phân phối dưới giấy phép **MIT License**. Bạn có quyền tự do sử dụng, chỉnh sửa và phân phối mã nguồn này cho mục đích học tập và thương mại.
