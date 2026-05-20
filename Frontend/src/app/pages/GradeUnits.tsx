@@ -363,9 +363,7 @@ export function GradeUnits() {
         </button>
 
         <div className="learner-tech-panel mt-3 rounded-[2rem] px-6 py-6 md:px-8">
-          <span className="inline-block rounded-full bg-[#73aaf9]/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#155ca5]">
-            {gradeTitle ?? `Grade ${gradeId}`}
-          </span>
+          
           <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
             {copy("Choose a Unit", "Chọn Unit")}
           </h1>

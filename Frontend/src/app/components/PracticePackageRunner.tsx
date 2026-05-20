@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -146,11 +146,58 @@ function resolveMediaUrl(value?: string | null): string | null {
 function renderTextWithBreaks(value?: string | null) {
   if (!value?.trim()) return null;
 
-  return value.split("\n").map((line, index) => (
+  return value
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line, index) => (
     <p key={`${line}-${index}`} className={index > 0 ? "mt-2" : undefined}>
-      {line || "\u00A0"}
+        {line ? renderFormattedInlineText(line) : "\u00A0"}
     </p>
-  ));
+    ));
+}
+
+function renderFormattedInlineText(value: string): ReactNode[] {
+  const segments = value.split(
+    /(<strong>.*?<\/strong>|<b>.*?<\/b>|\*\*.*?\*\*|<u>.*?<\/u>|__.*?__|\[\[.*?\]\])/gi,
+  );
+
+  return segments
+    .filter((segment) => segment.length > 0)
+    .map((segment, index) => {
+      const htmlStrong = segment.match(/^<strong>(.*?)<\/strong>$/i);
+      const htmlBold = segment.match(/^<b>(.*?)<\/b>$/i);
+      const markdownBold = segment.match(/^\*\*(.*?)\*\*$/);
+      const htmlUnderline = segment.match(/^<u>(.*?)<\/u>$/i);
+      const markdownUnderline = segment.match(/^__(.*?)__$/);
+      const bracketUnderline = segment.match(/^\[\[(.*?)\]\]$/);
+      const boldText = htmlStrong?.[1] ?? htmlBold?.[1] ?? markdownBold?.[1];
+      const underlinedText =
+        htmlUnderline?.[1] ?? markdownUnderline?.[1] ?? bracketUnderline?.[1];
+
+      if (boldText != null) {
+        return (
+          <strong
+            key={`${boldText}-${index}`}
+            className="font-black text-[#16315c]"
+          >
+            {boldText}
+          </strong>
+        );
+      }
+
+      if (underlinedText != null) {
+        return (
+          <u
+            key={`${underlinedText}-${index}`}
+            className="font-semibold decoration-2 underline-offset-2"
+          >
+            {underlinedText}
+          </u>
+        );
+      }
+
+      return <span key={`${segment}-${index}`}>{segment}</span>;
+    });
 }
 
 function formatQuestionLabel(question: QuestionDto): string {
@@ -177,6 +224,14 @@ function getMeaningfulHint(
   }
 
   return normalizedHint;
+}
+
+function renderInlineText(value?: string | null, fallback?: string) {
+  if (!value?.trim()) {
+    return fallback ?? null;
+  }
+
+  return <>{renderFormattedInlineText(value)}</>;
 }
 
 function getDisplayAnswer(answer: UserAnswer | undefined): string {
@@ -827,7 +882,9 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white font-black text-[#1e2e51]">
                     {option.optionKey}
                   </div>
-                  <div className="font-semibold text-[#1e2e51]">{option.content}</div>
+                  <div className="font-semibold text-[#1e2e51]">
+                    {renderInlineText(option.content, option.content)}
+                  </div>
                 </div>
               </button>
             );
@@ -897,7 +954,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
       return (
         <div className="space-y-4">
           {wordBank.length > 0 && (
-            <div className="rounded-[1.5rem] border border-[#cfe3ff] bg-[#f5f9ff] p-5">
+            <div className="rounded-[1.5rem] border border-[#cfe3ff] bg-[#f5f9ff] p-4">
               <div className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
                 {copy("Word Bank", "Ngan hang tu")}
               </div>
@@ -941,7 +998,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
             <div className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
               {copy("Your Sentence", "Cau cua ban")}
             </div>
-            <div className="min-h-[72px] rounded-[1.25rem] border border-dashed border-[#9dc1ff] bg-white p-4 text-lg font-semibold text-[#1e2e51]">
+            <div className="min-h-[60px] rounded-[1.25rem] border border-dashed border-[#9dc1ff] bg-white p-3.5 text-base font-semibold text-[#1e2e51]">
               {getDisplayedReorderSentence(currentQuestion, currentAnswer?.answer) ||
                 copy("Build your sentence here", "Ghep cau cua ban tai day")}
             </div>
@@ -1015,9 +1072,11 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
             return (
               <div
                 key={leftItem}
-                className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_260px]"
+                className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_340px]"
               >
-                <div className="font-semibold text-[#1e2e51]">{leftItem}</div>
+                <div className="font-semibold text-[#1e2e51]">
+                  {renderInlineText(leftItem, leftItem)}
+                </div>
                 <select
                   disabled={isLocked}
                   value={selectedRight}
@@ -1073,7 +1132,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
     return (
       <div className="space-y-4">
         {saved.correct === true && (
-          <div className="rounded-[1.5rem] border border-green-300 bg-green-50 p-5 text-green-800">
+          <div className="rounded-[1.5rem] border border-green-300 bg-green-50 p-4 text-green-800">
             <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em]">
               <CheckCircle2 className="h-4 w-4" />
               {copy("Correct", "Dung")}
@@ -1087,7 +1146,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         )}
 
         {saved.correct === false && (
-          <div className="rounded-[1.5rem] border border-red-300 bg-red-50 p-5 text-red-800">
+          <div className="rounded-[1.5rem] border border-red-300 bg-red-50 p-4 text-red-800">
             <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em]">
               <XCircle className="h-4 w-4" />
               {copy("Incorrect", "Sai")}
@@ -1110,7 +1169,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         )}
 
         {saved.correct === null && (
-          <div className="rounded-[1.5rem] border border-amber-300 bg-amber-50 p-5 text-amber-900">
+          <div className="rounded-[1.5rem] border border-amber-300 bg-amber-50 p-4 text-amber-900">
             <div className="text-sm font-black uppercase tracking-[0.2em]">
               {copy("Submitted", "Da nop")}
             </div>
@@ -1140,7 +1199,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
         )}
 
         {currentQuestion.explanation && (
-          <div className="rounded-[1.5rem] border border-[#cfe3ff] bg-[#f5f9ff] p-5 text-sm text-[#1e2e51]">
+          <div className="rounded-[1.5rem] border border-[#cfe3ff] bg-[#f5f9ff] p-4 text-sm text-[#1e2e51]">
             <div className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
               {copy("Explanation", "Giai thich")}
             </div>
@@ -1237,7 +1296,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                 {copy("Loading package...", "Dang tai goi bai tap...")}
               </div>
             ) : !hasStarted ? (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="text-3xl font-black text-[#1e2e51]">
@@ -1270,7 +1329,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
             ) : currentQuestion ? (
               <div className="space-y-6">
                 {result && (
-                  <div className="space-y-5 rounded-[1.75rem] border border-[#dbeafe] bg-[#f8fbff] p-6">
+                  <div className="space-y-4 rounded-[1.75rem] border border-[#dbeafe] bg-[#f8fbff] p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="inline-flex items-center gap-2 rounded-full bg-[#27ae60]/10 px-4 py-2 text-sm font-bold text-[#27ae60]">
                         <CheckCircle2 className="h-4 w-4" />
@@ -1295,7 +1354,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-4">
-                      <div className="rounded-[1.5rem] border border-white/70 bg-white p-5">
+                      <div className="rounded-[1.5rem] border border-white/70 bg-white p-4">
                         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
                           {copy("Answered", "Da tra loi")}
                         </div>
@@ -1303,7 +1362,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                           {result.answeredCount}
                         </div>
                       </div>
-                      <div className="rounded-[1.5rem] border border-white/70 bg-white p-5">
+                      <div className="rounded-[1.5rem] border border-white/70 bg-white p-4">
                         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
                           {copy("Auto Graded", "Tu dong cham")}
                         </div>
@@ -1311,7 +1370,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                           {result.gradedCount}
                         </div>
                       </div>
-                      <div className="rounded-[1.5rem] border border-white/70 bg-white p-5">
+                      <div className="rounded-[1.5rem] border border-white/70 bg-white p-4">
                         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
                           {copy("Correct", "Dung")}
                         </div>
@@ -1319,7 +1378,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                           {result.correctCount}
                         </div>
                       </div>
-                      <div className="rounded-[1.5rem] border border-white/70 bg-white p-5">
+                      <div className="rounded-[1.5rem] border border-white/70 bg-white p-4">
                         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
                           {copy("Score", "Diem")}
                         </div>
@@ -1331,13 +1390,13 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                   </div>
                 )}
 
-                <div className="rounded-[2rem] border border-slate-200 bg-gradient-to-r from-[#f8fbff] via-white to-[#f5f7fb] p-4 md:p-5">
+                <div className="rounded-[2rem] border border-slate-200 bg-gradient-to-r from-[#f8fbff] via-white to-[#f5f7fb] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="text-xs font-black uppercase tracking-[0.25em] text-[#155ca5]">
                         {copy("Question", "Cau")} {currentQuestionIndex + 1} / {questions.length}
                       </div>
-                      <h2 className="mt-2 text-2xl font-black text-[#1e2e51]">
+                      <h2 className="mt-1 text-xl font-black text-[#1e2e51] md:text-2xl">
                         {selectedItem.title}
                       </h2>
                     </div>
@@ -1373,8 +1432,8 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                   ))}
                 </div>
 
-                <div className="space-y-6 rounded-[2rem] border border-slate-200 p-6">
-                  <div className="space-y-4">
+                <div className="space-y-5 rounded-[2rem] border border-slate-200 p-5">
+                  <div className="space-y-3">
                     <div className="text-xs font-black uppercase tracking-[0.25em] text-[#155ca5]">
                       {getLocalizedQuestionTypeLabel(currentQuestion.questionType)}
                     </div>
@@ -1382,12 +1441,14 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                     {(currentGroup?.title ||
                       currentGroup?.instruction ||
                       currentGroup?.sharedContent) && (
-                      <div className="rounded-[1.5rem] border border-[#dbeafe] bg-[#f8fbff] p-5 text-[#1e2e51]">
+                      <div className="rounded-[1.5rem] border border-[#dbeafe] bg-[#f8fbff] p-4 text-[#1e2e51]">
                         <div className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
                           {copy("Shared Prompt", "De bai chung")}
                         </div>
                         {currentGroup?.title && (
-                          <div className="font-bold">{currentGroup.title}</div>
+                          <div className="font-bold">
+                            {renderInlineText(currentGroup.title, currentGroup.title)}
+                          </div>
                         )}
                         {currentGroup.instruction && (
                           <div className="mt-3 text-sm text-slate-600">
@@ -1405,20 +1466,20 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
                     {renderMedia()}
 
                     {currentQuestion.instruction && (
-                      <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                      <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900">
                         <div className="font-black">{copy("Instruction", "Huong dan")}</div>
                         <div className="mt-2">{renderTextWithBreaks(currentQuestion.instruction)}</div>
                       </div>
                     )}
 
                     {currentHint && (
-                      <div className="rounded-[1.5rem] border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900">
+                      <div className="rounded-[1.5rem] border border-orange-200 bg-orange-50 p-3.5 text-sm text-orange-900">
                         <div className="font-black">{copy("Hint", "Goi y")}</div>
                         <div className="mt-2">{renderTextWithBreaks(currentHint)}</div>
                       </div>
                     )}
 
-                    <div className="text-[2rem] font-black leading-tight text-[#1e2e51]">
+                    <div className="text-[1.6rem] font-black leading-snug text-[#1e2e51] md:text-[1.85rem]">
                       {renderTextWithBreaks(formatQuestionLabel(currentQuestion))}
                     </div>
                   </div>
