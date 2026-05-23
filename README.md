@@ -14,23 +14,27 @@ UIFIVE là một nền tảng học tập trực tuyến thông minh được th
 - **Thanh toán Trực tuyến**: Tích hợp cổng thanh toán VNPAY và VietQR cho các gói VIP/Premium.
 - **Cloud Storage**: Quản lý hình ảnh và đa phương tiện bằng Cloudinary.
 - **Thông báo & Lịch trình (Cron Jobs)**: Nhắc nhở chuỗi ngày học và gói VIP.
+- **API Gateway**: Một cửa vào duy nhất cho frontend, route về từng service.
 
 ---
 
 ## 2. Kiến trúc hệ thống
-Hệ thống hoạt động dưới dạng Microservices giao tiếp thông qua RESTful APIs:
+Tài liệu sơ đồ microservice chi tiết đã được tách sang [MICROSERVICES.md](./MICROSERVICES.md).
 
-```mermaid
-graph TD
-    Client[Frontend: React/Vite] -->|REST API / JWT| Backend[Backend: Spring Boot]
-    Backend -->|PostgreSQL| DB[(Relational DB)]
-    Backend -->|Redis| Cache[(Redis Cache)]
-    Backend -->|HTTP POST| ML[ML Service: FastAPI]
-    ML -->|Random Forest Model| ML_Predict[Predict Skill & Trend]
-    Backend -->|API| GenAI[LLM APIs: Gemini, OpenAI, Llama]
-    Backend -->|Payment API| VNPAY[VNPAY / VietQR]
-    Backend -->|Image Upload| Cloudinary[Cloudinary]
-```
+Tóm tắt ngắn:
+
+- `Frontend/` là client React/Vite.
+- `GatewayService/` là API Gateway Spring Cloud cho hệ thống.
+- `IdentityService/` là service riêng cho auth, đăng ký, đăng nhập, OAuth2.
+- `PaymentService/` là service riêng cho payment/checkout/webhook.
+- `GamificationService/` là service riêng cho shop items và leaderboards.
+- `ContentService/` là service riêng cho grade/unit/section/lesson core, question bank và các loại review/test.
+- `ProgressService/` là service riêng cho học tiến độ theo lesson/unit/section.
+- `ProgressService/` cũng giữ phần `learning-analysis`, `user-question-histories` và `activity-calendar` cho kết quả ML của học viên.
+- `AIService/` là service riêng cho chấm writing/speaking bằng LLM.
+- `AIService/` cũng xử lý `personalized-questions`.
+- `MLService/` là FastAPI service riêng cho dự đoán học tập.
+- `NotificationService/` là Spring Boot service riêng cho scheduler và email notification.
 
 ---
 
@@ -47,6 +51,7 @@ graph TD
 ### Backend
 
 - **Framework**: Java 21, Spring Boot 3.4.0
+- **Gateway/Service Call**: Spring Cloud Gateway, OpenFeign
 - **Database/Cache**: PostgreSQL, Spring Data Redis
 - **Security**: Spring Security, JWT, OAuth2 Client
 - **Mapping & Utilities**: MapStruct, Lombok
@@ -64,10 +69,12 @@ graph TD
 
 ```txt
 ie303/
-├── Backend/          # Source code Java Spring Boot (REST API)
-│   ├── src/          # Source code chính, Controllers, Services, Models
-│   ├── Dockerfile    # Cấu hình build Docker cho backend
-│   └── pom.xml       # Cấu hình Maven dependencies
+├── GatewayService/   # API Gateway Spring Cloud cho frontend -> từng service
+├── IdentityService/  # Service auth/login/register/OAuth2/JWT
+├── GamificationService/ # Service shop items, inventory, leaderboards
+├── ContentService/   # Service grade/unit/section/lesson core + question/review/test
+├── ProgressService/  # Service progress/lesson completion + user question history + activity calendar
+├── AIService/        # Service chấm writing/speaking + personalized questions
 ├── Frontend/         # Source code React + Vite (Giao diện người dùng)
 │   ├── src/          # Components, Pages, Assets
 │   ├── package.json  # Cấu hình dependencies Frontend
@@ -76,6 +83,10 @@ ie303/
 │   ├── app.py        # Khởi chạy server FastAPI
 │   ├── train.py      # Script huấn luyện mô hình Random Forest
 │   └── saved_models/ # Chứa các file mô hình (.pkl) sau khi train
+├── NotificationService/ # Source code Spring Boot cho scheduler + email notification
+├── PaymentService/    # Source code Spring Boot cho payment/checkout/webhook
+│   ├── src/          # Controller, service, entity, repo riêng
+│   └── pom.xml       # Cấu hình Maven cho payment service
 └── DEPLOYMENT.md     # Hướng dẫn CI/CD và triển khai dự án
 ```
 
@@ -90,16 +101,7 @@ ie303/
 - Python 3.9+
 - PostgreSQL & Redis
 
-### 5.1. Khởi chạy toàn bộ dự án bằng `concurrently` (Khuyên dùng)
-
-Tại thư mục gốc, hệ thống đã cấu hình để chạy đồng thời Frontend và Backend:
-
-```bash
-npm install
-npm run dev
-```
-
-### 5.2. Cài đặt chi tiết từng thành phần
+### 5.1. Khởi chạy từng thành phần
 
 **Frontend (Port 5173)**:
 
@@ -109,11 +111,62 @@ npm install
 npm run dev
 ```
 
-**Backend (Port 8080)**:
+**Payment Service (Port 8083)**:
 
 ```bash
-cd Backend
-./mvnw spring-boot:run
+cd PaymentService
+mvn spring-boot:run
+```
+
+**Identity Service (Port 8084)**:
+
+```bash
+cd IdentityService
+mvn spring-boot:run
+```
+
+**Gateway Service (Port 8081)**:
+
+```bash
+cd GatewayService
+mvn spring-boot:run
+```
+
+**Notification Service (Port 8082)**:
+
+```bash
+cd NotificationService
+mvn spring-boot:run
+```
+
+**Gamification Service (Port 8085)**:
+
+```bash
+cd GamificationService
+mvn spring-boot:run
+```
+
+**Content Service (Port 8086)**:
+
+```bash
+cd ContentService
+mvn spring-boot:run
+```
+
+**Progress Service (Port 8087)**:
+
+```bash
+cd ProgressService
+mvn spring-boot:run
+```
+
+Progress service cũng phục vụ các endpoint `learning-analysis` cho dashboard học viên.
+
+**AI Service (Port 8088)**:
+
+```bash
+cd AIService
+mvn spring-boot:run
 ```
 
 **Tích hợp Machine Learning (Port 8000)**:
@@ -136,18 +189,38 @@ python app.py
 
 ## 6. Cấu hình biến môi trường
 
-Dự án đã cung cấp sẵn file `.env.example` trong mỗi thư mục.
+Mỗi service có bộ biến môi trường riêng, và các app Spring Boot trong repo đều có `dotenv` để nạp file `.env` nếu có.
 
-Chỉ cần sao chép và đổi tên:
+Ít nhất bạn sẽ cần chuẩn bị:
 
-- `Backend/.env.example` → `Backend/.env`
-- `Frontend/.env.example` → `Frontend/.env`
+- `Frontend/.env`
+- `IdentityService/.env`
+- `NotificationService/.env`
+- `GamificationService/.env`
+- `ContentService/.env`
+- `ProgressService/.env`
+- `AIService/.env`
 
 Sau đó cập nhật lại các giá trị cấu hình phù hợp với môi trường chạy thực tế.
 
-## 7. API Documentation (Backend)
+## 7. API Gateway & API Documentation
 
-Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy cập Swagger UI (khi chạy backend) qua cổng 8080. Một số endpoint chính:
+- `GatewayService/` là entrypoint public cho frontend.
+- `IdentityService/` xử lý auth, đăng ký, đăng nhập, OAuth2 và JWT.
+- `PaymentService/` xử lý payment/checkout/webhook.
+- `GamificationService/` xử lý shop items, inventory và leaderboards.
+- `ContentService/` xử lý grade/unit/section/lesson core, question bank, unit review, group review và semester test.
+- `ProgressService/` xử lý hoàn thành bài, progress theo unit/section/lesson.
+- `ProgressService/` cũng lưu và trả về learning analysis của học viên.
+- `ProgressService/` xử lý lịch sử làm câu hỏi (`user-question-histories`).
+- `ProgressService/` xử lý luôn `activity-calendar` của học viên.
+- `AIService/` xử lý chấm bài Writing/Speaking bằng LLM.
+- `AIService/` xử lý chấm bài Writing/Speaking và personalized questions bằng LLM.
+Hệ thống hiện không còn backend monolith; gateway route trực tiếp về các service ở trên.
+
+## 8. API Documentation
+
+Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy cập Swagger UI qua từng service tương ứng. Một số endpoint chính:
 
 - `POST /api/auth/*` - Đăng ký, đăng nhập, xác thực OAuth2.
 - `GET /api/users/*` - Quản lý thông tin và profile người dùng.
@@ -158,7 +231,7 @@ Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy
 
 ---
 
-## 8. Mô tả về Machine Learning
+## 9. Mô tả về Machine Learning
 
 Module ML được viết bằng Python/FastAPI, chịu trách nhiệm nhận dữ liệu học viên (điểm, chuỗi ngày học, tần suất, độ chính xác các kỹ năng) và trả về phân tích.
 
@@ -172,11 +245,12 @@ Module ML được viết bằng Python/FastAPI, chịu trách nhiệm nhận d�
 
 ---
 
-## 9. Deployment
+## 10. Deployment
 
 Dự án được triển khai hoàn chỉnh trên **Render** và sử dụng domain riêng:
 
 - **Hosting Platform**: Render.
+- **Gateway**: Render Web Service cho Spring Cloud Gateway.
 - **Frontend**: Render Static Site.
 - **Backend**: Render Web Service cho Java Spring Boot.
 - **ML Service**: Render Web Service .
@@ -185,7 +259,7 @@ Dự án được triển khai hoàn chỉnh trên **Render** và sử dụng do
 
 ---
 
-## 10. Các thành viên của nhóm
+## 11. Các thành viên của nhóm
 
 Phát triển bởi:
 
@@ -200,6 +274,6 @@ Phát triển bởi:
 
 ---
 
-## 11. Giấy phép sử dụng
+## 12. Giấy phép sử dụng
 
 Dự án được phân phối dưới giấy phép **MIT License**. Bạn có quyền tự do sử dụng, chỉnh sửa và phân phối mã nguồn này cho mục đích học tập và thương mại.
