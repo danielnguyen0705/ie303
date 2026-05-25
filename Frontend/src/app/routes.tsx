@@ -42,8 +42,13 @@ import { RequireAuth } from "./components/RequireAuth";
 import { Forbidden } from "./pages/Forbidden";
 import { NotFound } from "./pages/NotFound";
 import { VerifyEmail } from "./pages/VerifyEmail";
+import { OAuth2Callback } from "./pages/OAuth2Callback";
 
 export const router = createBrowserRouter([
+  {
+    path: "/oauth2/callback",
+    Component: OAuth2Callback,
+  },
   {
     path: "/verify-email",
     Component: VerifyEmail,

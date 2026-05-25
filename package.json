@@ -9,11 +9,20 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "concurrently \"npm run fe\" \"npm run be\"",
-  "fe": "cd Frontend && npm run dev",
-  "be": "cd Backend && mvn spring-boot:run",
-  "build": "cd Frontend && npm run build",
-  "preview": "cd Frontend && npm run preview"
+    "dev": "concurrently -n frontend,backend \"npm run fe\" \"npm run be\"",
+    "fe": "cd Frontend && npm run dev",
+    "be": "concurrently -n gateway,identity,payment,notification,gamification,content,progress,ai \"npm run gateway\" \"npm run identity\" \"npm run payment\" \"npm run notification\" \"npm run gamification\" \"npm run content\" \"npm run progress\" \"npm run ai\"",
+    "gateway": "cd GatewayService && mvn spring-boot:run",
+    "identity": "cd IdentityService && mvn spring-boot:run",
+    "payment": "cd PaymentService && mvn spring-boot:run",
+    "notification": "cd NotificationService && mvn spring-boot:run",
+    "gamification": "cd GamificationService && mvn spring-boot:run",
+    "content": "cd ContentService && mvn spring-boot:run",
+    "progress": "cd ProgressService && mvn spring-boot:run",
+    "ai": "cd AIService && mvn spring-boot:run",
+    "ml": "cd MLService && python app.py",
+    "build": "cd Frontend && npm run build",
+    "preview": "cd Frontend && npm run preview"
   },
   "repository": {
     "type": "git",

@@ -41,9 +41,6 @@ public class UserService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = repo.findByUsername(username);
         if (user == null) {
-            user = repo.findByEmail(username);
-        }
-        if (user == null) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
@@ -53,17 +50,5 @@ public class UserService implements UserDetailsService {
                 user.getPassword() == null ? "" : user.getPassword(),
                 List.of(new SimpleGrantedAuthority(authority))
         );
-    }
-
-    public User findByEmailOrNull(String email) {
-        return repo.findByEmail(email);
-    }
-
-    public User findByEmail(String email) {
-        User user = findByEmailOrNull(email);
-        if (user == null) {
-            throw new AppException(ErrorCode.USER_NOT_FOUND);
-        }
-        return user;
     }
 }
