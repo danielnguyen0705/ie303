@@ -16,6 +16,7 @@ public interface UserQuestionHistoryMapper {
     UserQuestionHistoryResponse toResponse(UserQuestionHistory entity);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "answeredAt", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "question", ignore = true)
     @Mapping(target = "correct", ignore = true)
@@ -23,6 +24,7 @@ public interface UserQuestionHistoryMapper {
     UserQuestionHistory toEntity(UserQuestionHistoryRequest request);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "answeredAt", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "question", ignore = true)
     @Mapping(target = "correct", ignore = true)

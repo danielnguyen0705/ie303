@@ -146,7 +146,8 @@ public class ShopItemService {
         }
 
         userItem.setQuantity(userItem.getQuantity() - 1);
-        user.setStreakItemPendingCount(user.getStreakItemPendingCount() + 1);
+        int pendingCount = user.getStreakItemPendingCount() == null ? 0 : user.getStreakItemPendingCount();
+        user.setStreakItemPendingCount(pendingCount + 1);
 
         userItemRepo.save(userItem);
         userRepo.save(user);

@@ -2,8 +2,12 @@ package com.ie303.uifive.entity;
 
 public enum SectionType {
     GETTING_STARTED,
-    THEORY,
+    LANGUAGE,
     READING,
-    PRACTICE,
-    REVIEW
+    SPEAKING,
+    LISTENING,
+    WRITING,
+    COMMUNICATION_CULTURE_CLIL,
+    LOOKING_BACK,
+    UNIT_REVISION
 }

@@ -93,15 +93,7 @@ public class UserService implements UserDetailsService {
         }
 
         String principalName = resolvePrincipalName(authentication);
-        User user = findByPrincipalName(principalName);
-        if (user == null && principalName.contains("@")) {
-            user = createOAuth2User(principalName, principalName);
-        }
-        if (user == null) {
-            throw new AppException(ErrorCode.USER_NOT_FOUND);
-        }
-
-        return user;
+        return findOrCreatePrincipalUser(principalName);
     }
 
     public User createOAuth2User(String email, String name) {
@@ -121,7 +113,7 @@ public class UserService implements UserDetailsService {
     }
 
     public User findOrCreateOAuth2User(String email, String name) {
-        User user = findByEmailOrNull(email);
+        User user = findByPrincipalName(email);
         if (user == null) {
             return createOAuth2User(email, name);
         }
@@ -239,11 +231,7 @@ public class UserService implements UserDetailsService {
     }
 
     public UserProfileResponse getMyProfile(String username) {
-        User user = repo.findByUsername(username);
-        if (user == null) {
-            throw new AppException(ErrorCode.USER_NOT_FOUND);
-        }
-
+        User user = findOrCreatePrincipalUser(username);
         return buildProfileResponse(user);
     }
 
@@ -271,6 +259,15 @@ public class UserService implements UserDetailsService {
         if (user == null) {
             user = repo.findByEmail(principalName);
         }
+        return user;
+    }
+
+    private User findOrCreatePrincipalUser(String principalName) {
+        User user = findByPrincipalName(principalName);
+        if (user == null) {
+            user = createOAuth2User(principalName, principalName);
+        }
+
         return user;
     }
 

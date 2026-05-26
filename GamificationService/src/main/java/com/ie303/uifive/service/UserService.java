@@ -1,10 +1,12 @@
 package com.ie303.uifive.service;
 
+import com.ie303.uifive.entity.Role;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,33 +25,21 @@ public class UserService implements UserDetailsService {
 
     private final UserRepo userRepo;
 
+    @Transactional
     public User getCurrentUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication() == null
-                ? null
-                : SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String principalName = authentication == null ? null : resolvePrincipalName(authentication);
 
-        if (username == null || username.isBlank()) {
+        if (principalName == null || principalName.isBlank()) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        return findByUsername(username);
-    }
-
-    public User findByUsername(String username) {
-        User user = userRepo.findByUsername(username);
-        if (user == null) {
-            throw new AppException(ErrorCode.USER_NOT_FOUND);
-        }
-        return user;
+        return findOrCreatePrincipalUser(principalName);
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepo.findByUsername(username);
-        if (user == null) {
-            throw new UsernameNotFoundException("User not found");
-        }
-
+        User user = findOrCreatePrincipalUser(username);
         List<GrantedAuthority> authorities = List.of(
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
         );
@@ -59,5 +49,47 @@ public class UserService implements UserDetailsService {
                 "",
                 authorities
         );
+    }
+
+    private User findOrCreatePrincipalUser(String principalName) {
+        User user = findByPrincipalName(principalName);
+        if (user != null) {
+            return user;
+        }
+
+        return createOAuthUser(principalName);
+    }
+
+    private User findByPrincipalName(String principalName) {
+        User user = userRepo.findByUsername(principalName);
+        if (user == null) {
+            user = userRepo.findByEmail(principalName);
+        }
+        return user;
+    }
+
+    private String resolvePrincipalName(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails userDetails) {
+            return userDetails.getUsername();
+        }
+
+        return authentication.getName();    
+    }
+
+    private User createOAuthUser(String principalName) {
+        User user = new User();
+        user.setUsername(principalName);
+        user.setEmail(principalName);
+        user.setPassword("");
+        user.setRole(Role.USER);
+        user.setCoin(0);
+        user.setExp(0);
+        user.setScore(0);
+        user.setStreak(0);
+        user.setStreakItemPendingCount(0);
+        user.setVerified(true);
+        user.setExpBoostMultiplier(1.0);
+        return userRepo.save(user);
     }
 }

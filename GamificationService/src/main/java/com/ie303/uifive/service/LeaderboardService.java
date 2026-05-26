@@ -105,7 +105,7 @@ public class LeaderboardService {
                     user.getAvatar(),
                     user.getCoin(),
                     user.getScore(),
-                    user.getStreak(),
+                    safeInt(user.getStreak()),
                     currentUser != null && user.getId().equals(currentUser.getId())
             ));
         }
@@ -181,7 +181,7 @@ public class LeaderboardService {
                     user.getUsername(),
                     user.getAvatar(),
                     user.getExp(),
-                    user.getStreak(),
+                    safeInt(user.getStreak()),
                     currentUser != null && user.getId().equals(currentUser.getId())
             ));
         }
@@ -225,6 +225,10 @@ public class LeaderboardService {
             return DEFAULT_LIMIT;
         }
         return Math.min(limit, MAX_LIMIT);
+    }
+
+    private int safeInt(Integer value) {
+        return value == null ? 0 : value;
     }
 
     private static class CollectorStats {

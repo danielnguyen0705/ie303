@@ -40,7 +40,7 @@ public class User {
     private int coin;
     private int exp;
     private int score;
-    private int streak;
+    private Integer streak = 0;
     private boolean verified = false;
 
     @Column(name = "last_study_date")
@@ -62,7 +62,7 @@ public class User {
     private LocalDateTime expBoostExpiredAt;
 
     @Column(name = "streak_item_pending_count")
-    private int streakItemPendingCount;
+    private Integer streakItemPendingCount = 0;
 
     @Column(name = "streak_checked_at")
     private LocalDate streakCheckedAt;

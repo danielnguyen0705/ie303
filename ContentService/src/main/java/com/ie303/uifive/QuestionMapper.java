@@ -12,6 +12,7 @@ public interface QuestionMapper {
 
     @Mapping(target = "lessonId", source = "lesson.id")
     @Mapping(target = "questionGroupId", source = "questionGroup.id")
+    @Mapping(target = "options", source = "options")
     QuestionResponse toResponse(Question question);
 
     @Mapping(target = "id", ignore = true)
@@ -19,6 +20,7 @@ public interface QuestionMapper {
     @Mapping(target = "questionGroup", ignore = true)
     @Mapping(target = "audioUrl", ignore = true)
     @Mapping(target = "imageUrl", ignore = true)
+    @Mapping(target = "options", ignore = true)
     Question toEntity(QuestionRequest request);
 
     @Mapping(target = "id", ignore = true)
@@ -26,5 +28,6 @@ public interface QuestionMapper {
     @Mapping(target = "questionGroup", ignore = true)
     @Mapping(target = "audioUrl", ignore = true)
     @Mapping(target = "imageUrl", ignore = true)
+    @Mapping(target = "options", ignore = true)
     void updateEntityFromRequest(QuestionRequest request, @MappingTarget Question question);
 }

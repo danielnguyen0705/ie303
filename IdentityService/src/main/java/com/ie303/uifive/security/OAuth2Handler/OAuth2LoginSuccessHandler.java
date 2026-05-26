@@ -39,11 +39,30 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
         String name = oAuth2User.getAttribute("name");
-        User user = userService.findOrCreateOAuth2User(email, name);
+        String subject = oAuth2User.getAttribute("sub");
+        String principal = resolveOAuth2Principal(email, subject, name);
+        String displayName = name == null || name.isBlank() ? principal : name;
+        User user = userService.findOrCreateOAuth2User(principal, displayName);
 
         String token = jwtService.generateToken(user);
         response.addHeader("Set-Cookie",
                 AuthCookieUtil.buildAuthCookie(token, 86400, request, cookieSecure, cookieSameSite));
         response.sendRedirect(frontendBaseUrl + "/oauth2/callback?status=success");
+    }
+
+    private String resolveOAuth2Principal(String email, String subject, String name) {
+        if (email != null && !email.isBlank()) {
+            return email.trim();
+        }
+
+        if (subject != null && !subject.isBlank()) {
+            return subject.trim();
+        }
+
+        if (name != null && !name.isBlank()) {
+            return name.trim();
+        }
+
+        return "google-user";
     }
 }

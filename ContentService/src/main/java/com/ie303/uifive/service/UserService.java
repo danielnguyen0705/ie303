@@ -24,6 +24,7 @@ public class UserService implements UserDetailsService {
 
     private final UserRepo userRepo;
 
+    @Transactional
     public User getCurrentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication() == null
                 ? null
@@ -33,20 +34,13 @@ public class UserService implements UserDetailsService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        User user = userRepo.findByUsername(username);
-        if (user == null) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        return user;
+        return findOrCreateUser(username);
     }
 
     @Override
+    @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepo.findByUsername(username);
-        if (user == null) {
-            throw new UsernameNotFoundException("User not found");
-        }
+        User user = findOrCreateUser(username);
 
         List<GrantedAuthority> authorities = List.of(
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
@@ -57,6 +51,22 @@ public class UserService implements UserDetailsService {
                 "",
                 authorities
         );
+    }
+
+    private User findOrCreateUser(String username) {
+        User user = userRepo.findByUsername(username);
+        if (user != null) {
+            return user;
+        }
+
+        return createUser(username);
+    }
+
+    private User createUser(String username) {
+        User user = new User();
+        user.setUsername(username);
+        user.setRole(Role.USER);
+        return userRepo.save(user);
     }
 
     public boolean hasVipAccess(User user) {

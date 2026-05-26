@@ -20,11 +20,13 @@ public interface GroupReviewMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "grade", ignore = true)
     @Mapping(target = "questions", ignore = true)
+    @Mapping(target = "questionGroups", ignore = true)
     GroupReview toEntity(GroupReviewRequest request);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "grade", ignore = true)
     @Mapping(target = "questions", ignore = true)
+    @Mapping(target = "questionGroups", ignore = true)
     void updateEntityFromRequest(GroupReviewRequest request, @MappingTarget GroupReview entity);
 
     @org.mapstruct.Named("mapQuestions")
