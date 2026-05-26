@@ -32,11 +32,7 @@ import { ContentManagement } from "./pages/admin/ContentManagement";
 import { QuestionBank } from "./pages/admin/QuestionBank";
 // Unit/Group admin pages removed; use Lesson with isReviewLesson
 import { SemesterTests } from "./pages/SemesterTests";
-import { Reports } from "./pages/admin/Reports";
-import { VIPManagement } from "./pages/admin/VIPManagement";
 import { PaymentOffers } from "./pages/admin/PaymentOffers";
-import { Notifications } from "./pages/admin/Notifications";
-import { Settings } from "./pages/admin/Settings";
 import { ShopManagement } from "./pages/admin/ShopManagement";
 import { RequireAuth } from "./components/RequireAuth";
 import { Forbidden } from "./pages/Forbidden";
@@ -101,12 +97,8 @@ export const router = createBrowserRouter([
           { path: "questions", Component: QuestionBank },
           // Unit/Group review admin pages removed (use Lesson with isReviewLesson)
           { path: "semester-tests", Component: SemesterTests },
-          { path: "reports", Component: Reports },
-          { path: "vip", Component: VIPManagement },
           { path: "payments", Component: PaymentOffers },
           { path: "shop", Component: ShopManagement },
-          { path: "notifications", Component: Notifications },
-          { path: "settings", Component: Settings },
           { path: "*", Component: NotFound },
         ],
       },

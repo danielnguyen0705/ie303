@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Bell, Send, Users, Loader2, CheckCircle } from 'lucide-react';
 import { adminApi } from '@/api';
+import { NotificationPopup } from '@/utils/NotificationPopup';
+import { useNotificationPopup } from '@/utils/useNotificationPopup';
 
 export function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -11,6 +13,10 @@ export function Notifications() {
     title: '',
     message: '',
     targetUsers: 'all' as 'all' | 'vip' | 'active',
+  });
+  const popup = useNotificationPopup({
+    autoClose: true,
+    autoCloseDuration: 2200,
   });
 
   useEffect(() => {
@@ -39,7 +45,11 @@ export function Notifications() {
     e.preventDefault();
 
     if (!formData.title || !formData.message) {
-      alert('Please fill in all fields');
+      popup.warning({
+        title: 'Missing information',
+        message: 'Please fill in all fields',
+        showCancelButton: false,
+      });
       return;
     }
 
@@ -52,13 +62,27 @@ export function Notifications() {
       });
 
       if (response.success) {
-        alert('Notification sent successfully!');
+        popup.success({
+          title: 'Sent successfully',
+          message: 'Notification sent successfully.',
+          showCancelButton: false,
+        });
         setFormData({ title: '', message: '', targetUsers: 'all' });
         loadNotifications();
+      } else {
+        popup.error({
+          title: 'Send failed',
+          message: response.error?.message ?? 'Failed to send notification',
+          showCancelButton: false,
+        });
       }
     } catch (err) {
       console.error('Error sending notification:', err);
-      alert('Failed to send notification');
+      popup.error({
+        title: 'Send failed',
+        message: 'Failed to send notification',
+        showCancelButton: false,
+      });
     } finally {
       setSending(false);
     }
@@ -205,6 +229,7 @@ export function Notifications() {
           </div>
         </div>
       </div>
+      <NotificationPopup {...popup.notification} onClose={popup.close} />
     </div>
   );
 }

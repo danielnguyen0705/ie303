@@ -1,369 +1,254 @@
-// Admin User Management API
+import { createError, request } from "../utils/http";
+import type { AdminApiResponse } from "./types";
 
-import { adminUsers, getUserStatsSummary, getAdminUserById } from '@/data/mockDataAdmin';
-import { simulateApiCall, createErrorResponse } from '../client';
-import type { AdminApiResponse, PaginatedAdminResponse, UserFilter, CreateUserRequest, UpdateUserRequest } from './types';
-import type { AdminUser } from '@/data/mockDataAdmin';
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  role: "USER" | "ADMIN" | string;
+  status: "active" | "inactive";
+  vipStatus: "free" | "premium";
+  level: number;
+  xp: number;
+  coins: number;
+  streak: number;
+  joinedDate: string;
+  lastActive: string;
+}
 
-/**
- * Get all users with pagination
- */
-export async function getAllUsers(
-  params?: {
-    filter?: UserFilter;
-    page?: number;
-    pageSize?: number;
-    sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
-    vipStatus?: 'free' | 'premium' | 'elite';
-    role?: string;
-    status?: string;
-    searchTerm?: string;
-  }
-): Promise<AdminApiResponse<PaginatedAdminResponse<AdminUser>>> {
-  const page = params?.page || 1;
-  const pageSize = params?.pageSize || 20;
-  let filteredUsers = [...adminUsers];
+export interface PaginatedAdminResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
 
-  // Apply filters from params or from filter object
-  const filter = params?.filter || params;
-  
-  if (filter?.role) {
-    filteredUsers = filteredUsers.filter(u => u.role === filter.role);
-  }
-  if (filter?.status) {
-    filteredUsers = filteredUsers.filter(u => u.status === filter.status);
-  }
-  if (filter?.vipStatus || params?.vipStatus) {
-    const vipStatus = filter?.vipStatus || params?.vipStatus;
-    filteredUsers = filteredUsers.filter(u => u.vipStatus === vipStatus);
-  }
-  if (filter?.searchTerm || params?.searchTerm) {
-    const term = (filter?.searchTerm || params?.searchTerm || '').toLowerCase();
-    filteredUsers = filteredUsers.filter(
-      u =>
-        u.name.toLowerCase().includes(term) ||
-        u.email.toLowerCase().includes(term)
+type RawUser = {
+  id: number | string;
+  username?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  coin?: number;
+  coins?: number;
+  exp?: number;
+  score?: number;
+  streak?: number;
+  vipExpiredAt?: string | null;
+  createdAt?: string;
+  lastStudyDate?: string | null;
+};
+
+type UserQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  searchTerm?: string;
+  vipStatus?: "free" | "premium";
+  role?: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+};
+
+function isVipActive(vipExpiredAt?: string | null): boolean {
+  return Boolean(vipExpiredAt && new Date(vipExpiredAt).getTime() > Date.now());
+}
+
+function mapUser(user: RawUser): AdminUser {
+  const name = user.username ?? user.name ?? "Unnamed user";
+  const vipActive = isVipActive(user.vipExpiredAt);
+
+  return {
+    id: String(user.id),
+    name,
+    email: user.email ?? "",
+    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+    role: user.role ?? "USER",
+    status: "active",
+    vipStatus: vipActive ? "premium" : "free",
+    level: Math.max(1, Math.floor((user.exp ?? user.score ?? 0) / 300) + 1),
+    xp: user.exp ?? user.score ?? 0,
+    coins: user.coin ?? user.coins ?? 0,
+    streak: user.streak ?? 0,
+    joinedDate: user.createdAt ?? "",
+    lastActive: user.lastStudyDate ?? user.createdAt ?? "",
+  };
+}
+
+function applyClientFilters(users: AdminUser[], params?: UserQuery): AdminUser[] {
+  let result = [...users];
+  const term = (params?.searchTerm ?? params?.search ?? "").trim().toLowerCase();
+
+  if (term) {
+    result = result.filter(
+      (user) =>
+        user.name.toLowerCase().includes(term) ||
+        user.email.toLowerCase().includes(term),
     );
   }
 
-  // Apply sorting
+  if (params?.vipStatus) {
+    result = result.filter((user) => user.vipStatus === params.vipStatus);
+  }
+
+  if (params?.role) {
+    result = result.filter((user) => user.role === params.role);
+  }
+
   if (params?.sortBy) {
-    filteredUsers.sort((a, b) => {
-      const aVal = a[params.sortBy as keyof AdminUser];
-      const bVal = b[params.sortBy as keyof AdminUser];
-      const order = params.sortOrder === 'desc' ? -1 : 1;
-      
-      if (typeof aVal === 'string' && typeof bVal === 'string') {
-        return aVal.localeCompare(bVal) * order;
+    result.sort((a, b) => {
+      const left = a[params.sortBy as keyof AdminUser];
+      const right = b[params.sortBy as keyof AdminUser];
+      const order = params.sortOrder === "desc" ? -1 : 1;
+
+      if (typeof left === "number" && typeof right === "number") {
+        return (left - right) * order;
       }
-      if (typeof aVal === 'number' && typeof bVal === 'number') {
-        return (aVal - bVal) * order;
-      }
-      return 0;
+
+      return String(left ?? "").localeCompare(String(right ?? "")) * order;
     });
   }
 
-  // Pagination
+  return result;
+}
+
+export async function getAllUsers(
+  params?: UserQuery,
+): Promise<AdminApiResponse<PaginatedAdminResponse<AdminUser>>> {
+  const page = params?.page ?? 1;
+  const pageSize = params?.pageSize ?? 20;
+  const response = await request<RawUser[]>("/users", { method: "GET" });
+
+  if (!response.success || !response.data) {
+    return response as AdminApiResponse<PaginatedAdminResponse<AdminUser>>;
+  }
+
+  const filteredUsers = applyClientFilters(response.data.map(mapUser), params);
   const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const paginatedData = filteredUsers.slice(start, end);
+  const data = filteredUsers.slice(start, start + pageSize);
 
-  return simulateApiCall({
-    data: paginatedData,
-    total: filteredUsers.length,
-    page,
-    pageSize,
-    hasMore: end < filteredUsers.length,
-  });
+  return {
+    success: true,
+    data: {
+      data,
+      total: filteredUsers.length,
+      page,
+      pageSize,
+      hasMore: start + pageSize < filteredUsers.length,
+    },
+  };
 }
 
-/**
- * Get single user by ID
- */
 export async function getUser(userId: string): Promise<AdminApiResponse<AdminUser>> {
-  const user = getAdminUserById(userId);
-  
-  if (!user) {
-    return createErrorResponse('User not found', 'NOT_FOUND');
+  if (!userId) {
+    return createError("User id is required", "VALIDATION_ERROR");
   }
 
-  return simulateApiCall(user);
-}
+  const response = await request<RawUser>(`/users/${userId}`, { method: "GET" });
 
-/**
- * Create new user
- */
-export async function createUser(data: CreateUserRequest): Promise<AdminApiResponse<AdminUser>> {
-  // Validate
-  if (!data.email || !data.password || !data.name) {
-    return createErrorResponse('All fields are required', 'VALIDATION_ERROR');
+  if (!response.success || !response.data) {
+    return response as AdminApiResponse<AdminUser>;
   }
 
-  const newUser: AdminUser = {
-    id: `user-${Date.now()}`,
-    name: data.name,
-    email: data.email,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
-    role: data.role,
-    status: 'active',
-    vipStatus: 'free',
-    level: 1,
-    xp: 0,
-    coins: 0,
-    streak: 0,
-    accuracy: 0,
-    joinedDate: new Date().toISOString().split('T')[0],
-    lastActive: new Date().toISOString(),
-    totalLessonsCompleted: 0,
-    totalTestsTaken: 0,
-    averageScore: 0,
+  return {
+    success: true,
+    data: mapUser(response.data),
   };
-
-  return simulateApiCall(newUser);
 }
 
-/**
- * Update user
- */
-export async function updateUser(
-  userId: string,
-  data: UpdateUserRequest
-): Promise<AdminApiResponse<AdminUser>> {
-  const user = getAdminUserById(userId);
-  
-  if (!user) {
-    return createErrorResponse('User not found', 'NOT_FOUND');
+export async function deleteUser(
+  params: { userId: string } | string,
+): Promise<AdminApiResponse<boolean>> {
+  const userId = typeof params === "string" ? params : params.userId;
+
+  if (!userId) {
+    return createError("User id is required", "VALIDATION_ERROR");
   }
 
-  const updatedUser: AdminUser = {
-    ...user,
-    ...data,
-  };
+  const response = await request<string>(`/users/${userId}`, { method: "DELETE" });
 
-  return simulateApiCall(updatedUser);
-}
-
-/**
- * Delete user
- */
-export async function deleteUser(params: { userId: string } | string): Promise<AdminApiResponse<boolean>> {
-  // Support both param object and direct string for backward compatibility
-  const userId = typeof params === 'string' ? params : params.userId;
-  const user = getAdminUserById(userId);
-  
-  if (!user) {
-    return createErrorResponse('User not found', 'NOT_FOUND');
+  if (!response.success) {
+    return response as AdminApiResponse<boolean>;
   }
 
-  return simulateApiCall(true, 1000);
+  return { success: true, data: true };
 }
 
-/**
- * Suspend user
- */
-export async function suspendUser(
-  userId: string,
-  reason: string
-): Promise<AdminApiResponse<AdminUser>> {
-  const user = getAdminUserById(userId);
-  
-  if (!user) {
-    return createErrorResponse('User not found', 'NOT_FOUND');
-  }
-
-  const suspendedUser: AdminUser = {
-    ...user,
-    status: 'suspended',
-  };
-
-  return simulateApiCall(suspendedUser);
-}
-
-/**
- * Activate user
- */
-export async function activateUser(userId: string): Promise<AdminApiResponse<AdminUser>> {
-  const user = getAdminUserById(userId);
-  
-  if (!user) {
-    return createErrorResponse('User not found', 'NOT_FOUND');
-  }
-
-  const activatedUser: AdminUser = {
-    ...user,
-    status: 'active',
-  };
-
-  return simulateApiCall(activatedUser);
-}
-
-/**
- * Get user statistics summary
- */
 export async function getUserStats(): Promise<
-  AdminApiResponse<ReturnType<typeof getUserStatsSummary>>
-> {
-  const stats = getUserStatsSummary();
-  return simulateApiCall(stats);
-}
-
-/**
- * Get user activity log
- */
-export async function getUserActivityLog(
-  userId: string,
-  limit: number = 50
-): Promise<
-  AdminApiResponse<
-    Array<{
-      id: string;
-      action: string;
-      timestamp: string;
-      details: string;
-    }>
-  >
-> {
-  return simulateApiCall([
-    {
-      id: 'log-001',
-      action: 'Completed lesson',
-      timestamp: '2026-04-07T14:30:00Z',
-      details: 'Lesson: Present Simple, Score: 92%',
-    },
-    {
-      id: 'log-002',
-      action: 'Took test',
-      timestamp: '2026-04-06T16:20:00Z',
-      details: 'Test: Unit 1 Final, Score: 96%',
-    },
-  ].slice(0, limit));
-}
-
-/**
- * Bulk update users
- */
-export async function bulkUpdateUsers(
-  userIds: string[],
-  updates: UpdateUserRequest
-): Promise<
   AdminApiResponse<{
-    updated: number;
-    failed: number;
-    errors: Array<{ userId: string; error: string }>;
+    total: number;
+    active: number;
+    vip: number;
+    admins: number;
   }>
 > {
-  return simulateApiCall(
-    {
-      updated: userIds.length,
-      failed: 0,
-      errors: [],
-    },
-    1500
-  );
-}
+  const response = await getAllUsers({ page: 1, pageSize: Number.MAX_SAFE_INTEGER });
 
-/**
- * Bulk delete users
- */
-export async function bulkDeleteUsers(
-  userIds: string[]
-): Promise<
-  AdminApiResponse<{
-    deleted: number;
-    failed: number;
-    errors: Array<{ userId: string; error: string }>;
-  }>
-> {
-  return simulateApiCall(
-    {
-      deleted: userIds.length,
-      failed: 0,
-      errors: [],
-    },
-    2000
-  );
-}
-
-/**
- * Export users
- */
-export async function exportUsers(
-  filter?: UserFilter,
-  format: 'csv' | 'json' | 'xlsx' = 'csv'
-): Promise<
-  AdminApiResponse<{
-    fileUrl: string;
-    fileName: string;
-    totalRecords: number;
-  }>
-> {
-  return simulateApiCall(
-    {
-      fileUrl: `/exports/users-${Date.now()}.${format}`,
-      fileName: `users-export-${new Date().toISOString().split('T')[0]}.${format}`,
-      totalRecords: adminUsers.length,
-    },
-    2000
-  );
-}
-
-/**
- * Get user learning path
- */
-export async function getUserLearningPath(userId: string): Promise<
-  AdminApiResponse<{
-    completedUnits: number[];
-    currentUnits: number[];
-    recommendedNext: number[];
-    strengths: string[];
-    weaknesses: string[];
-  }>
-> {
-  return simulateApiCall({
-    completedUnits: [1, 2],
-    currentUnits: [3],
-    recommendedNext: [4],
-    strengths: ['Grammar', 'Vocabulary'],
-    weaknesses: ['Listening', 'Speaking'],
-  });
-}
-
-/**
- * Reset user password
- */
-export async function resetUserPassword(
-  userId: string
-): Promise<
-  AdminApiResponse<{
-    temporaryPassword: string;
-    expiresAt: string;
-  }>
-> {
-  return simulateApiCall({
-    temporaryPassword: 'Temp123!@#',
-    expiresAt: new Date(Date.now() + 86400000).toISOString(), // 24 hours
-  });
-}
-
-/**
- * Assign VIP status
- */
-export async function assignVIPStatus(
-  userId: string,
-  vipStatus: 'premium' | 'elite',
-  duration: number // months
-): Promise<AdminApiResponse<AdminUser>> {
-  const user = getAdminUserById(userId);
-  
-  if (!user) {
-    return createErrorResponse('User not found', 'NOT_FOUND');
+  if (!response.success || !response.data) {
+    return response as unknown as AdminApiResponse<{
+      total: number;
+      active: number;
+      vip: number;
+      admins: number;
+    }>;
   }
 
-  const updatedUser: AdminUser = {
-    ...user,
-    vipStatus,
-  };
+  const users = response.data.data;
 
-  return simulateApiCall(updatedUser);
+  return {
+    success: true,
+    data: {
+      total: response.data.total,
+      active: users.filter((user) => user.status === "active").length,
+      vip: users.filter((user) => user.vipStatus !== "free").length,
+      admins: users.filter((user) => user.role === "ADMIN").length,
+    },
+  };
+}
+
+export async function createUser(): Promise<AdminApiResponse<never>> {
+  return createError("Admin user creation is not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function updateUser(): Promise<AdminApiResponse<never>> {
+  return createError("Admin user updates are not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function suspendUser(): Promise<AdminApiResponse<never>> {
+  return createError("User suspension is not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function activateUser(): Promise<AdminApiResponse<never>> {
+  return createError("User activation is not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function getUserActivityLog(): Promise<AdminApiResponse<never>> {
+  return createError("User activity logs are not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function bulkUpdateUsers(): Promise<AdminApiResponse<never>> {
+  return createError("Bulk user updates are not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function bulkDeleteUsers(): Promise<AdminApiResponse<never>> {
+  return createError("Bulk user deletion is not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function exportUsers(): Promise<AdminApiResponse<never>> {
+  return createError("User export is not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function getUserLearningPath(): Promise<AdminApiResponse<never>> {
+  return createError("User learning path is not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function resetUserPassword(): Promise<AdminApiResponse<never>> {
+  return createError("Password reset is not supported by the current backend contract", "UNSUPPORTED");
+}
+
+export async function assignVIPStatus(): Promise<AdminApiResponse<never>> {
+  return createError("VIP assignment is handled through payment offers/transactions", "UNSUPPORTED");
 }

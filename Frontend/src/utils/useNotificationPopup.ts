@@ -85,7 +85,7 @@ export const useNotificationPopup = (
     (params: Omit<NotificationParams, "type">) => {
       show({
         ...params,
-        type: "info",
+        type: "warning",
         showCancelButton: true,
         autoClose: false,
       });

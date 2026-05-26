@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Save, Loader2, CheckCircle } from 'lucide-react';
 import { adminApi } from '@/api';
+import { NotificationPopup } from '@/utils/NotificationPopup';
+import { useNotificationPopup } from '@/utils/useNotificationPopup';
 
 export function Settings() {
   const [settings, setSettings] = useState({
@@ -17,6 +19,10 @@ export function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const popup = useNotificationPopup({
+    autoClose: true,
+    autoCloseDuration: 2200,
+  });
 
   useEffect(() => {
     loadSettings();
@@ -51,10 +57,20 @@ export function Settings() {
       if (response.success) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        popup.error({
+          title: 'Save failed',
+          message: response.error?.message ?? 'Failed to save settings',
+          showCancelButton: false,
+        });
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings');
+      popup.error({
+        title: 'Save failed',
+        message: 'Failed to save settings',
+        showCancelButton: false,
+      });
     } finally {
       setSaving(false);
     }
@@ -235,6 +251,7 @@ export function Settings() {
           </div>
         </div>
       </form>
+      <NotificationPopup {...popup.notification} onClose={popup.close} />
     </div>
   );
 }
