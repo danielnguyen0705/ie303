@@ -67,7 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String username = jwtService.extractUsername(token);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null) {
                 UserDetails userDetails = userService.loadUserByUsername(username);
 
                 if (jwtService.isTokenValid(token, userDetails.getUsername())) {
@@ -83,6 +83,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
+            SecurityContextHolder.clearContext();
             response.setHeader("Set-Cookie", "token=" + cookieAttributes(0));
         }
 

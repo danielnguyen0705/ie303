@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,13 +23,20 @@ public class AuthController {
     private final AuthService authService;
     private final UserService userService;
 
+    @Value("${app.cookie-secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-same-site:Lax}")
+    private String cookieSameSite;
+
     @PostMapping("/login")
     @PermitAll
     public ApiResponse<String> login(@RequestBody @Valid LoginRequest request,
                                      HttpServletRequest httpRequest,
                                      HttpServletResponse response) {
         String token = authService.login(request);
-        response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie(token, 86400, httpRequest));
+        response.addHeader("Set-Cookie",
+                AuthCookieUtil.buildAuthCookie(token, 86400, httpRequest, cookieSecure, cookieSameSite));
 
         return ApiResponse.<String>builder()
                 .code(1000)
@@ -60,7 +68,8 @@ public class AuthController {
     @PermitAll
     public ApiResponse<String> logout(HttpServletRequest httpRequest,
                                       HttpServletResponse response) {
-        response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie("", 0, httpRequest));
+        response.addHeader("Set-Cookie",
+                AuthCookieUtil.buildAuthCookie("", 0, httpRequest, cookieSecure, cookieSameSite));
 
         return ApiResponse.<String>builder()
                 .code(1000)

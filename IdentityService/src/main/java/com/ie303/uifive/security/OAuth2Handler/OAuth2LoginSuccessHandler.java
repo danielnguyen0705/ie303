@@ -26,21 +26,24 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.frontend-base-url:http://localhost:5173}")
     private String frontendBaseUrl;
 
+    @Value("${app.cookie-secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-same-site:Lax}")
+    private String cookieSameSite;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
-
-        User user = userService.findByEmailOrNull(email);
-        if (user == null) {
-            String name = oAuth2User.getAttribute("name");
-            user = userService.createOAuth2User(email, name);
-        }
+        String name = oAuth2User.getAttribute("name");
+        User user = userService.findOrCreateOAuth2User(email, name);
 
         String token = jwtService.generateToken(user);
-        response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie(token, 86400, request));
+        response.addHeader("Set-Cookie",
+                AuthCookieUtil.buildAuthCookie(token, 86400, request, cookieSecure, cookieSameSite));
         response.sendRedirect(frontendBaseUrl + "/oauth2/callback?status=success");
     }
 }

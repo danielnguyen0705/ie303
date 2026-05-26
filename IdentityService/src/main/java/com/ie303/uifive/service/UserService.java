@@ -16,12 +16,14 @@ import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import feign.FeignException;
 
@@ -84,13 +86,17 @@ public class UserService implements UserDetailsService {
     }
 
     public User getCurrentUser() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication.getName() == null) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        User user = repo.findByUsername(authentication.getName());
+        String principalName = resolvePrincipalName(authentication);
+        User user = findByPrincipalName(principalName);
+        if (user == null && principalName.contains("@")) {
+            user = createOAuth2User(principalName, principalName);
+        }
         if (user == null) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
@@ -116,7 +122,21 @@ public class UserService implements UserDetailsService {
 
     public User findOrCreateOAuth2User(String email, String name) {
         User user = findByEmailOrNull(email);
-        return user != null ? user : createOAuth2User(email, name);
+        if (user == null) {
+            return createOAuth2User(email, name);
+        }
+
+        boolean updated = false;
+        if (user.getRole() == null) {
+            user.setRole(Role.USER);
+            updated = true;
+        }
+
+        if (updated) {
+            user = repo.save(user);
+        }
+
+        return user;
     }
 
     public UserResponse getById(Long id) {
@@ -237,12 +257,42 @@ public class UserService implements UserDetailsService {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
-        String authority = "ROLE_" + user.getRole().name();
+        Role role = user.getRole() == null ? Role.USER : user.getRole();
+        String authority = "ROLE_" + role.name();
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword() == null ? "" : user.getPassword(),
                 List.of(new SimpleGrantedAuthority(authority))
         );
+    }
+
+    private User findByPrincipalName(String principalName) {
+        User user = repo.findByUsername(principalName);
+        if (user == null) {
+            user = repo.findByEmail(principalName);
+        }
+        return user;
+    }
+
+    private String resolvePrincipalName(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails userDetails) {
+            return userDetails.getUsername();
+        }
+
+        if (principal instanceof OAuth2User oAuth2User) {
+            String email = oAuth2User.getAttribute("email");
+            if (email != null && !email.isBlank()) {
+                return email;
+            }
+
+            String name = oAuth2User.getAttribute("name");
+            if (name != null && !name.isBlank()) {
+                return name;
+            }
+        }
+
+        return authentication.getName();
     }
 
     private UserResponse toUserResponse(User user) {

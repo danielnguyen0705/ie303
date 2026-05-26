@@ -13,8 +13,16 @@ public final class AuthCookieUtil {
     }
 
     public static String buildAuthCookie(String token, int maxAgeSeconds, HttpServletRequest request) {
-        boolean secure = isSecureRequest(request);
-        String sameSite = secure ? "None" : "Lax";
+        return buildAuthCookie(token, maxAgeSeconds, request, false, "Lax");
+    }
+
+    public static String buildAuthCookie(String token,
+                                         int maxAgeSeconds,
+                                         HttpServletRequest request,
+                                         boolean configuredSecure,
+                                         String configuredSameSite) {
+        boolean secure = configuredSecure || isSecureRequest(request);
+        String sameSite = resolveSameSite(secure, configuredSameSite);
 
         return ResponseCookie.from(COOKIE_NAME, token == null ? "" : token)
                 .httpOnly(true)
@@ -37,5 +45,26 @@ public final class AuthCookieUtil {
 
         String forwardedProto = request.getHeader("X-Forwarded-Proto");
         return "https".equalsIgnoreCase(forwardedProto);
+    }
+
+    private static String resolveSameSite(boolean secure, String configuredSameSite) {
+        if (secure) {
+            return "None";
+        }
+
+        if (configuredSameSite == null || configuredSameSite.isBlank()) {
+            return "Lax";
+        }
+
+        String normalized = configuredSameSite.trim();
+        if ("None".equalsIgnoreCase(normalized)) {
+            return "Lax";
+        }
+
+        if ("Strict".equalsIgnoreCase(normalized)) {
+            return "Strict";
+        }
+
+        return "Lax";
     }
 }

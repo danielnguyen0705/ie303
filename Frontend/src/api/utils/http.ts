@@ -101,7 +101,7 @@ export async function request<T>(
             data: data as T,
           };
 
-    if (shouldUseCache && cacheOptions?.key) {
+    if (shouldUseCache && cacheOptions?.key && res.ok) {
       writeCache(
         cacheOptions.key,
         response,

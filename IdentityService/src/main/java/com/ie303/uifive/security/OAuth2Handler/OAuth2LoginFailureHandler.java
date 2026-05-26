@@ -4,6 +4,7 @@ import com.ie303.uifive.security.AuthCookieUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
@@ -15,8 +16,14 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
-    @org.springframework.beans.factory.annotation.Value("${app.frontend-base-url:http://localhost:5173}")
+    @Value("${app.frontend-base-url:http://localhost:5173}")
     private String frontendBaseUrl;
+
+    @Value("${app.cookie-secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie-same-site:Lax}")
+    private String cookieSameSite;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request,
@@ -24,7 +31,8 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
                                         AuthenticationException exception)
             throws IOException, ServletException {
 
-        response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie("", 0, request));
+        response.addHeader("Set-Cookie",
+                AuthCookieUtil.buildAuthCookie("", 0, request, cookieSecure, cookieSameSite));
 
         String redirectUrl = frontendBaseUrl + "/oauth2/callback?status=error&error="
                 + URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8);

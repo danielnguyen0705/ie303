@@ -11,6 +11,7 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +31,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/me")
-    @RolesAllowed({"USER", "ADMIN"})
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<UserProfileResponse> getMyProfile(Authentication authentication) {
         return ApiResponse.<UserProfileResponse>builder()
                 .code(1000)
@@ -39,7 +40,7 @@ public class UserController {
     }
 
     @PutMapping("/me/change-password")
-    @RolesAllowed({"USER", "ADMIN"})
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<String> changePassword(@RequestBody @Valid ChangePasswordRequest request,
                                               Authentication authentication) {
         userService.changePassword(authentication.getName(), request);
@@ -52,7 +53,7 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    @RolesAllowed({"USER", "ADMIN"})
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<UserProfileResponse> updateProfile(@RequestBody @Valid UpdateUserProfileRequest request,
                                                           Authentication authentication) {
         return ApiResponse.<UserProfileResponse>builder()

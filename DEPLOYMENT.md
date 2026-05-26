@@ -55,6 +55,9 @@ Kết nối thư mục `IdentityService/` với Render:
 - `FRONTEND_BASE_URL=https://uifive.io.vn`
 - `BACKEND_PUBLIC_BASE_URL=<your-render-gateway-url>`
 - `CORS_ALLOWED_ORIGINS=https://uifive.io.vn`
+- `APP_COOKIE_SECURE=true`
+- `APP_COOKIE_SAME_SITE=None`
+- Google OAuth authorized redirect URI must include the backend callback, for example `http://localhost:8081/login/oauth2/code/google` locally or `https://<gateway-domain>/login/oauth2/code/google` in production
 - `NOTIFICATION_SERVICE_BASE_URL=<your-notification-service-url>`
 - `PORT=8084`
 
@@ -95,6 +98,7 @@ Kết nối thư mục `ContentService/` với Render:
 **Biến môi trường cần thiết**:
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
 - `JWT_SECRET`, `JWT_EXPIRATION`
+- `JPA_DDL_AUTO=none` - leave this as `none` when using a pooled PostgreSQL URL; set to `update` only if you really want Hibernate to manage schema on startup
 - `FRONTEND_BASE_URL=https://uifive.io.vn`
 - `BACKEND_PUBLIC_BASE_URL=<your-render-gateway-url>`
 - `CORS_ALLOWED_ORIGINS=https://uifive.io.vn`

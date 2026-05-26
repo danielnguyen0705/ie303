@@ -215,9 +215,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    if (!initialStoredUser) {
+      setLoading(false);
+      setIsReady(true);
+      return;
+    }
+
     void loadCurrentUser(false, {
       setLoading: false,
-      preserveExistingUser: Boolean(initialStoredUser),
+      preserveExistingUser: false,
     }).finally(() => {
       setLoading(false);
       setIsReady(true);

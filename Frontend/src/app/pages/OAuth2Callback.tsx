@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { clearCache } from "@/api/utils/cache";
 
 function getSafeRedirectTarget(value: string | null): string {
   if (!value) {
@@ -30,6 +31,8 @@ export function OAuth2Callback() {
     const run = async () => {
       const status = searchParams.get("status");
       const target = getSafeRedirectTarget(searchParams.get("returnTo"));
+
+      clearCache();
 
       if (status && status !== "success") {
         setState("error");
