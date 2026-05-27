@@ -12,6 +12,9 @@ import com.ie303.uifive.repo.QuestTemplateRepo;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -31,21 +34,35 @@ public class QuestTemplateService {
         }
     }
 
+    @Cacheable(cacheNames = "quest-templates-all")
     public List<QuestTemplateEntity> getAllTemplates() {
         seedDefaults();
         return questTemplateRepo.findAllByOrderByQuestPeriodAscSortOrderAsc();
     }
 
+    @Cacheable(cacheNames = "quest-templates-active", key = "#period")
     public List<QuestTemplateEntity> getActiveTemplates(QuestPeriod period) {
         seedDefaults();
         return questTemplateRepo.findByActiveTrueAndQuestPeriodOrderBySortOrderAsc(period);
     }
 
+    @Cacheable(cacheNames = "quest-templates-by-id", key = "#id")
     public QuestTemplateEntity getById(Long id) {
         return questTemplateRepo.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Quest template not found"));
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = {
+                    "quest-templates-all",
+                    "quest-templates-active",
+                    "quest-templates-by-id",
+                    "daily-quests",
+                    "daily-quest-by-id",
+                    "daily-quest-stats",
+                    "quest-badges"
+            }, allEntries = true)
+    })
     public QuestTemplateEntity create(QuestTemplateRequest request) {
         validate(request);
 
@@ -54,6 +71,17 @@ public class QuestTemplateService {
         return questTemplateRepo.save(template);
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = {
+                    "quest-templates-all",
+                    "quest-templates-active",
+                    "quest-templates-by-id",
+                    "daily-quests",
+                    "daily-quest-by-id",
+                    "daily-quest-stats",
+                    "quest-badges"
+            }, allEntries = true)
+    })
     public QuestTemplateEntity update(Long id, QuestTemplateRequest request) {
         validate(request);
 
@@ -62,6 +90,17 @@ public class QuestTemplateService {
         return questTemplateRepo.save(template);
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = {
+                    "quest-templates-all",
+                    "quest-templates-active",
+                    "quest-templates-by-id",
+                    "daily-quests",
+                    "daily-quest-by-id",
+                    "daily-quest-stats",
+                    "quest-badges"
+            }, allEntries = true)
+    })
     public void deactivate(Long id) {
         QuestTemplateEntity template = getById(id);
         template.setActive(false);

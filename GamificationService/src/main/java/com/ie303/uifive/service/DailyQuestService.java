@@ -23,6 +23,9 @@ import com.ie303.uifive.repo.UserItemRepo;
 import com.ie303.uifive.repo.UserRepo;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -52,6 +55,7 @@ public class DailyQuestService {
     private final UserService userService;
     private final JdbcTemplate jdbcTemplate;
 
+    @Cacheable(cacheNames = "daily-quests", key = "#root.target.currentQuestCacheKey()")
     public List<DailyQuestResponse> getMyDailyQuests() {
         User user = userService.getCurrentUser();
         return ensureCurrentQuests(user).stream()
@@ -59,6 +63,7 @@ public class DailyQuestService {
                 .toList();
     }
 
+    @Cacheable(cacheNames = "daily-quest-by-id", key = "#root.target.questByIdCacheKey(#questId)")
     public DailyQuestResponse getQuest(Long questId) {
         User user = userService.getCurrentUser();
         DailyQuest quest = dailyQuestRepo.findByIdAndUserId(questId, user.getId())
@@ -67,6 +72,21 @@ public class DailyQuestService {
         return toResponse(quest);
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = {
+                    "daily-quests",
+                    "daily-quest-by-id",
+                    "daily-quest-stats",
+                    "quest-badges",
+                    "leaderboard-coins",
+                    "leaderboard-collectors",
+                    "leaderboard-exp",
+                    "shop-items-all",
+                    "shop-items-active",
+                    "shop-items-by-id",
+                    "shop-items-my-items"
+            }, allEntries = true)
+    })
     public DailyQuestClaimResponse claimQuest(Long questId) {
         User user = userService.getCurrentUser();
         DailyQuest quest = dailyQuestRepo.findByIdAndUserId(questId, user.getId())
@@ -102,6 +122,7 @@ public class DailyQuestService {
         );
     }
 
+    @Cacheable(cacheNames = "daily-quest-stats", key = "#root.target.currentUserCacheKey()")
     public DailyQuestStatsResponse getQuestStats() {
         User user = userService.getCurrentUser();
         List<DailyQuest> quests = dailyQuestRepo.findByUserIdAndClaimedAtIsNotNullOrderByClaimedAtAsc(user.getId());
@@ -134,6 +155,7 @@ public class DailyQuestService {
         );
     }
 
+    @Cacheable(cacheNames = "quest-badges", key = "#root.target.currentUserCacheKey()")
     public List<QuestBadgeResponse> getBadges() {
         User user = userService.getCurrentUser();
         List<DailyQuest> claimedQuests = dailyQuestRepo.findByUserIdAndClaimedAtIsNotNullOrderByClaimedAtAsc(user.getId());
@@ -204,6 +226,22 @@ public class DailyQuestService {
                         findUnlockTimeByCumulative(claimedQuests, 1000, false)
                 )
         );
+    }
+
+    public String currentUserCacheKey() {
+        User user = userService.getCurrentUser();
+        return String.valueOf(user.getId());
+    }
+
+    public String currentQuestCacheKey() {
+        User user = userService.getCurrentUser();
+        LocalDate today = LocalDate.now(QUEST_ZONE);
+        LocalDate weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        return user.getId() + ":" + today + ":" + weekStart;
+    }
+
+    public String questByIdCacheKey(Long questId) {
+        return currentUserCacheKey() + ":" + questId;
     }
 
     private List<DailyQuest> ensureCurrentQuests(User user) {

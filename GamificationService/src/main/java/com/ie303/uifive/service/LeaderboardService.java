@@ -13,6 +13,7 @@ import com.ie303.uifive.repo.ShopItemRepo;
 import com.ie303.uifive.repo.UserItemRepo;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ public class LeaderboardService {
     private final ShopItemRepo shopItemRepo;
     private final UserService userService;
 
+    @Cacheable(cacheNames = "leaderboard-coins", key = "#root.target.leaderboardCacheKey(#limit)")
     public CoinLeaderboardResponse getCoinLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getLeaderboardUsers();
@@ -51,6 +53,7 @@ public class LeaderboardService {
         );
     }
 
+    @Cacheable(cacheNames = "leaderboard-collectors", key = "#root.target.leaderboardCacheKey(#limit)")
     public CollectorLeaderboardResponse getCollectorLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getLeaderboardUsers();
@@ -73,6 +76,7 @@ public class LeaderboardService {
         );
     }
 
+    @Cacheable(cacheNames = "leaderboard-exp", key = "#root.target.leaderboardCacheKey(#limit)")
     public ExpLeaderboardResponse getExpLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getExpLeaderboardUsers();
@@ -84,6 +88,19 @@ public class LeaderboardService {
                 rankedEntries.stream().limit(safeLimit).toList(),
                 findCurrentExpEntry(rankedEntries)
         );
+    }
+
+    public String leaderboardCacheKey(int limit) {
+        return normalizeLimit(limit) + ":" + currentUserCacheKey();
+    }
+
+    public String currentUserCacheKey() {
+        User currentUser = userService.getCurrentUserOrNull();
+        if (currentUser == null) {
+            return "anon";
+        }
+
+        return currentUser.getId() + ":" + currentUser.getRole();
     }
 
     private List<User> getLeaderboardUsers() {
