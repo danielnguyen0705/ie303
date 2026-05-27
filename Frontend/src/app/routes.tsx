@@ -38,6 +38,7 @@ import { PaymentOffers } from "./pages/admin/PaymentOffers";
 import { Notifications } from "./pages/admin/Notifications";
 import { Settings } from "./pages/admin/Settings";
 import { ShopManagement } from "./pages/admin/ShopManagement";
+import { QuestManagement } from "./pages/admin/QuestManagement";
 import { RequireAuth } from "./components/RequireAuth";
 import { Forbidden } from "./pages/Forbidden";
 import { NotFound } from "./pages/NotFound";
@@ -110,6 +111,7 @@ export const router = createBrowserRouter([
           { path: "vip", Component: VIPManagement },
           { path: "payments", Component: PaymentOffers },
           { path: "shop", Component: ShopManagement },
+          { path: "quests", Component: QuestManagement },
           { path: "notifications", Component: Notifications },
           { path: "settings", Component: Settings },
           { path: "*", Component: NotFound },

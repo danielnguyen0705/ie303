@@ -20,6 +20,7 @@ import {
   ClipboardCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  Target,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -33,6 +34,7 @@ const navigation = [
   { name: "VIP Management", href: "/admin/vip", icon: Crown },
   { name: "Payment Offers", href: "/admin/payments", icon: DollarSign },
   { name: "Shop Management", href: "/admin/shop", icon: ShoppingBag },
+  { name: "Quest Management", href: "/admin/quests", icon: Target },
   { name: "Notifications", href: "/admin/notifications", icon: Bell },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];

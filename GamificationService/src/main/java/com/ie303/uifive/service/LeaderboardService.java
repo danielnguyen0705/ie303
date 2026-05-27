@@ -41,7 +41,7 @@ public class LeaderboardService {
     public CoinLeaderboardResponse getCoinLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getLeaderboardUsers();
-        User currentUser = userService.getCurrentUser();
+        User currentUser = userService.getCurrentUserOrNull();
 
         List<CoinLeaderboardEntryResponse> rankedEntries = buildCoinEntries(users, currentUser);
         return new CoinLeaderboardResponse(
@@ -54,7 +54,7 @@ public class LeaderboardService {
     public CollectorLeaderboardResponse getCollectorLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getLeaderboardUsers();
-        User currentUser = userService.getCurrentUser();
+        User currentUser = userService.getCurrentUserOrNull();
         long totalCollectibleItems = shopItemRepo.countByTypeIn(COLLECTIBLE_TYPES);
 
         Map<Long, CollectorStats> statsByUserId = buildCollectorStats(users);
@@ -76,7 +76,7 @@ public class LeaderboardService {
     public ExpLeaderboardResponse getExpLeaderboard(int limit) {
         int safeLimit = normalizeLimit(limit);
         List<User> users = getExpLeaderboardUsers();
-        User currentUser = userService.getCurrentUser();
+        User currentUser = userService.getCurrentUserOrNull();
 
         List<ExpLeaderboardEntryResponse> rankedEntries = buildExpEntries(users, currentUser);
         return new ExpLeaderboardResponse(

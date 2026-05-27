@@ -71,6 +71,7 @@ public class UserService implements UserDetailsService {
         user.setScore(0);
         user.setStreak(0);
         user.setVerified(false);
+        normalizeDefaultLearningFields(user);
         user.setVerificationToken(UUID.randomUUID().toString());
         user.setVerificationExpiry(LocalDateTime.now().plusMinutes(5));
 
@@ -109,6 +110,7 @@ public class UserService implements UserDetailsService {
         user.setScore(0);
         user.setStreak(0);
         user.setVerified(true);
+        normalizeDefaultLearningFields(user);
         return repo.save(user);
     }
 
@@ -121,6 +123,10 @@ public class UserService implements UserDetailsService {
         boolean updated = false;
         if (user.getRole() == null) {
             user.setRole(Role.USER);
+            updated = true;
+        }
+
+        if (normalizeDefaultLearningFields(user)) {
             updated = true;
         }
 
@@ -290,6 +296,22 @@ public class UserService implements UserDetailsService {
         }
 
         return authentication.getName();
+    }
+
+    private boolean normalizeDefaultLearningFields(User user) {
+        boolean updated = false;
+
+        if (user.getExpBoostMultiplier() == null) {
+            user.setExpBoostMultiplier(1.0);
+            updated = true;
+        }
+
+        if (user.getStreakItemPendingCount() == null) {
+            user.setStreakItemPendingCount(0);
+            updated = true;
+        }
+
+        return updated;
     }
 
     private UserResponse toUserResponse(User user) {

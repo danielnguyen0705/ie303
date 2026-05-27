@@ -9,13 +9,17 @@ import {
   Loader2,
   Zap,
   Coins,
+  Package,
+  X,
 } from "lucide-react";
 import { getAllQuests, claimQuestReward, getAllAchievements } from "@/api";
 import type { Quest, Achievement } from "@/api/quests";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 export function Quests() {
   const { copy } = useLanguage();
+  const { refreshCurrentUser } = useAuth();
   const [quests, setQuests] = useState<Quest[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [selectedTab, setSelectedTab] = useState<
@@ -24,6 +28,10 @@ export function Quests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [claimingQuest, setClaimingQuest] = useState<string | null>(null);
+  const [claimNotice, setClaimNotice] = useState<{
+    kind: "success" | "error";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     loadQuestsAndAchievements();
@@ -56,24 +64,56 @@ export function Quests() {
       const response = await claimQuestReward({ questId });
 
       if (response.success && response.data) {
+        const claimedQuest = response.data;
+
         setQuests((prev) =>
           prev.map((q) =>
-            q.id === questId ? { ...q, status: "claimed" as const } : q,
+            q.id === questId
+              ? {
+                  ...q,
+                  ...claimedQuest.quest,
+                  status: "claimed" as const,
+                }
+              : q,
           ),
         );
 
-        alert(
-          copy(
-            `Claimed ${response.data.rewards.xp} XP and ${response.data.rewards.coins} coins!`,
-            `Đã nhận ${response.data.rewards.xp} XP và ${response.data.rewards.coins} xu!`,
+        void refreshCurrentUser(false);
+
+        setClaimNotice({
+          kind: "success",
+          message: copy(
+            buildRewardMessage(
+              claimedQuest.rewards.xp,
+              claimedQuest.rewards.coins,
+              claimedQuest.rewards.items,
+            ),
+            buildRewardMessage(
+              claimedQuest.rewards.xp,
+              claimedQuest.rewards.coins,
+              claimedQuest.rewards.items,
+              true,
+            ),
           ),
-        );
+        });
       } else {
-        alert(copy("Quests are currently under development. Check back soon!", "Nhiệm vụ đang được phát triển. Hãy quay lại sau nhé!"));
+        setClaimNotice({
+          kind: "error",
+          message: copy(
+            "Could not claim reward. Please try again.",
+            "Không thể nhận thưởng. Vui lòng thử lại.",
+          ),
+        });
       }
     } catch (err) {
       console.error("Error claiming reward:", err);
-      alert(copy("Quests are currently under development. Check back soon!", "Nhiệm vụ đang được phát triển. Hãy quay lại sau nhé!"));
+      setClaimNotice({
+        kind: "error",
+        message: copy(
+          "Could not claim reward. Please try again.",
+          "Không thể nhận thưởng. Vui lòng thử lại.",
+        ),
+      });
     } finally {
       setClaimingQuest(null);
     }
@@ -122,22 +162,65 @@ export function Quests() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl space-y-6 overflow-x-hidden px-4 py-5 pb-24 sm:space-y-8 sm:px-6 sm:py-8 md:pb-12">
       <section className="space-y-5">
+        {claimNotice && (
+          <div
+            className={`flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-sm ${
+              claimNotice.kind === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : "border-red-200 bg-red-50 text-red-800"
+            }`}
+          >
+            <div
+              className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full ${
+                claimNotice.kind === "success" ? "bg-emerald-100" : "bg-red-100"
+              }`}
+            >
+              {claimNotice.kind === "success" ? (
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+              ) : (
+                <Gift className="h-5 w-5 text-red-600" />
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black">
+                {claimNotice.kind === "success"
+                  ? copy("Reward claimed", "Đã nhận thưởng")
+                  : copy("Claim failed", "Nhận thưởng thất bại")}
+              </p>
+              <p className="mt-1 text-sm leading-5">{claimNotice.message}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setClaimNotice(null)}
+              className="rounded-full p-1 transition-colors hover:bg-black/5"
+              aria-label={copy("Close notification", "Đóng thông báo")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#155ca5] sm:text-xs">
             {copy("Challenges", "Thử thách")}
           </p>
           <h1 className="mt-1 text-3xl font-black tracking-tight text-[#155ca5] sm:text-4xl lg:text-5xl">
-            {copy("Quests & Achievements", "Nhiệm vụ & huy hiệu")}
+            {copy("Quests & Badges", "Nhiệm vụ & huy hiệu")}
           </h1>
           <p className="mt-2 text-sm font-medium leading-6 text-gray-600 sm:text-lg">
-            {copy("This area is currently under development.", "Khu vực này hiện đang được phát triển.")}
+            {copy(
+              "Complete daily quests to earn extra coins, EXP, and bonus items.",
+              "Hoàn thành nhiệm vụ mỗi ngày để nhận thêm coin, EXP và vật phẩm thưởng.",
+            )}
           </p>
         </div>
 
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium leading-5 text-amber-900 sm:text-sm">
           {copy(
-            "Quests and achievements are not wired to backend data yet. We keep this page visible so the route remains ready for production work.",
-            "Nhiệm vụ và huy hiệu chưa được nối hoàn chỉnh với dữ liệu backend. Trang vẫn được hiển thị để route sẵn sàng cho phần triển khai sau.",
+            "Daily quests refresh automatically every day. Claim rewards before the day ends.",
+            "Nhiệm vụ mỗi ngày tự làm mới. Hãy nhận thưởng trước khi ngày kết thúc.",
           )}
         </div>
 
@@ -175,7 +258,10 @@ export function Quests() {
               icon={
                 <Target className="mx-auto mb-4 h-14 w-14 text-gray-300 sm:h-16 sm:w-16" />
               }
-              text={copy("Quests are currently under development", "Nhiệm vụ đang được phát triển")}
+              text={copy(
+                "No quests are available right now.",
+                "Hiện chưa có nhiệm vụ nào cho hôm nay.",
+              )}
             />
           )}
 
@@ -257,6 +343,17 @@ export function Quests() {
                       >
                         +{quest.coinsReward}
                       </Reward>
+
+                      {quest.rewardItems?.length ? (
+                        <Reward
+                          icon={<Package className="h-4 w-4" />}
+                          className="text-emerald-600"
+                        >
+                          +{quest.rewardItems
+                            .map((item) => `${item.name} x${item.quantity}`)
+                            .join(", ")}
+                        </Reward>
+                      ) : null}
                     </div>
 
                     {isClaimed ? (
@@ -371,13 +468,30 @@ export function Quests() {
               icon={
                 <Trophy className="mx-auto mb-4 h-14 w-14 text-gray-300 sm:h-16 sm:w-16" />
               }
-              text={copy("Achievements are currently under development", "Huy hiệu đang được phát triển")}
+              text={copy("No badges unlocked yet.", "Chưa có huy hiệu nào được mở khóa.")}
             />
           )}
         </section>
       )}
     </main>
   );
+}
+
+function buildRewardMessage(
+  xp: number,
+  coins: number,
+  items?: Array<{ name: string; quantity: number }>,
+  vietnamese = false,
+): string {
+  const itemText = items?.length
+    ? ` ${vietnamese ? "và" : "and"} ${items
+        .map((item) => `${item.name} x${item.quantity}`)
+        .join(", ")}`
+    : "";
+
+  return vietnamese
+    ? `Đã nhận ${xp} XP, ${coins} xu${itemText}!`
+    : `Claimed ${xp} XP, ${coins} coins${itemText}!`;
 }
 
 function TabButton({

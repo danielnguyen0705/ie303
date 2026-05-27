@@ -152,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initialStoredUser] = useState<AuthUser | null>(() => readStoredUser());
   const [user, setUser] = useState<AuthUser | null>(() => initialStoredUser);
   const [loading, setLoading] = useState<boolean>(() => !initialStoredUser);
-  const [isReady, setIsReady] = useState<boolean>(Boolean(initialStoredUser));
+  const [isReady, setIsReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const isAuthenticated = Boolean(user);

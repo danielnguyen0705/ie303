@@ -121,10 +121,11 @@ Kết nối thư mục `ProgressService/` với Render:
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
 - `JWT_SECRET`, `JWT_EXPIRATION`
 - `CORS_ALLOWED_ORIGINS=https://uifive.io.vn`
+- `ML_API_URL=http://localhost:8000/predict` - URL của ML service dùng để tạo snapshot learning analysis mới
 - `PORT=8087`
 
 Gateway sẽ route `/api/progress/**` về progress service.
-Gateway cũng route các endpoint `GET /api/ai/learning-analysis/me` và `GET /api/ai/learning-analysis/me/history` về progress service.
+Gateway cũng route các endpoint `GET /api/ai/learning-analysis/me`, `POST /api/ai/learning-analysis/me/refresh` và `GET /api/ai/learning-analysis/me/history` về progress service.
 Gateway cũng route `/api/user-question-histories/**` về progress service.
 Gateway cũng route `/api/users/me/activity-calendar` về progress service.
 

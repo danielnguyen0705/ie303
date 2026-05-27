@@ -33,7 +33,7 @@ public class User {
     private LocalDateTime vipExpiredAt;
 
     @Column(name = "streak_item_pending_count")
-    private int streakItemPendingCount;
+    private Integer streakItemPendingCount = 0;
 
     @Column(name = "streak_checked_at")
     private LocalDate streakCheckedAt;
@@ -43,4 +43,13 @@ public class User {
     private LocalDateTime createdAt;
 
     private boolean verified = false;
+
+    @PostLoad
+    @PrePersist
+    @PreUpdate
+    private void normalizeDefaults() {
+        if (streakItemPendingCount == null) {
+            streakItemPendingCount = 0;
+        }
+    }
 }

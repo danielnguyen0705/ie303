@@ -27,11 +27,27 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public User getCurrentUser() {
+        User currentUser = getCurrentUserOrNull();
+        if (currentUser == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        return currentUser;
+    }
+
+    public User getCurrentUserOrNull() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String principalName = authentication == null ? null : resolvePrincipalName(authentication);
 
-        if (principalName == null || principalName.isBlank()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        if (authentication == null || principalName == null || principalName.isBlank()) {
+            return null;
+        }
+
+        if ("anonymousUser".equalsIgnoreCase(principalName)
+                || authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ANONYMOUS"::equals)) {
+            return null;
         }
 
         return findOrCreatePrincipalUser(principalName);

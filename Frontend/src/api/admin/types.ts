@@ -319,3 +319,42 @@ export interface LessonQuestionResponse {
   singleQuestions?: Question[];
   questionGroups?: QuestionGroup[];
 }
+
+/* =========================
+   QUEST TEMPLATE
+========================= */
+export type QuestPeriod = "DAILY" | "WEEKLY";
+
+export type QuestTemplateType =
+  | "LESSON_COMPLETION"
+  | "QUESTION_ANSWERING"
+  | "SKIP_USAGE";
+
+export interface QuestTemplate {
+  id: number;
+  questPeriod: QuestPeriod;
+  questType: QuestTemplateType;
+  title: string;
+  description: string;
+  targetAmount: number;
+  coinsReward: number;
+  expReward: number;
+  rewardItemType?: import("../types").ShopItemType | null;
+  rewardItemQuantity: number;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface QuestTemplateUpsertRequest {
+  questPeriod: QuestPeriod;
+  questType: QuestTemplateType;
+  title: string;
+  description: string;
+  targetAmount: number;
+  coinsReward: number;
+  expReward: number;
+  rewardItemType?: import("../types").ShopItemType | null;
+  rewardItemQuantity: number;
+  sortOrder: number;
+  active: boolean;
+}

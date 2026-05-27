@@ -8,6 +8,9 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
@@ -56,7 +59,7 @@ public class User {
     private LocalDateTime vipExpiredAt;
 
     @Column(name = "exp_boost_multiplier")
-    private double expBoostMultiplier;
+    private Double expBoostMultiplier;
 
     @Column(name = "exp_boost_expired_at")
     private LocalDateTime expBoostExpiredAt;
@@ -82,4 +85,13 @@ public class User {
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<UserItem> userItems;
+
+    @PostLoad
+    @PrePersist
+    @PreUpdate
+    private void normalizeDefaults() {
+        if (expBoostMultiplier == null) {
+            expBoostMultiplier = 1.0;
+        }
+    }
 }

@@ -55,8 +55,7 @@ public class LearningAnalysisController {
     @PostMapping("/api/ai/learning-analysis/me/refresh")
     @RolesAllowed({"USER", "ADMIN"})
     public ApiResponse<AILearningAnalysisResponse> refreshLearningAnalysis() {
-        User user = userService.getCurrentUser();
-        AILearningAnalysisResponse result = learningAnalysisService.getLatestByUsername(user.getUsername());
+        AILearningAnalysisResponse result = learningAnalysisService.refreshAnalysis();
 
         return ApiResponse.<AILearningAnalysisResponse>builder()
                 .code(1000)

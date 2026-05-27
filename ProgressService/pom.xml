@@ -21,6 +21,7 @@
         <java.version>21</java.version>
         <lombok.version>1.18.34</lombok.version>
         <spring-cloud.version>2024.0.2</spring-cloud.version>
+        <flyway.version>10.20.1</flyway.version>
     </properties>
 
     <dependencyManagement>
@@ -55,6 +56,16 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <version>${flyway.version}</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

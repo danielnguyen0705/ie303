@@ -47,13 +47,13 @@ public class User {
     private LocalDateTime vipExpiredAt;
 
     @Column(name = "exp_boost_multiplier")
-    private double expBoostMultiplier;
+    private Double expBoostMultiplier;
 
     @Column(name = "exp_boost_expired_at")
     private LocalDateTime expBoostExpiredAt;
 
     @Column(name = "streak_item_pending_count")
-    private int streakItemPendingCount;
+    private Integer streakItemPendingCount = 0;
 
     @Column(name = "streak_checked_at")
     private LocalDate streakCheckedAt;
@@ -75,4 +75,16 @@ public class User {
     @JsonIgnore
     private List<UserLessonProgress> lessonProgresses;
 
+    @PostLoad
+    @PrePersist
+    @PreUpdate
+    private void normalizeDefaults() {
+        if (expBoostMultiplier == null) {
+            expBoostMultiplier = 1.0;
+        }
+
+        if (streakItemPendingCount == null) {
+            streakItemPendingCount = 0;
+        }
+    }
 }

@@ -9,7 +9,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { getGrade, getSemesterTests, getUnitsByGradeProgress } from "@/api";
 import type { SemesterTestResponse } from "@/api/types";
+import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { hasVipAccess } from "./practicePackageData";
 
 type UnitProgressItem = {
   unitId: number;
@@ -167,6 +169,7 @@ function buildUnitPath(
 
 export function GradeUnits() {
   const { copy } = useLanguage();
+  const { user } = useAuth();
   const { gradeId } = useParams();
   const navigate = useNavigate();
   const [units, setUnits] = useState<UnitProgressItem[]>([]);
@@ -176,6 +179,7 @@ export function GradeUnits() {
   const [error, setError] = useState<string | null>(null);
 
   const gradeIdNumber = useMemo(() => Number(gradeId), [gradeId]);
+  const includeVipLessons = hasVipAccess(user);
 
   useEffect(() => {
     const loadGradeMeta = async () => {
@@ -231,6 +235,11 @@ export function GradeUnits() {
         return;
       }
 
+      if (!includeVipLessons) {
+        setSemesterTests([]);
+        return;
+      }
+
       const response = await getSemesterTests();
       if (!response.success || !response.data) {
         setSemesterTests([]);
@@ -241,7 +250,7 @@ export function GradeUnits() {
     };
 
     void loadSemesterTests();
-  }, [gradeIdNumber]);
+  }, [gradeIdNumber, includeVipLessons]);
 
   const layout = useMemo(() => {
     const count = units.length;

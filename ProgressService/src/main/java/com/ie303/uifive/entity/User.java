@@ -7,6 +7,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -40,13 +43,13 @@ public class User {
     private LocalDateTime vipExpiredAt;
 
     @Column(name = "exp_boost_multiplier")
-    private double expBoostMultiplier;
+    private Double expBoostMultiplier;
 
     @Column(name = "exp_boost_expired_at")
     private LocalDateTime expBoostExpiredAt;
 
     @Column(name = "streak_item_pending_count")
-    private int streakItemPendingCount;
+    private Integer streakItemPendingCount = 0;
 
     @Column(name = "streak_checked_at")
     private LocalDate streakCheckedAt;
@@ -54,4 +57,17 @@ public class User {
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @PostLoad
+    @PrePersist
+    @PreUpdate
+    private void normalizeDefaults() {
+        if (expBoostMultiplier == null) {
+            expBoostMultiplier = 1.0;
+        }
+
+        if (streakItemPendingCount == null) {
+            streakItemPendingCount = 0;
+        }
+    }
 }
