@@ -1,6 +1,7 @@
 package com.ie303.uifive.service;
 
 import com.ie303.uifive.dto.req.PaymentCheckoutRequest;
+import com.ie303.uifive.dto.req.PaymentCompletedRequest;
 import com.ie303.uifive.dto.req.PaymentOfferRequest;
 import com.ie303.uifive.dto.req.PaymentWebhookRequest;
 import com.ie303.uifive.dto.res.PaymentCheckoutResponse;
@@ -15,15 +16,20 @@ import com.ie303.uifive.entity.Role;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
+import com.ie303.uifive.messaging.RabbitMessagingConfig;
 import com.ie303.uifive.repo.PaymentOfferRepo;
 import com.ie303.uifive.repo.PaymentTransactionRepo;
 import com.ie303.uifive.repo.UserRepo;
 import com.ie303.uifive.service.payment.gateway.PaymentGateway;
 import com.ie303.uifive.service.payment.gateway.VnpayPaymentGateway;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +39,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class PaymentService {
 
@@ -40,6 +47,8 @@ public class PaymentService {
     private final PaymentTransactionRepo transactionRepo;
     private final UserService userService;
     private final UserRepo userRepo;
+    private final RabbitTemplate rabbitTemplate;
+    private final NotificationClient notificationClient;
     private final List<PaymentGateway> paymentGateways;
     private final VnpayPaymentGateway vnpayPaymentGateway;
 
@@ -390,7 +399,20 @@ public class PaymentService {
         transaction.setPaidAt(LocalDateTime.now());
 
         userRepo.save(user);
-        return transactionRepo.save(transaction);
+        transaction = transactionRepo.save(transaction);
+        publishPaymentCompleted(new PaymentCompletedRequest(
+                null,
+                user == null ? null : user.getUsername(),
+                transaction.getTransactionCode(),
+                transaction.getType() == null ? null : transaction.getType().name(),
+                transaction.getProvider() == null ? null : transaction.getProvider().name(),
+                transaction.getAmountMoney(),
+                transaction.getAmountCoin(),
+                transaction.getDurationDays(),
+                transaction.getStatus() == null ? null : transaction.getStatus().name(),
+                transaction.getProviderTransactionId()
+        ));
+        return transaction;
     }
 
     private String generateTransactionCode() {
@@ -444,5 +466,43 @@ public class PaymentService {
                 .filter(gateway -> gateway.provider() == provider)
                 .findFirst()
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_PROVIDER_NOT_SUPPORTED));
+    }
+
+    private void publishPaymentCompleted(PaymentCompletedRequest request) {
+        Runnable publisher = () -> dispatchPaymentCompleted(request);
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publisher.run();
+                }
+            });
+            return;
+        }
+
+        publisher.run();
+    }
+
+    private void dispatchPaymentCompleted(PaymentCompletedRequest request) {
+        try {
+            rabbitTemplate.convertAndSend(
+                    RabbitMessagingConfig.EXCHANGE,
+                    RabbitMessagingConfig.PAYMENT_COMPLETED_ROUTING_KEY,
+                    request
+            );
+            log.info("Published payment completed event to RabbitMQ for transactionCode={}", request.transactionCode());
+        } catch (Exception rabbitException) {
+            log.warn("Failed to publish payment completed event for transactionCode={}: {}",
+                    request.transactionCode(), rabbitException.getMessage());
+            try {
+                notificationClient.sendPaymentCompleted(request);
+                log.info("Published payment completed event via fallback HTTP for transactionCode={}",
+                        request.transactionCode());
+            } catch (Exception fallbackException) {
+                log.error("Failed to send payment completed notification for transactionCode={} via fallback HTTP: {}",
+                        request.transactionCode(), fallbackException.getMessage(), fallbackException);
+            }
+        }
     }
 }

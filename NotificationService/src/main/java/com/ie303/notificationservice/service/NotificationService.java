@@ -1,12 +1,17 @@
 package com.ie303.notificationservice.service;
 
+import com.ie303.notificationservice.dto.req.PaymentCompletedRequest;
+import com.ie303.notificationservice.dto.req.ShopItemAnnouncementRequest;
+import com.ie303.notificationservice.dto.req.VerificationEmailRequest;
 import com.ie303.notificationservice.entity.Role;
 import com.ie303.notificationservice.entity.ShopItem;
 import com.ie303.notificationservice.entity.User;
+import com.ie303.notificationservice.messaging.RabbitMessagingConfig;
 import com.ie303.notificationservice.repo.ShopItemRepo;
 import com.ie303.notificationservice.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -170,8 +175,79 @@ public class NotificationService {
         }
     }
 
+    @RabbitListener(queues = RabbitMessagingConfig.VERIFICATION_EMAIL_QUEUE)
+    public void sendVerificationEmail(VerificationEmailRequest request) {
+        if (request == null) {
+            return;
+        }
+
+        try {
+            log.info("Consumed verification email event from RabbitMQ for {}", request.toEmail());
+            emailService.sendVerificationEmail(request.toEmail(), request.verifyLink());
+        } catch (RuntimeException ex) {
+            log.warn("Failed to process verification email event for email={}", request.toEmail(), ex);
+        }
+    }
+
     public void sendVerificationEmail(String toEmail, String verifyLink) {
-        emailService.sendVerificationEmail(toEmail, verifyLink);
+        sendVerificationEmail(new VerificationEmailRequest(toEmail, verifyLink));
+    }
+
+    @RabbitListener(queues = RabbitMessagingConfig.SHOP_ITEM_CREATED_QUEUE)
+    public void sendShopItemAnnouncement(ShopItemAnnouncementRequest request) {
+        if (request == null) {
+            return;
+        }
+
+        try {
+            log.info("Consumed shop item announcement event from RabbitMQ for itemId={}", request.itemId());
+            ShopItem item = toShopItem(request);
+            List<User> users = findNotificationCandidates();
+            for (User user : users) {
+                sendSafely(user, () -> emailService.sendNewShopItemAnnouncementEmail(user.getEmail(), item));
+            }
+        } catch (RuntimeException ex) {
+            log.warn("Failed to process shop item announcement event for itemId={}", request.itemId(), ex);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMessagingConfig.PAYMENT_COMPLETED_QUEUE)
+    public void sendPaymentCompleted(PaymentCompletedRequest request) {
+        if (request == null) {
+            return;
+        }
+
+        try {
+            log.info("Consumed payment completed event from RabbitMQ for transactionCode={}", request.transactionCode());
+            String toEmail = request.email();
+            if ((toEmail == null || toEmail.isBlank()) && request.username() != null && !request.username().isBlank()) {
+                toEmail = userRepo.findByUsername(request.username())
+                        .map(User::getEmail)
+                        .filter(this::isValidEmail)
+                        .orElse(null);
+            }
+
+            if (!isValidEmail(toEmail)) {
+                log.warn("Skipping payment completed email for transactionCode={} because recipient email is missing",
+                        request.transactionCode());
+                return;
+            }
+
+            emailService.sendPaymentCompletedEmail(
+                    toEmail,
+                    request.username(),
+                    request.transactionCode(),
+                    request.type(),
+                    request.provider(),
+                    request.amountMoney(),
+                    request.amountCoin(),
+                    request.durationDays(),
+                    request.status(),
+                    request.providerTransactionId()
+            );
+        } catch (RuntimeException ex) {
+            log.warn("Failed to process payment completed event for transactionCode={}", request.transactionCode(), ex);
+        }
     }
 
     private List<User> findNotificationCandidates() {
@@ -199,6 +275,19 @@ public class NotificationService {
         }
 
         return user.getEmail();
+    }
+
+    private ShopItem toShopItem(ShopItemAnnouncementRequest request) {
+        ShopItem item = new ShopItem();
+        item.setId(request.itemId());
+        item.setName(request.name());
+        item.setDescription(request.description());
+        item.setPrice(request.price() == null ? 0 : request.price());
+        item.setType(request.type() == null ? null : com.ie303.notificationservice.entity.ItemType.valueOf(request.type()));
+        item.setDurationDays(request.durationDays());
+        item.setExpMultiplier(request.expMultiplier());
+        item.setActive(request.active() == null || request.active());
+        return item;
     }
 
     private boolean isValidEmail(String email) {

@@ -1,6 +1,8 @@
 package com.ie303.notificationservice.controller;
 
 import com.ie303.notificationservice.dto.req.VerificationEmailRequest;
+import com.ie303.notificationservice.dto.req.ShopItemAnnouncementRequest;
+import com.ie303.notificationservice.dto.req.PaymentCompletedRequest;
 import com.ie303.notificationservice.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +25,21 @@ public class NotificationController {
         return ResponseEntity.accepted().body("Notification queued");
     }
 
+    @PostMapping("/shop-items/announce")
+    public ResponseEntity<String> announceNewShopItem(@RequestBody ShopItemAnnouncementRequest request) {
+        notificationService.sendShopItemAnnouncement(request);
+        return ResponseEntity.accepted().body("Notification queued");
+    }
+
     @PostMapping("/users/verification-email")
     public ResponseEntity<String> sendVerificationEmail(@RequestBody VerificationEmailRequest request) {
         notificationService.sendVerificationEmail(request.toEmail(), request.verifyLink());
         return ResponseEntity.accepted().body("Verification email queued");
+    }
+
+    @PostMapping("/payments/completed")
+    public ResponseEntity<String> sendPaymentCompleted(@RequestBody PaymentCompletedRequest request) {
+        notificationService.sendPaymentCompleted(request);
+        return ResponseEntity.accepted().body("Payment notification queued");
     }
 }

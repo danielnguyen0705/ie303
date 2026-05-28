@@ -203,7 +203,52 @@ Mỗi service có bộ biến môi trường riêng, và các app Spring Boot tr
 
 Sau đó cập nhật lại các giá trị cấu hình phù hợp với môi trường chạy thực tế.
 
-## 7. API Gateway & API Documentation
+## 7. Chạy bằng Docker
+
+Repo có sẵn bộ file để build/push image và chạy production qua Docker Compose:
+
+- `scripts/publish-images.ps1` - build và push toàn bộ image lên Docker Hub hoặc registry riêng
+- `docker-compose.prod.yml` - compose production dùng `image:` thay vì `build:`
+- `.env.prod.example` - mẫu biến môi trường cho môi trường production
+
+### 7.1. Publish image
+
+1. Copy file mẫu:
+
+```powershell
+Copy-Item .env.prod.example .env.prod
+```
+
+2. Sửa `DOCKER_NAMESPACE`, `IMAGE_TAG` và toàn bộ secret trong `.env.prod`.
+
+3. Build và push image:
+
+```powershell
+.\scripts\publish-images.ps1
+```
+
+### 7.2. Chạy production stack
+
+```powershell
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+```
+
+### 7.3. Cho người khác kéo về chạy
+
+Người khác chỉ cần:
+
+```powershell
+docker compose --env-file .env.prod -f docker-compose.prod.yml pull
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+```
+
+Lưu ý:
+
+- `IdentityService` cần `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET` không rỗng để khởi động OAuth2.
+- `PostgreSQL` và `Redis` có thể dùng cloud service như Neon/Upstash.
+- `RabbitMQ` trong file production hiện được dựng local bằng Docker để các service giao tiếp nội bộ.
+
+## 8. API Gateway & API Documentation
 
 - `GatewayService/` là entrypoint public cho frontend.
 - `IdentityService/` xử lý auth, đăng ký, đăng nhập, OAuth2 và JWT.
@@ -218,7 +263,7 @@ Sau đó cập nhật lại các giá trị cấu hình phù hợp với môi tr
 - `AIService/` xử lý chấm bài Writing/Speaking và personalized questions bằng LLM.
 Hệ thống hiện không còn backend monolith; gateway route trực tiếp về các service ở trên.
 
-## 8. API Documentation
+## 9. API Documentation
 
 Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy cập Swagger UI qua từng service tương ứng. Một số endpoint chính:
 
@@ -231,7 +276,7 @@ Hệ thống cung cấp một loạt các RESTful endpoint. Bạn có thể truy
 
 ---
 
-## 9. Mô tả về Machine Learning
+## 10. Mô tả về Machine Learning
 
 Module ML được viết bằng Python/FastAPI, chịu trách nhiệm nhận dữ liệu học viên (điểm, chuỗi ngày học, tần suất, độ chính xác các kỹ năng) và trả về phân tích.
 
@@ -245,7 +290,7 @@ Module ML được viết bằng Python/FastAPI, chịu trách nhiệm nhận d�
 
 ---
 
-## 10. Deployment
+## 11. Deployment
 
 Dự án được triển khai hoàn chỉnh trên **Render** và sử dụng domain riêng:
 
@@ -259,7 +304,7 @@ Dự án được triển khai hoàn chỉnh trên **Render** và sử dụng do
 
 ---
 
-## 11. Các thành viên của nhóm
+## 12. Các thành viên của nhóm
 
 Phát triển bởi:
 
@@ -274,6 +319,6 @@ Phát triển bởi:
 
 ---
 
-## 12. Giấy phép sử dụng
+## 13. Giấy phép sử dụng
 
 Dự án được phân phối dưới giấy phép **MIT License**. Bạn có quyền tự do sử dụng, chỉnh sửa và phân phối mã nguồn này cho mục đích học tập và thương mại.

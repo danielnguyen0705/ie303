@@ -8,14 +8,17 @@ import com.ie303.uifive.dto.res.AILearningAnalysisResponse;
 import com.ie303.uifive.dto.res.StudyingGradeResponse;
 import com.ie303.uifive.dto.res.UserProfileResponse;
 import com.ie303.uifive.dto.res.UserResponse;
+import com.ie303.uifive.messaging.RabbitMessagingConfig;
 import com.ie303.uifive.entity.Role;
 import com.ie303.uifive.entity.User;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,6 +37,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService implements UserDetailsService {
 
     @Value("${user.default-avatar-base-url:https://api.dicebear.com/7.x/avataaars/svg?seed=}")
@@ -47,6 +51,7 @@ public class UserService implements UserDetailsService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepo repo;
+    private final RabbitTemplate rabbitTemplate;
     private final NotificationClient notificationClient;
     private final ProgressClient progressClient;
 
@@ -76,9 +81,8 @@ public class UserService implements UserDetailsService {
         user.setVerificationExpiry(LocalDateTime.now().plusMinutes(5));
 
         String verifyLink = frontendPublicBaseUrl + "/verify-email?token=" + user.getVerificationToken();
-        notificationClient.sendVerificationEmail(new VerificationEmailRequest(user.getEmail(), verifyLink));
-
         user = repo.save(user);
+        sendVerificationEmail(user.getEmail(), verifyLink);
         return toUserResponse(user);
     }
 
@@ -312,6 +316,28 @@ public class UserService implements UserDetailsService {
         }
 
         return updated;
+    }
+
+    private void sendVerificationEmail(String toEmail, String verifyLink) {
+        VerificationEmailRequest request = new VerificationEmailRequest(toEmail, verifyLink);
+
+        try {
+            rabbitTemplate.convertAndSend(
+                    RabbitMessagingConfig.EXCHANGE,
+                    RabbitMessagingConfig.VERIFICATION_EMAIL_ROUTING_KEY,
+                    request
+            );
+            log.info("Published verification email event to RabbitMQ for {}", toEmail);
+        } catch (Exception rabbitException) {
+            log.warn("Failed to publish verification email event for {}: {}", toEmail, rabbitException.getMessage());
+            try {
+                notificationClient.sendVerificationEmail(request);
+                log.info("Published verification email event via fallback HTTP for {}", toEmail);
+            } catch (Exception fallbackException) {
+                log.error("Failed to send verification email for {} via fallback HTTP: {}",
+                        toEmail, fallbackException.getMessage(), fallbackException);
+            }
+        }
     }
 
     private UserResponse toUserResponse(User user) {

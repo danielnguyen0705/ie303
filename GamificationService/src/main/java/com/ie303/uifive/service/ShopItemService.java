@@ -1,6 +1,7 @@
 package com.ie303.uifive.service;
 
 import com.ie303.uifive.dto.req.ShopItemRequest;
+import com.ie303.uifive.dto.req.ShopItemAnnouncementRequest;
 import com.ie303.uifive.dto.res.BuyItemResponse;
 import com.ie303.uifive.dto.res.ShopItemResponse;
 import com.ie303.uifive.dto.res.UserItemResponse;
@@ -11,6 +12,7 @@ import com.ie303.uifive.entity.User;
 import com.ie303.uifive.entity.UserItem;
 import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
+import com.ie303.uifive.messaging.RabbitMessagingConfig;
 import com.ie303.uifive.repo.ShopItemRepo;
 import com.ie303.uifive.repo.SkipUsageLogRepo;
 import com.ie303.uifive.repo.UserItemRepo;
@@ -18,10 +20,13 @@ import com.ie303.uifive.repo.UserRepo;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -37,6 +42,7 @@ public class ShopItemService {
     private final UserItemRepo userItemRepo;
     private final UserRepo userRepo;
     private final UserService userService;
+    private final RabbitTemplate rabbitTemplate;
     private final NotificationClient notificationClient;
     private final SkipUsageLogRepo skipUsageLogRepo;
     private final CloudinaryService cloudinaryService;
@@ -67,11 +73,16 @@ public class ShopItemService {
         normalizeByType(entity);
 
         entity = repo.save(entity);
-        try {
-            notificationClient.announceNewShopItem(entity.getId());
-        } catch (Exception ex) {
-            log.warn("Failed to notify notification-service for shop item {}: {}", entity.getId(), ex.getMessage());
-        }
+        publishShopItemAnnouncement(new ShopItemAnnouncementRequest(
+                entity.getId(),
+                entity.getName(),
+                entity.getDescription(),
+                entity.getPrice(),
+                entity.getType() == null ? null : entity.getType().name(),
+                entity.getDurationDays(),
+                entity.getExpMultiplier(),
+                entity.isActive()
+        ));
 
         return toResponse(entity);
     }
@@ -392,6 +403,42 @@ public class ShopItemService {
     public String currentUserCacheKey() {
         User user = userService.getCurrentUser();
         return String.valueOf(user.getId());
+    }
+
+    private void publishShopItemAnnouncement(ShopItemAnnouncementRequest request) {
+        Runnable publisher = () -> dispatchShopItemAnnouncement(request);
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publisher.run();
+                }
+            });
+            return;
+        }
+
+        publisher.run();
+    }
+
+    private void dispatchShopItemAnnouncement(ShopItemAnnouncementRequest request) {
+        try {
+            rabbitTemplate.convertAndSend(
+                    RabbitMessagingConfig.EXCHANGE,
+                    RabbitMessagingConfig.SHOP_ITEM_CREATED_ROUTING_KEY,
+                    request
+            );
+            log.info("Published shop item announcement event to RabbitMQ for itemId={}", request.itemId());
+        } catch (Exception rabbitException) {
+            log.warn("Failed to publish shop item event for itemId={}: {}", request.itemId(), rabbitException.getMessage());
+            try {
+                notificationClient.announceNewShopItem(request);
+                log.info("Published shop item announcement event via fallback HTTP for itemId={}", request.itemId());
+            } catch (Exception fallbackException) {
+                log.error("Failed to announce shop item itemId={} via fallback HTTP: {}",
+                        request.itemId(), fallbackException.getMessage(), fallbackException);
+            }
+        }
     }
 
     private ShopItemResponse toResponse(ShopItem entity) {

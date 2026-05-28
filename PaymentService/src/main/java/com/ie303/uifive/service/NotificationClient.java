@@ -1,6 +1,6 @@
 package com.ie303.uifive.service;
 
-import com.ie303.uifive.dto.req.ShopItemAnnouncementRequest;
+import com.ie303.uifive.dto.req.PaymentCompletedRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,6 +11,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 )
 public interface NotificationClient {
 
-    @PostMapping("/internal/notifications/shop-items/announce")
-    void announceNewShopItem(@RequestBody ShopItemAnnouncementRequest request);
+    @PostMapping("/internal/notifications/payments/completed")
+    void sendPaymentCompleted(@RequestBody PaymentCompletedRequest request);
 }

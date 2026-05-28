@@ -65,6 +65,29 @@ public class EmailService {
         sendHtmlEmail(toEmail, "Vua co vat pham moi trong shop", buildNewShopItemContent(item));
     }
 
+    public void sendPaymentCompletedEmail(String toEmail,
+                                          String username,
+                                          String transactionCode,
+                                          String type,
+                                          String provider,
+                                          Integer amountMoney,
+                                          Integer amountCoin,
+                                          Integer durationDays,
+                                          String status,
+                                          String providerTransactionId) {
+        sendHtmlEmail(toEmail, "Thanh toan hoan tat", buildPaymentCompletedContent(
+                username,
+                transactionCode,
+                type,
+                provider,
+                amountMoney,
+                amountCoin,
+                durationDays,
+                status,
+                providerTransactionId
+        ));
+    }
+
     private void sendHtmlEmail(String toEmail, String subject, String content) {
         try {
             if (resendApiKey == null || resendApiKey.isBlank()) {
@@ -205,6 +228,43 @@ public class EmailService {
                 item.getType(),
                 durationText,
                 multiplierText
+        );
+    }
+
+    private String buildPaymentCompletedContent(String username,
+                                                String transactionCode,
+                                                String type,
+                                                String provider,
+                                                Integer amountMoney,
+                                                Integer amountCoin,
+                                                Integer durationDays,
+                                                String status,
+                                                String providerTransactionId) {
+        String moneyText = amountMoney == null ? "N/A" : amountMoney + " VND";
+        String coinText = amountCoin == null ? "N/A" : amountCoin + " coin";
+        String durationText = durationDays == null ? "N/A" : durationDays + " ngay";
+
+        return """
+            <h2>Thanh toan hoan tat</h2>
+            <p>Chao %s,</p>
+            <p>Giao dich <strong>%s</strong> da duoc xu ly thanh cong.</p>
+            <p>Loai giao dich: <strong>%s</strong></p>
+            <p>Cong thanh toan: <strong>%s</strong></p>
+            <p>So tien: <strong>%s</strong></p>
+            <p>So coin: <strong>%s</strong></p>
+            <p>Thoi han: <strong>%s</strong></p>
+            <p>Trang thai: <strong>%s</strong></p>
+            <p>Ma provider: <strong>%s</strong></p>
+            """.formatted(
+                escape(username),
+                escape(transactionCode),
+                escape(type),
+                escape(provider),
+                escape(moneyText),
+                escape(coinText),
+                escape(durationText),
+                escape(status),
+                escape(providerTransactionId)
         );
     }
 
