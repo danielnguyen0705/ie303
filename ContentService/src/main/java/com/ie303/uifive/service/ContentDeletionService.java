@@ -72,12 +72,23 @@ public class ContentDeletionService {
 
     @Transactional
     public void deleteLesson(Long lessonId) {
+        List<QuestionGroup> questionGroups = questionGroupRepo.findByLessonIdOrderByIdAsc(lessonId);
+        for (QuestionGroup questionGroup : new ArrayList<>(questionGroups)) {
+            deleteQuestionGroup(questionGroup.getId());
+        }
+
+        List<Question> questions = questionRepo.findByLessonIdAndQuestionGroupIsNullOrderByIdAsc(lessonId);
+        for (Question question : new ArrayList<>(questions)) {
+            deleteQuestion(question.getId());
+        }
+
         lessonRepo.deleteById(lessonId);
     }
 
     @Transactional
     public void deleteSection(Long sectionId) {
-        lessonRepo.findBySectionId(sectionId).forEach(lessonRepo::delete);
+        lessonRepo.findBySectionIdOrderByOrderIndexAscLessonNumberAscIdAsc(sectionId)
+                .forEach(lesson -> deleteLesson(lesson.getId()));
         sectionRepo.deleteById(sectionId);
     }
 
