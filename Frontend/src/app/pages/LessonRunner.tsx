@@ -2630,6 +2630,8 @@ function LessonRunner() {
       return question.hint.trim();
     }
 
+    return null;
+
     switch (question.questionType) {
       case "MATCHING":
         return copy(
@@ -2719,7 +2721,7 @@ function LessonRunner() {
 
     if (isMCQ(question.questionType)) {
       return (
-        <div className="space-y-3">
+                <div className="space-y-2.5">
           {question.options.map((option) => {
             const selected = currentAnswer?.answer === option.optionKey;
             const submitted = currentAnswer?.submitted;
@@ -2752,20 +2754,20 @@ function LessonRunner() {
                 <button
                   disabled={isAnswerLocked}
                   onClick={() => setAnswer(question.id, option.optionKey)}
-                  className={`text-left rounded-2xl border-2 transition-all ${compact ? "p-3.5" : "p-5"} ${extraClass}`}
+                  className={`text-left rounded-2xl border-2 transition-all ${compact ? "p-2.5" : "p-3 md:p-3.5"} ${extraClass}`}
                 >
                   <div
-                    className={`${compact ? "flex items-center gap-3" : "flex items-center gap-4"}`}
+                    className={`${compact ? "flex items-center gap-2" : "flex items-center gap-2.5"}`}
                   >
                     <div
-                      className={`${compact ? "h-8 w-8 text-sm" : "w-10 h-10"} shrink-0 rounded-2xl border flex items-center justify-center font-black ${selected ? "border-[#155ca5] bg-[#155ca5] text-white" : "border-slate-200 bg-white text-[#1e2e51]"}`}
+                      className={`${compact ? "h-7 w-7 text-xs" : "h-8 w-8 text-xs"} shrink-0 rounded-2xl border flex items-center justify-center font-black ${selected ? "border-[#155ca5] bg-[#155ca5] text-white" : "border-slate-200 bg-white text-[#1e2e51]"}`}
                     >
                       {option.optionKey}
                     </div>
                     <div
-                      className={`${compact ? "text-sm font-semibold" : "font-semibold"} ${eliminated && !selected ? "text-slate-400 line-through" : "text-[#1e2e51]"}`}
+                      className={`${compact ? "text-sm font-semibold" : "text-sm font-semibold"} ${eliminated && !selected ? "text-slate-400 line-through" : "text-[#1e2e51]"}`}
                     >
-                      {option.content}
+                      {renderFormattedInlineText(option.content)}
                     </div>
                   </div>
                 </button>
@@ -2806,7 +2808,7 @@ function LessonRunner() {
                 key={value}
                 disabled={isAnswerLocked}
                 onClick={() => setAnswer(question.id, value)}
-                className={`rounded-2xl border-2 font-bold uppercase transition-all ${compact ? "p-3.5 text-sm" : "p-5"} ${extraClass}`}
+                className={`rounded-2xl border-2 font-bold uppercase transition-all ${compact ? "p-2.5 text-xs" : "p-3 text-xs md:p-3.5 md:text-sm"} ${extraClass}`}
               >
                 {value}
               </button>
@@ -2838,7 +2840,7 @@ function LessonRunner() {
             onChange={(e) => setAnswer(question.id, e.target.value)}
             onKeyDown={(e) => handleSubmitOnEnter(e, question)}
             placeholder="Nhập câu trả lời..."
-            className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5]"
+            className="w-full rounded-2xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#155ca5]"
           />
         </div>
       );
@@ -2863,8 +2865,8 @@ function LessonRunner() {
             </div>
           )}
           {wordBank.length > 0 && (
-            <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
-              <p className="text-sm font-bold text-[#155ca5] mb-3">Word Bank</p>
+            <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-3">
+              <p className="mb-2.5 text-xs font-bold text-[#155ca5] sm:text-sm">Word Bank</p>
               <div className="flex flex-wrap gap-2">
                 {wordBank.map((word: string) => (
                   <button
@@ -2872,7 +2874,7 @@ function LessonRunner() {
                     type="button"
                     disabled={isAnswerLocked}
                     onClick={() => appendWordBankWord(question.id, word)}
-                    className="px-4 py-2 rounded-full border border-[#bfd8ff] bg-white text-[#155ca5] font-semibold hover:bg-[#eef6ff] disabled:opacity-60"
+                    className="rounded-full border border-[#bfd8ff] bg-white px-3 py-1.5 text-xs font-semibold text-[#155ca5] hover:bg-[#eef6ff] disabled:opacity-60 sm:text-sm"
                   >
                     {word}
                   </button>
@@ -2892,7 +2894,7 @@ function LessonRunner() {
             onChange={(e) => setAnswer(question.id, e.target.value)}
             onKeyDown={(e) => handleSubmitOnEnter(e, question)}
             placeholder="Điền từ hoặc bấm từ trong Word Bank..."
-            className="w-full rounded-2xl border border-gray-300 px-5 py-4 outline-none focus:border-[#155ca5]"
+            className="w-full rounded-2xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-[#155ca5]"
           />
         </div>
       );
@@ -2913,8 +2915,8 @@ function LessonRunner() {
             </div>
           )}
 
-          <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-5 shadow-sm">
-            <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
+          <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-3.5 shadow-sm">
+            <p className="mb-2.5 text-xs font-black uppercase tracking-[0.18em] text-[#155ca5] sm:text-sm">
               {copy("Rewrite the full sentence", "Viet lai ca cau")}
             </p>
             <textarea
@@ -2925,8 +2927,8 @@ function LessonRunner() {
                 "Write the complete sentence here...",
                 "Nhap cau hoan chinh vao day...",
               )}
-              rows={4}
-              className="min-h-[132px] w-full resize-none rounded-2xl border border-dashed border-[#9bc2ff] bg-white px-4 py-4 text-[#1e2e51] outline-none transition focus:border-[#155ca5] focus:ring-2 focus:ring-[#155ca5]/10 disabled:cursor-not-allowed disabled:bg-slate-50"
+              rows={3}
+              className="min-h-[92px] w-full resize-none rounded-2xl border border-dashed border-[#9bc2ff] bg-white px-3.5 py-2.5 text-sm text-[#1e2e51] outline-none transition focus:border-[#155ca5] focus:ring-2 focus:ring-[#155ca5]/10 disabled:cursor-not-allowed disabled:bg-slate-50"
             />
 
             {!isAnswerLocked && typedSentence && (
@@ -2969,7 +2971,7 @@ function LessonRunner() {
       return (
         <div className="space-y-4">
           {leftItems.length > 0 && rightItems.length > 0 ? (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
                 <p className="mb-3 text-sm font-bold text-[#155ca5]">
                   Chọn thẻ nghĩa bên trên, sau đó bấm vào ô bên dưới để ghép.
@@ -2985,13 +2987,13 @@ function LessonRunner() {
                         onClick={() =>
                           selectMatchingAnswer(question.id, rightItem)
                         }
-                        className={`px-4 py-2 rounded-xl border font-semibold transition-all disabled:opacity-60 ${
+                        className={`rounded-xl border px-3 py-1 text-xs font-semibold transition-all disabled:opacity-60 sm:text-sm ${
                           selectedMatchingAnswers[question.id] === rightItem
                             ? "border-[#155ca5] bg-[#eef6ff] text-[#155ca5]"
                             : "border-[#bfd8ff] bg-white text-[#155ca5] hover:bg-[#eef6ff]"
                         }`}
                       >
-                        {rightItem}
+                        {renderFormattedInlineText(rightItem)}
                       </button>
                     ))}
                   </div>
@@ -3009,10 +3011,10 @@ function LessonRunner() {
                   return (
                     <div
                       key={leftItem}
-                      className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-3 items-center rounded-2xl border border-gray-200 p-4"
+                      className="grid grid-cols-1 gap-2 items-center rounded-2xl border border-gray-200 p-3 md:grid-cols-[1fr_320px]"
                     >
                       <div className="font-semibold text-[#1e2e51]">
-                        {leftItem}
+                        {renderFormattedInlineText(leftItem)}
                       </div>
 
                       <div
@@ -3020,7 +3022,7 @@ function LessonRunner() {
                           if (isAnswerLocked) return;
                           applySelectedMatchingAnswer(question.id, leftItem);
                         }}
-                        className={`min-h-[56px] rounded-xl border-2 border-dashed px-3 py-2 flex items-center justify-between gap-2 ${
+                        className={`min-h-[42px] rounded-xl border-2 border-dashed px-3 py-1.5 flex items-center justify-between gap-2 ${
                           selectedValue
                             ? "border-[#bfd8ff] bg-[#f8fbff]"
                             : "border-gray-300 bg-white"
@@ -3028,7 +3030,7 @@ function LessonRunner() {
                       >
                         {selectedValue ? (
                           <span className="text-[#155ca5] font-semibold">
-                            {selectedValue}
+                            {renderFormattedInlineText(selectedValue)}
                           </span>
                         ) : (
                           <span className="text-gray-400 text-sm">
@@ -3476,7 +3478,7 @@ function LessonRunner() {
 
     return (
       <div
-        className={`rounded-2xl border p-5 ${
+        className={`rounded-2xl border p-3.5 ${
           isUngraded
             ? "border-amber-200 bg-amber-50"
             : currentAnswer.correct
@@ -3495,7 +3497,7 @@ function LessonRunner() {
 
           <div className="space-y-2">
             <p
-              className={`font-black ${
+              className={`text-sm font-black ${
                 isUngraded
                   ? "text-amber-800"
                   : currentAnswer.correct
@@ -3533,7 +3535,8 @@ function LessonRunner() {
             {isMCQ(question.questionType) && selectedOption && (
               <p className="text-sm text-gray-700">
                 <span className="font-semibold">Bạn chọn:</span>{" "}
-                {selectedOption.optionKey}. {selectedOption.content}
+                {selectedOption.optionKey}.{" "}
+                {renderFormattedInlineText(selectedOption.content)}
               </p>
             )}
 
@@ -3807,7 +3810,8 @@ function LessonRunner() {
             {!currentAnswer.correct && correctOption && (
               <p className="text-sm font-semibold text-gray-700">
                 {copy("Correct answer:", "Dap an dung:")}{" "}
-                {correctOption.optionKey}. {correctOption.content}
+                {correctOption.optionKey}.{" "}
+                {renderFormattedInlineText(correctOption.content)}
               </p>
             )}
 
@@ -3845,7 +3849,7 @@ function LessonRunner() {
                 <span className="font-semibold">
                   {copy("Explanation:", "Giải thích:")}
                 </span>{" "}
-                {question.explanation}
+                {renderFormattedInlineText(question.explanation)}
               </div>
             )}
           </div>
@@ -4083,20 +4087,20 @@ function LessonRunner() {
             </span>
           </div>
 
-          <div className="sticky top-4 z-30 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="sticky top-3 z-30 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[#155ca5]">
                   {copy("Question Navigator", "Dieu huong cau hoi")}
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-0.5 text-xs text-slate-500">
                   {copy(
                     "This navigator stays visible so you can always see the current question.",
                     "Thanh nay se bam theo man hinh de luon thay cau hien tai.",
                   )}
                 </p>
               </div>
-              <div className="rounded-full bg-[#155ca5]/10 px-3 py-1.5 text-sm font-bold text-[#155ca5] shadow-sm">
+              <div className="rounded-full bg-[#155ca5]/10 px-2.5 py-1 text-xs font-bold text-[#155ca5] shadow-sm">
                 {copy("Question", "Cau")}{" "}
                 {questionNavigatorItems.findIndex(
                   (item) =>
@@ -4107,7 +4111,7 @@ function LessonRunner() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1">
               {questionNavigatorItems.map((item, itemOrderIndex) => {
                 const state = answers[item.questionId];
                 const isActive =
@@ -4144,7 +4148,7 @@ function LessonRunner() {
                       jumpToQuestion(item.itemIndex, item.questionIndex);
                     }}
                     disabled={!canJumpFromBoard}
-                    className={`flex h-9 min-w-9 items-center justify-center rounded-full border text-sm font-black transition ${statusClass} ${isActive ? "ring-2 ring-amber-200" : ""} ${canJumpFromBoard ? "cursor-pointer" : "cursor-default"}`}
+                    className={`flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-[11px] font-black transition sm:h-8 sm:min-w-8 sm:text-xs ${statusClass} ${isActive ? "ring-2 ring-amber-200" : ""} ${canJumpFromBoard ? "cursor-pointer" : "cursor-default"}`}
                   >
                     {displayLabel}
                   </button>
@@ -4186,26 +4190,26 @@ function LessonRunner() {
           {currentGroup &&
             currentQuestions.length > 1 &&
             !isCompactPassageItem && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.22em] text-[#155ca5]">
                       {copy("Group Questions", "Nhom cau hoi")}
                     </p>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       {copy(
                         "Move through questions in the same screen to avoid a long scroll.",
                         "Chuyen tung cau trong cung mot man de do cuon dai.",
                       )}
                     </p>
                   </div>
-                  <div className="rounded-full bg-[#155ca5]/10 px-3 py-1.5 text-sm font-bold text-[#155ca5]">
+                  <div className="rounded-full bg-[#155ca5]/10 px-2.5 py-1 text-xs font-bold text-[#155ca5]">
                     {copy("Question", "Cau")} {activeQuestionIndex + 1}/
                     {currentQuestions.length}
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-2.5 flex flex-wrap gap-1">
                   {currentQuestions.map((question, index) => {
                     const state = getQuestionAnswer(question.id);
                     const active = index === activeQuestionIndex;
@@ -4230,7 +4234,7 @@ function LessonRunner() {
                           setCurrentGroupQuestionIndex(index);
                         }}
                         disabled={!canOpenQuestion}
-                        className={`flex min-w-10 items-center justify-center rounded-full border px-3 py-2 text-sm font-black transition ${buttonClass} ${!canOpenQuestion ? "cursor-not-allowed opacity-45" : ""}`}
+                        className={`flex min-w-7 items-center justify-center rounded-full border px-2 py-1 text-[11px] font-black transition sm:min-w-8 sm:px-2.5 sm:py-1.5 sm:text-xs ${buttonClass} ${!canOpenQuestion ? "cursor-not-allowed opacity-45" : ""}`}
                       >
                         {index + 1}
                       </button>
@@ -4245,9 +4249,9 @@ function LessonRunner() {
               let blankCursor = 0;
 
               return (
-                <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
-                  <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-5">
-                    <p className="mb-4 text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
+                <div className="rounded-3xl bg-white p-3.5 shadow-sm md:p-4">
+                  <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-3.5">
+                    <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-[#155ca5]">
                       {copy("Complete The Passage", "Hoan thanh doan van")}
                     </p>
                     <div className="question-text-unified leading-relaxed text-[#1e2e51]">
@@ -4307,7 +4311,7 @@ function LessonRunner() {
                               ({segment.label})
                             </span>
                             <span
-                              className={`inline-flex min-w-[210px] items-center rounded-2xl border shadow-[0_8px_24px_rgba(21,92,165,0.08)] ${dropdownClass}`}
+                              className={`inline-flex min-w-[180px] items-center rounded-2xl border shadow-[0_8px_24px_rgba(21,92,165,0.08)] sm:min-w-[210px] ${dropdownClass}`}
                             >
                               <select
                                 disabled={isLocked}
@@ -4318,7 +4322,7 @@ function LessonRunner() {
                                     event.target.value,
                                   )
                                 }
-                                className="w-full appearance-none bg-transparent px-4 py-3 pr-10 text-sm font-bold outline-none"
+                                className="w-full appearance-none bg-transparent px-3 py-2.5 pr-9 text-xs font-bold outline-none sm:px-4 sm:py-3 sm:text-sm"
                               >
                                 <option value="">
                                   {copy("Blank", "Cho trong")} {segment.label}
@@ -4340,7 +4344,7 @@ function LessonRunner() {
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-2.5 space-y-2">
                     {currentQuestions.map((question, index) => {
                       const questionAnswer = getQuestionAnswer(question.id);
                       if (!questionAnswer?.submitted) return null;
@@ -4348,7 +4352,7 @@ function LessonRunner() {
                       return (
                         <div
                           key={`compact-feedback-${question.id}`}
-                          className={`rounded-2xl border px-4 py-3 ${
+                          className={`rounded-2xl border px-3.5 py-3 ${
                             questionAnswer.correct === true
                               ? "border-green-200 bg-green-50"
                               : questionAnswer.correct === false
@@ -4404,23 +4408,23 @@ function LessonRunner() {
                 <div
                   key={question.id}
                   ref={questionIndex === activeQuestionIndex ? questionViewportRef : null}
-                  className={`bg-white shadow-sm ${isCompactPassageItem ? "rounded-2xl p-4 space-y-4" : "rounded-3xl p-5 md:p-6 space-y-5"} ${isReadingPassageItem ? "border border-[#e3eefc]" : ""}`}
+                  className={`bg-white shadow-sm ${isCompactPassageItem ? "rounded-2xl p-3 space-y-3" : "rounded-3xl p-3 md:p-3.5 space-y-3"} ${isReadingPassageItem ? "border border-[#e3eefc]" : ""}`}
                 >
                   <div
-                    className={isCompactPassageItem ? "space-y-2" : "space-y-3"}
+                    className={isCompactPassageItem ? "space-y-1.5" : "space-y-2"}
                   >
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-3 flex-wrap">
                         {(isAdminPreview ||
                           question.questionType !== "MATCHING") && (
                           <div
-                            className={`inline-flex items-center justify-center rounded-full bg-[#155ca5] px-3 font-black text-white ${isCompactPassageItem ? "h-8 min-w-8 text-xs" : "h-9 min-w-9 text-sm"}`}
+                            className={`inline-flex items-center justify-center rounded-full bg-[#155ca5] px-2 font-black text-white ${isCompactPassageItem ? "h-7 min-w-7 text-[11px]" : "h-7 min-w-7 text-[11px] sm:h-8 sm:min-w-8 sm:text-xs"}`}
                           >
                             {questionIndex + 1}
                           </div>
                         )}
                         {isAdminPreview && (
-                          <div className="inline-block px-3 py-1 rounded-full bg-[#f3f7ff] text-[#155ca5] text-xs font-bold uppercase tracking-wider">
+                          <div className="inline-block rounded-full bg-[#f3f7ff] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#155ca5]">
                             {getQuestionTypeLabel(question.questionType)}
                           </div>
                         )}
@@ -4429,7 +4433,7 @@ function LessonRunner() {
                       <button
                         type="button"
                         onClick={() => toggleQuestionFlag(question.id)}
-                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition sm:gap-1.5 sm:text-xs ${
                           flagged
                             ? "border-amber-300 bg-amber-50 text-amber-700"
                             : "border-slate-200 bg-white text-slate-500 hover:border-[#155ca5]/35 hover:text-[#155ca5]"
@@ -4465,7 +4469,7 @@ function LessonRunner() {
                     )}
 
                     {question.content?.trim() && (
-                      <div className="question-text-unified text-[#1e2e51]">
+                      <div className="question-text-unified text-[0.95rem] text-[#1e2e51] sm:text-[0.98rem]">
                         {renderTextWithBreaks(question.content)}
                       </div>
                     )}
@@ -4488,7 +4492,7 @@ function LessonRunner() {
 
                   {!isListeningItem && !isCompactPassageItem && (
                     <div
-                      className={`flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 ${isCompactPassageItem ? "pt-3" : "pt-4"}`}
+                      className={`flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 ${isCompactPassageItem ? "pt-2.5" : "pt-3"}`}
                     >
                       {currentGroup && !isCompactPassageItem ? (
                         <div className="flex items-center gap-2">
@@ -4500,7 +4504,7 @@ function LessonRunner() {
                               )
                             }
                             disabled={activeQuestionIndex === 0}
-                            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition hover:border-[#155ca5] hover:text-[#155ca5] disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-600 transition hover:border-[#155ca5] hover:text-[#155ca5] disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
                           >
                             {copy("Previous question", "Cau truoc")}
                           </button>
@@ -4517,7 +4521,7 @@ function LessonRunner() {
                               activeQuestionIndex + 1 >
                                 maxReachableGroupQuestionIndex
                             }
-                            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition hover:border-[#155ca5] hover:text-[#155ca5] disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-600 transition hover:border-[#155ca5] hover:text-[#155ca5] disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
                           >
                             {copy("Next question", "Cau sau")}
                           </button>
@@ -4534,7 +4538,7 @@ function LessonRunner() {
                             disabled={
                               !canSubmitQuestion(question) || submittingCurrent
                             }
-                            className={`rounded-xl bg-[#155ca5] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0f4c88] ${isCompactPassageItem ? "px-4 py-2.5 text-sm" : "px-6 py-3"}`}
+                            className={`rounded-xl bg-[#155ca5] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0f4c88] ${isCompactPassageItem ? "px-4 py-2.5 text-sm" : "px-5 py-2.5 text-sm"}`}
                           >
                             {submittingCurrent
                               ? copy("Submitting...", "Dang nop...")

@@ -29,11 +29,11 @@ export function VIPManagement() {
         adminApi.getAllUsers({ vipStatus: 'premium', page: 1, pageSize: 10 }),
       ]);
 
-      if (statsResponse.success) {
+      if (statsResponse.success && statsResponse.data) {
         setVipStats(statsResponse.data);
       }
 
-      if (usersResponse.success) {
+      if (usersResponse.success && usersResponse.data) {
         setVipUsers(usersResponse.data.data);
       }
     } catch (err) {

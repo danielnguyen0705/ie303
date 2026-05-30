@@ -5,11 +5,7 @@ import {
   Users,
   FileText,
   MessageSquare,
-  BarChart3,
-  Crown,
   DollarSign,
-  Bell,
-  Settings,
   ShoppingBag,
   Search,
   HelpCircle,
@@ -30,13 +26,8 @@ const navigation = [
   { name: "Content Management", href: "/admin/content", icon: FileText },
   { name: "Question Bank", href: "/admin/questions", icon: MessageSquare },
   { name: "Semester Tests", href: "/admin/semester-tests", icon: ClipboardCheck },
-  { name: "Reports", href: "/admin/reports", icon: BarChart3 },
-  { name: "VIP Management", href: "/admin/vip", icon: Crown },
   { name: "Payment Offers", href: "/admin/payments", icon: DollarSign },
   { name: "Shop Management", href: "/admin/shop", icon: ShoppingBag },
-  { name: "Quest Management", href: "/admin/quests", icon: Target },
-  { name: "Notifications", href: "/admin/notifications", icon: Bell },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 export function AdminLayout() {
@@ -163,7 +154,7 @@ export function AdminLayout() {
             {isSidebarCollapsed && (
               <div className="flex justify-center">
                 <div className="h-9 w-9 rounded-full bg-[#b02d21]/20 flex items-center justify-center">
-                  <BarChart3 size={16} className="text-[#ff8f84]" />
+                  <LayoutDashboard size={16} className="text-[#ff8f84]" />
                 </div>
               </div>
             )}
@@ -199,10 +190,6 @@ export function AdminLayout() {
             </nav>
             <div className="flex items-center gap-3">
               <HelpCircle
-                className="text-slate-500 hover:text-red-600 cursor-pointer"
-                size={20}
-              />
-              <Settings
                 className="text-slate-500 hover:text-red-600 cursor-pointer"
                 size={20}
               />

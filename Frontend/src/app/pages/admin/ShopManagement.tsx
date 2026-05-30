@@ -6,6 +6,8 @@ import type {
   ShopItemType,
   ShopItemUpsertRequest,
 } from "@/api/types";
+import { NotificationPopup } from "@/utils/NotificationPopup";
+import { useNotificationPopup } from "@/utils/useNotificationPopup";
 
 const ITEM_TYPES: ShopItemType[] = [
   "SKIP",
@@ -37,6 +39,10 @@ export function ShopManagement() {
     null,
   );
   const [form, setForm] = useState<ShopItemUpsertRequest>(emptyForm);
+  const popup = useNotificationPopup({
+    autoClose: true,
+    autoCloseDuration: 2200,
+  });
 
   useEffect(() => {
     void loadItems();
@@ -118,20 +124,31 @@ export function ShopManagement() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Hide this item? (soft delete active=false)")) {
-      return;
-    }
+    popup.warning({
+      title: "Hide item",
+      message: "Hide this item? This will soft delete it by setting active=false.",
+      confirmText: "Hide",
+      cancelText: "Cancel",
+      showCancelButton: true,
+      autoClose: false,
+      onConfirm: async () => {
+        setSubmitting(true);
+        const response = await adminApi.deleteShopItem(id);
+        if (!response.success) {
+          setError(response.error?.message || "Failed to delete item");
+          setSubmitting(false);
+          return;
+        }
 
-    setSubmitting(true);
-    const response = await adminApi.deleteShopItem(id);
-    if (!response.success) {
-      setError(response.error?.message || "Failed to delete item");
-      setSubmitting(false);
-      return;
-    }
-
-    await loadItems();
-    setSubmitting(false);
+        await loadItems();
+        setSubmitting(false);
+        popup.success({
+          title: "Hidden successfully",
+          message: "Shop item has been hidden.",
+          showCancelButton: false,
+        });
+      },
+    });
   };
 
   const handleViewDetail = async (id: number) => {
@@ -432,6 +449,7 @@ export function ShopManagement() {
           </pre>
         </section>
       )}
+      <NotificationPopup {...popup.notification} onClose={popup.close} />
     </div>
   );
 }

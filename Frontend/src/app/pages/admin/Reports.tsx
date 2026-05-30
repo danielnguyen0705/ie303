@@ -30,8 +30,8 @@ export function Reports() {
       if (activityResponse.success) {
         setReports((prev) => ({
           ...prev,
-          userGrowth: activityResponse.data,
-          engagement: statsResponse.data,
+          userGrowth: activityResponse.data ?? [],
+          engagement: statsResponse.data ?? {},
         }));
       }
     } catch (err) {

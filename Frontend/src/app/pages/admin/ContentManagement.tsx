@@ -1448,75 +1448,126 @@ export function ContentManagement() {
   };
 
   const handleDeleteUnit = async (unitId: number) => {
-    if (!confirm("Are you sure you want to delete this unit?")) return;
+    warning({
+      title: "Delete unit",
+      message: "Are you sure you want to delete this unit?",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        try {
+          setDeletingItem(`unit-${unitId}`);
+          const response = await adminApi.deleteUnit({ id: unitId });
 
-    try {
-      setDeletingItem(`unit-${unitId}`);
-      const response = await adminApi.deleteUnit({ id: unitId });
+          if (response.success) {
+            if (selectedGrade) await loadUnitsByGrade(selectedGrade.id, false);
 
-      if (response.success) {
-        if (selectedGrade) await loadUnitsByGrade(selectedGrade.id, false);
+            if (selectedUnit?.id === unitId) {
+              setSelectedUnit(null);
+              setSelectedSection(null);
+              setSelectedLesson(null);
+              setSections([]);
+              setLessons([]);
+              setQuestionsPayload(null);
+            }
 
-        if (selectedUnit?.id === unitId) {
-          setSelectedUnit(null);
-          setSelectedSection(null);
-          setSelectedLesson(null);
-          setSections([]);
-          setLessons([]);
-          setQuestionsPayload(null);
+            setActiveStage("unit");
+            success({
+              message: "Unit deleted successfully",
+              autoClose: true,
+              showCancelButton: false,
+            });
+          } else {
+            showError({
+              message: response.error?.message || "Failed to delete unit",
+              autoClose: true,
+              showCancelButton: false,
+            });
+          }
+        } finally {
+          setDeletingItem(null);
         }
-
-        setActiveStage("unit");
-      }
-    } finally {
-      setDeletingItem(null);
-    }
+      },
+    });
   };
 
   const handleDeleteSection = async (sectionId: number) => {
-    if (!confirm("Are you sure you want to delete this section?")) return;
+    warning({
+      title: "Delete section",
+      message: "Are you sure you want to delete this section?",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        try {
+          setDeletingItem(`section-${sectionId}`);
+          const response = await adminApi.deleteSection({ id: sectionId });
 
-    try {
-      setDeletingItem(`section-${sectionId}`);
-      const response = await adminApi.deleteSection({ id: sectionId });
+          if (response.success) {
+            if (selectedUnit) await loadSectionsByUnit(selectedUnit.id, false);
 
-      if (response.success) {
-        if (selectedUnit) await loadSectionsByUnit(selectedUnit.id, false);
+            if (selectedSection?.id === sectionId) {
+              setSelectedSection(null);
+              setSelectedLesson(null);
+              setLessons([]);
+              setQuestionsPayload(null);
+            }
 
-        if (selectedSection?.id === sectionId) {
-          setSelectedSection(null);
-          setSelectedLesson(null);
-          setLessons([]);
-          setQuestionsPayload(null);
+            setActiveStage("section");
+            success({
+              message: "Section deleted successfully",
+              autoClose: true,
+              showCancelButton: false,
+            });
+          } else {
+            showError({
+              message: response.error?.message || "Failed to delete section",
+              autoClose: true,
+              showCancelButton: false,
+            });
+          }
+        } finally {
+          setDeletingItem(null);
         }
-
-        setActiveStage("section");
-      }
-    } finally {
-      setDeletingItem(null);
-    }
+      },
+    });
   };
 
   const handleDeleteLesson = async (lessonId: number) => {
-    if (!confirm("Are you sure you want to delete this lesson?")) return;
+    warning({
+      title: "Delete lesson",
+      message: "Are you sure you want to delete this lesson?",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        try {
+          setDeletingItem(`lesson-${lessonId}`);
+          const response = await adminApi.deleteLesson({ id: lessonId });
 
-    try {
-      setDeletingItem(`lesson-${lessonId}`);
-      const response = await adminApi.deleteLesson({ id: lessonId });
+          if (response.success) {
+            if (selectedSection) await loadLessonsBySection(selectedSection.id, false);
 
-      if (response.success) {
-        if (selectedSection) await loadLessonsBySection(selectedSection.id, false);
+            if (selectedLesson?.id === lessonId) {
+              setSelectedLesson(null);
+              setQuestionsPayload(null);
+            }
 
-        if (selectedLesson?.id === lessonId) {
-          setSelectedLesson(null);
-          setQuestionsPayload(null);
+            setActiveStage("lesson");
+            success({
+              message: "Lesson deleted successfully",
+              autoClose: true,
+              showCancelButton: false,
+            });
+          } else {
+            showError({
+              message: response.error?.message || "Failed to delete lesson",
+              autoClose: true,
+              showCancelButton: false,
+            });
+          }
+        } finally {
+          setDeletingItem(null);
         }
-
-        setActiveStage("lesson");
-      }
-    } finally {
-      setDeletingItem(null);
-    }
+      },
+    });
   };
 
   const isGradeExpanded = activeStage === "grade" || !selectedGrade;
