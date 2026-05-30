@@ -1,4 +1,5 @@
 import { request, createError } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
 import type { ApiResponse } from "./types";
 
 export type QuestionGroupType =
@@ -136,8 +137,14 @@ export async function submitQuestionHistory(
     return createError("Answer text is required", "INVALID_ANSWER_TEXT");
   }
 
-  return request<QuestionHistorySubmissionResult>("/user-question-histories/submit", {
+  const response = await request<QuestionHistorySubmissionResult>("/user-question-histories/submit", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("leaderboard:");
+  }
+
+  return response;
 }

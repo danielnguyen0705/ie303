@@ -30,6 +30,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -37,6 +38,8 @@ import java.util.List;
 @Slf4j
 @Service
 public class ShopItemService {
+
+    private static final ZoneId QUEST_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final ShopItemRepo repo;
     private final UserItemRepo userItemRepo;
@@ -199,6 +202,12 @@ public class ShopItemService {
                     "shop-items-active",
                     "shop-items-by-id",
                     "shop-items-my-items"
+            }, allEntries = true),
+            @CacheEvict(cacheNames = {
+                    "daily-quests",
+                    "daily-quest-by-id",
+                    "daily-quest-stats",
+                    "quest-badges"
             }, allEntries = true)
     })
     public String useSkip(Long userItemId) {
@@ -223,6 +232,7 @@ public class ShopItemService {
         userRepo.save(user);
 
         SkipUsageLog usageLog = new SkipUsageLog();
+        usageLog.setUsedAt(LocalDateTime.now(QUEST_ZONE));
         usageLog.setUser(user);
         usageLog.setUserItem(userItem);
         skipUsageLogRepo.save(usageLog);

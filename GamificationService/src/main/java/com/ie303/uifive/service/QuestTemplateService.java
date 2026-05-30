@@ -66,7 +66,9 @@ public class QuestTemplateService {
     public QuestTemplateEntity create(QuestTemplateRequest request) {
         validate(request);
 
-        QuestTemplateEntity template = new QuestTemplateEntity();
+        QuestTemplateEntity template = questTemplateRepo
+                .findByQuestPeriodAndQuestType(request.questPeriod(), request.questType())
+                .orElseGet(QuestTemplateEntity::new);
         applyRequest(template, request);
         return questTemplateRepo.save(template);
     }

@@ -4,6 +4,32 @@ import { readCache, writeCache } from "./cache";
 
 const BASE_URL = ENV.API_BASE_URL;
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
+const AUTH_EXPIRED_EVENT = "uifive:auth-expired";
+
+function shouldBroadcastAuthExpired(url: string, status: number): boolean {
+  if (status !== 401 && status !== 403) {
+    return false;
+  }
+
+  // Login/register failures should not blow away the current session state.
+  if (
+    url.startsWith("/auth/login") ||
+    url.startsWith("/auth/register") ||
+    url.startsWith("/auth/verify-email")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function broadcastAuthExpired(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+}
 
 export function createError(
   message: string,
@@ -63,6 +89,10 @@ export async function request<T>(
     }
 
     if (!res.ok) {
+      if (shouldBroadcastAuthExpired(url, res.status)) {
+        broadcastAuthExpired();
+      }
+
       const errorPayload = data as
         | { code?: string; message?: string }
         | string

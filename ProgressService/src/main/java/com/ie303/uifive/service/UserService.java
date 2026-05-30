@@ -6,6 +6,7 @@ import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.exception.ErrorCode;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,6 +46,11 @@ public class UserService implements UserDetailsService {
         return user;
     }
 
+    @CacheEvict(cacheNames = {
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
+    }, allEntries = true)
     public void touchStudyStreak(Long userId) {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));

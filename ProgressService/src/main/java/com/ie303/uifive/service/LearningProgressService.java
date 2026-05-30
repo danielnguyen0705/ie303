@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 
@@ -34,6 +35,7 @@ import java.util.Set;
 @Transactional
 public class LearningProgressService {
 
+    private static final ZoneId ACTIVITY_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final int LESSON_COMPLETION_COIN_REWARD = 18;
     private static final int LESSON_COMPLETION_EXP_REWARD = 36;
     private static final double LESSON_PASS_ACCURACY = 0.0;
@@ -48,7 +50,10 @@ public class LearningProgressService {
     @CacheEvict(cacheNames = {
             "progress-grades-units",
             "progress-units-sections",
-            "progress-sections-lessons"
+            "progress-sections-lessons",
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
     }, allEntries = true)
     public UserLessonProgressResponse completeLesson(UserLessonProgressRequest request) {
         User currentUser = userService.getCurrentUser();
@@ -94,10 +99,11 @@ public class LearningProgressService {
         progress.setAccuracy(request.accuracy());
         progress.setCompleted(completedAfterAttempt);
         progress.setProgressPercent(Math.max(0.0, Math.min(100.0, request.accuracy())));
-        progress.setLastAccessedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now(ACTIVITY_ZONE);
+        progress.setLastAccessedAt(now);
 
         if (completedAfterAttempt && progress.getCompletedAt() == null) {
-            progress.setCompletedAt(LocalDateTime.now());
+            progress.setCompletedAt(now);
         } else if (!completedAfterAttempt) {
             progress.setCompletedAt(null);
         }

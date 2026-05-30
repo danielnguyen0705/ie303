@@ -18,10 +18,12 @@ import com.ie303.uifive.repo.UserQuestionHistoryRepo;
 import com.ie303.uifive.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,7 @@ import java.util.Map;
 @Slf4j
 public class UserQuestionHistoryService {
 
+    private static final ZoneId ACTIVITY_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final int QUESTION_CORRECT_COIN_REWARD = 1;
     private static final int QUESTION_CORRECT_SCORE_REWARD = 1;
     private static final int QUESTION_CORRECT_BASE_EXP_REWARD = 10;
@@ -45,6 +48,11 @@ public class UserQuestionHistoryService {
     private final ObjectMapper objectMapper;
 
     @Transactional
+    @CacheEvict(cacheNames = {
+            "leaderboard-coins",
+            "leaderboard-collectors",
+            "leaderboard-exp"
+    }, allEntries = true)
     public UserQuestionHistoryResponse submit(UserQuestionHistoryRequest request) {
         User currentUser = userService.getCurrentUser();
 
@@ -74,6 +82,7 @@ public class UserQuestionHistoryService {
         history.setUser(historyUser);
         history.setQuestion(question);
         history.setCorrect(currentlyCorrect);
+        history.setAnsweredAt(LocalDateTime.now(ACTIVITY_ZONE));
 
         if (!previouslyCorrect && history.isCorrect()) {
             user.setCoin(user.getCoin() + QUESTION_CORRECT_COIN_REWARD);

@@ -9,7 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -28,8 +27,7 @@ public class UserQuestionHistory {
     @Column(name = "is_correct")
     private boolean correct;
 
-    @Column(name = "answered_at")
-    @CreationTimestamp
+    @Column(name = "answered_at", nullable = false)
     private LocalDateTime answeredAt;
 
     @ManyToOne(fetch = FetchType.LAZY)

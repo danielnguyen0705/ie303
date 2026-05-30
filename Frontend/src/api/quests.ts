@@ -1,5 +1,6 @@
 import { request } from "./utils/http";
 import { createError } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
 import type {
   ApiResponse,
   ClaimQuestRequest,
@@ -148,6 +149,9 @@ export async function claimQuestReward(
   }
 
   const claimedQuest = response.data;
+
+  clearCachePrefix("leaderboard:");
+  clearCachePrefix("users:");
 
   return {
     success: true,

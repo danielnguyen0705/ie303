@@ -230,6 +230,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [initialStoredUser, loadCurrentUser]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleAuthExpired = () => {
+      setUser(null);
+      storeUser(null);
+      clearCache();
+      setError(null);
+      setLoading(false);
+      setIsReady(true);
+    };
+
+    window.addEventListener("uifive:auth-expired", handleAuthExpired);
+
+    return () => {
+      window.removeEventListener("uifive:auth-expired", handleAuthExpired);
+    };
+  }, []);
+
   const login = useCallback(
     async (username: string, password: string): Promise<boolean> => {
       setLoading(true);
