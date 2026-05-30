@@ -344,7 +344,7 @@ function NavbarContent() {
   return (
     <>
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link
             to="/"
             className="shrink-0 text-2xl font-black italic tracking-tighter text-[#155ca5]"
@@ -352,10 +352,10 @@ function NavbarContent() {
             UIFIVE
           </Link>
 
-          <div className="hidden md:flex items-center gap-8 font-medium text-sm">
+          <div className="hidden items-center gap-6 text-sm font-medium lg:flex xl:gap-8">
             <Link
               to="/"
-              className={`transition-all duration-200 ${
+              className={`whitespace-nowrap transition-all duration-200 ${
                 isActive("/")
                   ? "text-[#155ca5] font-bold border-b-2 border-[#155ca5] pb-1"
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
@@ -365,7 +365,7 @@ function NavbarContent() {
             </Link>
             <Link
               to="/quests"
-              className={`transition-all duration-200 ${
+              className={`whitespace-nowrap transition-all duration-200 ${
                 isActive("/quests")
                   ? "text-[#155ca5] font-bold border-b-2 border-[#155ca5] pb-1"
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
@@ -375,7 +375,7 @@ function NavbarContent() {
             </Link>
             <Link
               to="/leaderboard"
-              className={`transition-all duration-200 ${
+              className={`whitespace-nowrap transition-all duration-200 ${
                 isActive("/leaderboard")
                   ? "text-[#155ca5] font-bold border-b-2 border-[#155ca5] pb-1"
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
@@ -385,7 +385,7 @@ function NavbarContent() {
             </Link>
             <Link
               to="/shop"
-              className={`transition-all duration-200 ${
+              className={`whitespace-nowrap transition-all duration-200 ${
                 isActive("/shop")
                   ? "text-[#155ca5] font-bold border-b-2 border-[#155ca5] pb-1"
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
@@ -395,7 +395,7 @@ function NavbarContent() {
             </Link>
             <Link
               to="/topup"
-              className={`transition-all duration-200 ${
+              className={`whitespace-nowrap transition-all duration-200 ${
                 isActive("/topup")
                   ? "text-[#155ca5] font-bold border-b-2 border-[#155ca5] pb-1"
                   : "text-slate-600 hover:text-[#155ca5] hover:scale-105"
@@ -405,9 +405,9 @@ function NavbarContent() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             {user?.role !== "ADMIN" && (
-              <div className="hidden md:flex items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+              <div className="hidden items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm lg:flex">
                 <button
                   type="button"
                   onClick={() => setLanguage("en")}
@@ -442,7 +442,7 @@ function NavbarContent() {
               <Backpack className="h-4 w-4" />
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-full hover:scale-105 transition-all cursor-pointer">
+            <div className="hidden items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 transition-all hover:scale-105 sm:flex lg:hidden xl:flex">
               <Flame className="w-4 h-4 text-[#f39c12]" fill="#f39c12" />
               <span className="font-bold text-sm">
                 {isAuthenticated
@@ -451,9 +451,9 @@ function NavbarContent() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-full hover:scale-105 transition-all cursor-pointer">
+            <div className="flex max-w-[9rem] items-center gap-2 rounded-full bg-yellow-50 px-3 py-1.5 transition-all hover:scale-105 sm:max-w-none">
               <Coins className="w-4 h-4 text-[#f1c40f]" fill="#f1c40f" />
-              <span className="font-bold text-sm">
+              <span className="truncate text-sm font-bold">
                 {isAuthenticated ? coinAmount.toLocaleString() : "0"}
               </span>
             </div>
@@ -547,7 +547,7 @@ function NavbarContent() {
         </div>
       </nav>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex justify-around items-center py-3 z-50">
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-slate-100 bg-white py-3 lg:hidden">
         <Link
           to="/"
           className={`flex flex-col items-center gap-1 ${isActive("/") ? "text-[#155ca5]" : "text-slate-400"}`}
