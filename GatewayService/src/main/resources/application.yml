@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - ${FRONTEND_BASE_URL:http://localhost:5173}
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        - id: progress-api
+          uri: ${PROGRESS_SERVICE_BASE_URL:http://localhost:8087}
+          predicates:
+            - Path=/api/progress/**,/api/user-question-histories/**,/api/users/me/activity-calendar
+        - id: analysis-api
+          uri: ${PROGRESS_SERVICE_BASE_URL:http://localhost:8087}
+          predicates:
+            - Path=/api/ai/learning-analysis/me,/api/ai/learning-analysis/me/history,/api/ai/learning-analysis/me/refresh
+        - id: identity-api
+          uri: ${IDENTITY_SERVICE_BASE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/auth/**,/oauth2/**,/login/oauth2/**,/api/users/**
+        - id: payment-api
+          uri: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/payments/**
+        - id: gamification-api
+          uri: ${GAMIFICATION_SERVICE_BASE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/shop-items/**,/api/leaderboards/**,/api/quests/**,/api/admin/quest-templates/**
+        - id: content-api
+          uri: ${CONTENT_SERVICE_BASE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/grades/**,/api/units/**,/api/sections/**,/api/lessons/**,/api/questions/**,/api/question-groups/**,/api/question-options/**,/api/unit-reviews/**,/api/group-reviews/**,/api/semester-tests/**
+          filters:
+            - name: Retry
+              args:
+                retries: 5
+                methods: GET
+                series: SERVER_ERROR
+                exceptions:
+                  - java.net.ConnectException
+                  - java.io.IOException
+        - id: ai-api
+          uri: ${AI_SERVICE_BASE_URL:http://localhost:8088}
+          predicates:
+            - Path=/api/ai/essay/**,/api/ai/speaking/**,/api/ai/personalized-questions
+
+server:
+  port: ${PORT:8081}

@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  Target,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 

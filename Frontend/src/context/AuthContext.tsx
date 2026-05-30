@@ -152,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initialStoredUser] = useState<AuthUser | null>(() => readStoredUser());
   const [user, setUser] = useState<AuthUser | null>(() => initialStoredUser);
   const [loading, setLoading] = useState<boolean>(() => !initialStoredUser);
-  const [isReady, setIsReady] = useState<boolean>(Boolean(initialStoredUser));
+  const [isReady, setIsReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const isAuthenticated = Boolean(user);
@@ -215,14 +215,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    if (!initialStoredUser) {
+      setLoading(false);
+      setIsReady(true);
+      return;
+    }
+
     void loadCurrentUser(false, {
       setLoading: false,
-      preserveExistingUser: Boolean(initialStoredUser),
+      preserveExistingUser: false,
     }).finally(() => {
       setLoading(false);
       setIsReady(true);
     });
   }, [initialStoredUser, loadCurrentUser]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleAuthExpired = () => {
+      setUser(null);
+      storeUser(null);
+      clearCache();
+      setError(null);
+      setLoading(false);
+      setIsReady(true);
+    };
+
+    window.addEventListener("uifive:auth-expired", handleAuthExpired);
+
+    return () => {
+      window.removeEventListener("uifive:auth-expired", handleAuthExpired);
+    };
+  }, []);
 
   const login = useCallback(
     async (username: string, password: string): Promise<boolean> => {

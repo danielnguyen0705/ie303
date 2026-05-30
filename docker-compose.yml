@@ -1,0 +1,327 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: uifive-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: uifive
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d uifive"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: uifive-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: uifive-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  gateway-service:
+    build:
+      context: ./GatewayService
+      dockerfile: Dockerfile
+    container_name: uifive-gateway
+    restart: unless-stopped
+    environment:
+      PORT: "8081"
+      FRONTEND_BASE_URL: "http://localhost:3000"
+      IDENTITY_SERVICE_BASE_URL: "http://identity-service:8084"
+      PAYMENT_SERVICE_BASE_URL: "http://payment-service:8083"
+      PROGRESS_SERVICE_BASE_URL: "http://progress-service:8087"
+      CONTENT_SERVICE_BASE_URL: "http://content-service:8086"
+      GAMIFICATION_SERVICE_BASE_URL: "http://gamification-service:8085"
+      AI_SERVICE_BASE_URL: "http://ai-service:8088"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - identity-service
+      - payment-service
+      - progress-service
+      - content-service
+      - gamification-service
+      - ai-service
+
+  identity-service:
+    build:
+      context: ./IdentityService
+      dockerfile: Dockerfile
+    container_name: uifive-identity
+    restart: unless-stopped
+    env_file:
+      - ./IdentityService/.env
+    environment:
+      PORT: "8084"
+      DB_URL: "jdbc:postgresql://postgres:5432/uifive"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      SPRING_RABBITMQ_HOST: "rabbitmq"
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: "guest"
+      SPRING_RABBITMQ_PASSWORD: "guest"
+      JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
+      JWT_EXPIRATION: "86400000"
+      FRONTEND_BASE_URL: "http://localhost:3000"
+      BACKEND_PUBLIC_BASE_URL: "http://localhost:8081"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+      APP_COOKIE_SECURE: "false"
+      APP_COOKIE_SAME_SITE: "Lax"
+      NOTIFICATION_SERVICE_BASE_URL: "http://notification-service:8082"
+      PROGRESS_SERVICE_BASE_URL: "http://progress-service:8087"
+    ports:
+      - "8084:8084"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+      progress-service:
+        condition: service_started
+
+  payment-service:
+    build:
+      context: ./PaymentService
+      dockerfile: Dockerfile
+    container_name: uifive-payment
+    restart: unless-stopped
+    environment:
+      PORT: "8083"
+      DB_URL: "jdbc:postgresql://postgres:5432/uifive"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      SPRING_RABBITMQ_HOST: "rabbitmq"
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: "guest"
+      SPRING_RABBITMQ_PASSWORD: "guest"
+      JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
+      JWT_EXPIRATION: "86400000"
+      FRONTEND_BASE_URL: "http://localhost:3000"
+      BACKEND_PUBLIC_BASE_URL: "http://localhost:8081"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+      APP_COOKIE_SECURE: "false"
+      APP_COOKIE_SAME_SITE: "Lax"
+      PAYMENT_MOCK_CONFIRM_ENABLED: "true"
+      PAYMENT_MOMO_ENABLED: "false"
+      NOTIFICATION_SERVICE_BASE_URL: "http://notification-service:8082"
+      PAYMENT_WEBHOOK_SECRET: ""
+      PAYMENT_MOMO_SECRET: ""
+      PAYMENT_VNPAY_TMN_CODE: ""
+      PAYMENT_VNPAY_SECRET: ""
+      PAYMENT_BANK_SECRET: ""
+    ports:
+      - "8083:8083"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: ./NotificationService
+      dockerfile: Dockerfile
+    container_name: uifive-notification
+    restart: unless-stopped
+    environment:
+      PORT: "8082"
+      DB_URL: "jdbc:postgresql://postgres:5432/uifive"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      SPRING_RABBITMQ_HOST: "rabbitmq"
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: "guest"
+      SPRING_RABBITMQ_PASSWORD: "guest"
+      NOTIFICATION_TIME_ZONE: "Asia/Ho_Chi_Minh"
+      NOTIFICATION_VIP_REMINDER_CRON: "0 0 9 * * *"
+      NOTIFICATION_VIP_REMINDER_DAYS_BEFORE: "3"
+      NOTIFICATION_STREAK_REMINDER_CRON: "0 0 9 * * *"
+      NOTIFICATION_STREAK_RESET_CRON: "0 5 0 * * *"
+      RESEND_API_KEY: ""
+      RESEND_FROM_EMAIL: "noreply@uifive.local"
+    ports:
+      - "8082:8082"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  gamification-service:
+    build:
+      context: ./GamificationService
+      dockerfile: Dockerfile
+    container_name: uifive-gamification
+    restart: unless-stopped
+    environment:
+      PORT: "8085"
+      DB_URL: "jdbc:postgresql://postgres:5432/uifive"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      SPRING_RABBITMQ_HOST: "rabbitmq"
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: "guest"
+      SPRING_RABBITMQ_PASSWORD: "guest"
+      JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
+      JWT_EXPIRATION: "86400000"
+      REDIS_URL: "redis://redis:6379"
+      NOTIFICATION_SERVICE_BASE_URL: "http://notification-service:8082"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+      CLOUD_NAME: ""
+      API_KEY: ""
+      API_SECRET: ""
+    ports:
+      - "8085:8085"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+
+  content-service:
+    build:
+      context: ./ContentService
+      dockerfile: Dockerfile
+    container_name: uifive-content
+    restart: unless-stopped
+    environment:
+      PORT: "8086"
+      DB_URL: "jdbc:postgresql://postgres:5432/uifive"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
+      JWT_EXPIRATION: "86400000"
+      REDIS_URL: "redis://redis:6379"
+      FRONTEND_BASE_URL: "http://localhost:3000"
+      BACKEND_PUBLIC_BASE_URL: "http://localhost:8081"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+      CLOUD_NAME: ""
+      API_KEY: ""
+      API_SECRET: ""
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  progress-service:
+    build:
+      context: ./ProgressService
+      dockerfile: Dockerfile
+    container_name: uifive-progress
+    restart: unless-stopped
+    environment:
+      PORT: "8087"
+      DB_URL: "jdbc:postgresql://postgres:5432/uifive"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
+      JWT_EXPIRATION: "86400000"
+      REDIS_URL: "redis://redis:6379"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+      ML_API_URL: "http://ml-service:8000/predict"
+    ports:
+      - "8087:8087"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ml-service:
+        condition: service_started
+
+  ai-service:
+    build:
+      context: ./AIService
+      dockerfile: Dockerfile
+    container_name: uifive-ai
+    restart: unless-stopped
+    environment:
+      PORT: "8088"
+      DB_URL: "jdbc:postgresql://postgres:5432/uifive"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
+      JWT_EXPIRATION: "86400000"
+      REDIS_URL: "redis://redis:6379"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+      CLOUDINARY_CLOUD_NAME: ""
+      CLOUDINARY_API_KEY: ""
+      CLOUDINARY_API_SECRET: ""
+      NVIDIA_API_KEY: ""
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ml-service:
+    build:
+      context: ./MLService
+      dockerfile: Dockerfile
+    container_name: uifive-ml
+    restart: unless-stopped
+    environment:
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "/api"
+        VITE_BACKEND_BASE_URL: "http://localhost:8081"
+    container_name: uifive-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway-service
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:

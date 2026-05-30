@@ -34,12 +34,18 @@ import { QuestionBank } from "./pages/admin/QuestionBank";
 import { SemesterTests } from "./pages/SemesterTests";
 import { PaymentOffers } from "./pages/admin/PaymentOffers";
 import { ShopManagement } from "./pages/admin/ShopManagement";
+import { QuestManagement } from "./pages/admin/QuestManagement";
 import { RequireAuth } from "./components/RequireAuth";
 import { Forbidden } from "./pages/Forbidden";
 import { NotFound } from "./pages/NotFound";
 import { VerifyEmail } from "./pages/VerifyEmail";
+import { OAuth2Callback } from "./pages/OAuth2Callback";
 
 export const router = createBrowserRouter([
+  {
+    path: "/oauth2/callback",
+    Component: OAuth2Callback,
+  },
   {
     path: "/verify-email",
     Component: VerifyEmail,

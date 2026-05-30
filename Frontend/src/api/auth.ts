@@ -78,5 +78,9 @@ export async function verifyEmail(token: string): Promise<ApiResponse<void>> {
 // OAUTH2 GOOGLE LOGIN
 // =========================
 export function getGoogleOAuth2AuthorizeUrl(): string {
+  if (import.meta.env.DEV) {
+    return "/oauth2/authorization/google";
+  }
+
   return `${ENV.BACKEND_BASE_URL}/oauth2/authorization/google`;
 }

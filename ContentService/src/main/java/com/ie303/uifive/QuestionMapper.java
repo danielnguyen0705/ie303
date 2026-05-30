@@ -1,0 +1,33 @@
+package com.ie303.uifive.mapper;
+
+import com.ie303.uifive.dto.req.QuestionRequest;
+import com.ie303.uifive.dto.res.QuestionResponse;
+import com.ie303.uifive.entity.Question;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+
+@Mapper(componentModel = "spring", uses = {QuestionOptionMapper.class})
+public interface QuestionMapper {
+
+    @Mapping(target = "lessonId", source = "lesson.id")
+    @Mapping(target = "questionGroupId", source = "questionGroup.id")
+    @Mapping(target = "options", source = "options")
+    QuestionResponse toResponse(Question question);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "lesson", ignore = true)
+    @Mapping(target = "questionGroup", ignore = true)
+    @Mapping(target = "audioUrl", ignore = true)
+    @Mapping(target = "imageUrl", ignore = true)
+    @Mapping(target = "options", ignore = true)
+    Question toEntity(QuestionRequest request);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "lesson", ignore = true)
+    @Mapping(target = "questionGroup", ignore = true)
+    @Mapping(target = "audioUrl", ignore = true)
+    @Mapping(target = "imageUrl", ignore = true)
+    @Mapping(target = "options", ignore = true)
+    void updateEntityFromRequest(QuestionRequest request, @MappingTarget Question question);
+}

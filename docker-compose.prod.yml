@@ -1,0 +1,207 @@
+name: uifive-prod
+
+x-app-env: &app-env
+  env_file:
+    - ./.env.prod
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: uifive-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  gateway-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-gateway:${IMAGE_TAG:-1.0}
+    container_name: uifive-gateway
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8081"
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      IDENTITY_SERVICE_BASE_URL: http://identity-service:8084
+      PAYMENT_SERVICE_BASE_URL: http://payment-service:8083
+      PROGRESS_SERVICE_BASE_URL: http://progress-service:8087
+      CONTENT_SERVICE_BASE_URL: http://content-service:8086
+      GAMIFICATION_SERVICE_BASE_URL: http://gamification-service:8085
+      AI_SERVICE_BASE_URL: http://ai-service:8088
+    ports:
+      - "8081:8081"
+    depends_on:
+      - identity-service
+      - payment-service
+      - progress-service
+      - content-service
+      - gamification-service
+      - ai-service
+
+  identity-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-identity:${IMAGE_TAG:-1.0}
+    container_name: uifive-identity
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8084"
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      BACKEND_PUBLIC_BASE_URL: ${BACKEND_PUBLIC_BASE_URL:-http://localhost:8081}
+      NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
+      PROGRESS_SERVICE_BASE_URL: http://progress-service:8087
+      SPRING_RABBITMQ_HOST: ${SPRING_RABBITMQ_HOST:-rabbitmq}
+      SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT:-5672}
+      SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "8084:8084"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+      progress-service:
+        condition: service_started
+
+  payment-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-payment:${IMAGE_TAG:-1.0}
+    container_name: uifive-payment
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8083"
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      BACKEND_PUBLIC_BASE_URL: ${BACKEND_PUBLIC_BASE_URL:-http://localhost:8081}
+      NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
+      PAYMENT_MOCK_CONFIRM_ENABLED: ${PAYMENT_MOCK_CONFIRM_ENABLED:-false}
+      PAYMENT_MOMO_ENABLED: ${PAYMENT_MOMO_ENABLED:-false}
+      SPRING_RABBITMQ_HOST: ${SPRING_RABBITMQ_HOST:-rabbitmq}
+      SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT:-5672}
+      SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "8083:8083"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+
+  notification-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-notification:${IMAGE_TAG:-1.0}
+    container_name: uifive-notification
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8082"
+      NOTIFICATION_TIME_ZONE: ${NOTIFICATION_TIME_ZONE:-Asia/Ho_Chi_Minh}
+      NOTIFICATION_VIP_REMINDER_CRON: ${NOTIFICATION_VIP_REMINDER_CRON:-0 0 9 * * *}
+      NOTIFICATION_VIP_REMINDER_DAYS_BEFORE: ${NOTIFICATION_VIP_REMINDER_DAYS_BEFORE:-3}
+      NOTIFICATION_STREAK_REMINDER_CRON: ${NOTIFICATION_STREAK_REMINDER_CRON:-0 0 9 * * *}
+      NOTIFICATION_STREAK_RESET_CRON: ${NOTIFICATION_STREAK_RESET_CRON:-0 5 0 * * *}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@uifive.local}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
+      SPRING_RABBITMQ_LISTENER_AUTO_STARTUP: "true"
+    ports:
+      - "8082:8082"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  gamification-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-gamification:${IMAGE_TAG:-1.0}
+    container_name: uifive-gamification
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8085"
+      NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: "5672"
+      SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
+      REDIS_URL: ${REDIS_URL}
+    ports:
+      - "8085:8085"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+
+  content-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-content:${IMAGE_TAG:-1.0}
+    container_name: uifive-content
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8086"
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      BACKEND_PUBLIC_BASE_URL: ${BACKEND_PUBLIC_BASE_URL:-http://localhost:8081}
+      REDIS_URL: ${REDIS_URL}
+    ports:
+      - "8086:8086"
+    depends_on:
+      - rabbitmq
+
+  progress-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-progress:${IMAGE_TAG:-1.0}
+    container_name: uifive-progress
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8087"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      ML_API_URL: http://ml-service:8000/predict
+      REDIS_URL: ${REDIS_URL}
+    ports:
+      - "8087:8087"
+    depends_on:
+      - ml-service
+      - rabbitmq
+
+  ai-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-ai:${IMAGE_TAG:-1.0}
+    container_name: uifive-ai
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8088"
+      REDIS_URL: ${REDIS_URL}
+    ports:
+      - "8088:8088"
+    depends_on:
+      - rabbitmq
+
+  ml-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-ml:${IMAGE_TAG:-1.0}
+    container_name: uifive-ml
+    restart: unless-stopped
+    environment:
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-frontend:${IMAGE_TAG:-1.0}
+    container_name: uifive-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway-service
+
+volumes:
+  rabbitmq_data:

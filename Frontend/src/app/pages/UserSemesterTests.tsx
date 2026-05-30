@@ -68,6 +68,27 @@ export function UserSemesterTests() {
     void loadGradeTitles();
   }, []);
 
+  if (!includeVipLessons) {
+    return (
+      <main className="mx-auto max-w-4xl px-4 py-10">
+        <section className="rounded-[1.75rem] border border-[#f5d39b] bg-[#fff8eb] p-6 md:p-8">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d29b2a]">
+            {copy("VIP only", "Chỉ dành cho VIP")}
+          </p>
+          <h1 className="mt-2 text-3xl font-black text-[#8d5c06]">
+            {copy("Semester tests are locked", "Bài kiểm tra học kỳ đang bị khóa")}
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#8d5c06]">
+            {copy(
+              "Upgrade to VIP to open semester test packages and the questions inside them.",
+              "Nâng cấp VIP để mở các gói kiểm tra học kỳ và làm các câu hỏi bên trong.",
+            )}
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <PracticePackageRunner<SemesterTestResponse>
       badgeLabel={copy("VIP Semester Test", "Bai kiem tra hoc ky VIP")}

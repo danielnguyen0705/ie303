@@ -35,6 +35,11 @@ import {
 import { ENV } from "@/config/env";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  clearRunnerState,
+  readRunnerState,
+  writeRunnerState,
+} from "@/app/utils/runnerStorage";
 import type {
   LessonQuestionResponse,
   QuestionDto,
@@ -95,6 +100,26 @@ type EssayAttachmentState = Record<
     file: File | null;
   }
 >;
+
+type PersistedLessonRunnerState = {
+  version: 1;
+  lessonId: number;
+  data: LessonQuestionResponse | null;
+  currentIndex: number;
+  currentGroupQuestionIndex: number;
+  pendingGroupQuestionIndex: number | null;
+  answers: AnswerState;
+  flaggedQuestions: FlagState;
+  eliminatedOptions: EliminatedOptionState;
+  selectedMatchingAnswers: Record<number, string>;
+  finished: boolean;
+};
+
+const LESSON_RUNNER_STATE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function getLessonRunnerStorageKey(lessonId: number) {
+  return `lesson:${lessonId}`;
+}
 
 function buildRunnerItems(data: LessonQuestionResponse): RunnerItem[] {
   const flat: RunnerItem[] = [];
@@ -897,6 +922,7 @@ function LessonRunner() {
   const [selectedMatchingAnswers, setSelectedMatchingAnswers] = useState<
     Record<number, string>
   >({});
+  const [runnerStateReady, setRunnerStateReady] = useState(false);
   const hasRestoredRunnerPositionRef = useRef(false);
   const answersRef = useRef<AnswerState>({});
   const speechRecognitionRef = useRef<{
@@ -920,9 +946,11 @@ function LessonRunner() {
   }, [answers]);
 
   useEffect(() => {
+    setRunnerStateReady(false);
     stopSpeechCapture();
     setCurrentIndex(0);
     setCurrentGroupQuestionIndex(0);
+    setPendingGroupQuestionIndex(null);
     setAnswers({});
     setEssayAttachments({});
     setFlaggedQuestions({});
@@ -940,7 +968,31 @@ function LessonRunner() {
     setSpeechPreview("");
     setSpeechSessionQuestionId(null);
     setSpeechError(null);
-    hasRestoredRunnerPositionRef.current = false;
+
+    if (lessonIdNumber && Number.isFinite(lessonIdNumber)) {
+      const persistedState = readRunnerState<PersistedLessonRunnerState>(
+        getLessonRunnerStorageKey(lessonIdNumber),
+      );
+
+      if (persistedState && persistedState.lessonId === lessonIdNumber) {
+        setData(persistedState.data);
+        setItems(persistedState.data ? buildRunnerItems(persistedState.data) : []);
+        setCurrentIndex(persistedState.currentIndex ?? 0);
+        setCurrentGroupQuestionIndex(persistedState.currentGroupQuestionIndex ?? 0);
+        setPendingGroupQuestionIndex(persistedState.pendingGroupQuestionIndex ?? null);
+        setAnswers(persistedState.answers ?? {});
+        setFlaggedQuestions(persistedState.flaggedQuestions ?? {});
+        setEliminatedOptions(persistedState.eliminatedOptions ?? {});
+        setSelectedMatchingAnswers(persistedState.selectedMatchingAnswers ?? {});
+        setFinished(Boolean(persistedState.finished));
+        if (persistedState.data) {
+          setLoading(false);
+        }
+      }
+    }
+
+    hasRestoredRunnerPositionRef.current = true;
+    setRunnerStateReady(true);
   }, [lessonIdNumber]);
 
   useEffect(() => {
@@ -951,8 +1003,14 @@ function LessonRunner() {
         return;
       }
 
+      const storageKey = getLessonRunnerStorageKey(lessonIdNumber);
+      const cachedState = readRunnerState<PersistedLessonRunnerState>(storageKey);
+      const hasCachedData = Boolean(cachedState?.data);
+
       try {
-        setLoading(true);
+        if (!hasCachedData) {
+          setLoading(true);
+        }
         setError(null);
 
         const res = await getQuestionsByLesson(lessonIdNumber);
@@ -960,19 +1018,84 @@ function LessonRunner() {
         if (res.success && res.data) {
           setData(res.data);
           setItems(buildRunnerItems(res.data));
-        } else {
+        } else if (!hasCachedData) {
           setError(res.error?.message || "Không tải được câu hỏi");
         }
       } catch (err) {
         console.error("Error loading questions:", err);
-        setError("Có lỗi xảy ra khi tải câu hỏi");
+        if (!hasCachedData) {
+          setError("Có lỗi xảy ra khi tải câu hỏi");
+        }
       } finally {
-        setLoading(false);
+        if (!hasCachedData) {
+          setLoading(false);
+        }
       }
     };
 
     loadQuestions();
   }, [lessonIdNumber]);
+
+  useEffect(() => {
+    if (!runnerStateReady || loading || isAdminPreview) {
+      return;
+    }
+
+    if (!lessonIdNumber || Number.isNaN(lessonIdNumber)) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      writeRunnerState<PersistedLessonRunnerState>(
+        getLessonRunnerStorageKey(lessonIdNumber),
+        {
+          version: 1,
+          lessonId: lessonIdNumber,
+          data,
+          currentIndex,
+          currentGroupQuestionIndex,
+          pendingGroupQuestionIndex,
+          answers,
+          flaggedQuestions,
+          eliminatedOptions,
+          selectedMatchingAnswers,
+          finished,
+        },
+        LESSON_RUNNER_STATE_TTL_MS,
+      );
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    answers,
+    currentGroupQuestionIndex,
+    currentIndex,
+    data,
+    eliminatedOptions,
+    finished,
+    flaggedQuestions,
+    lessonIdNumber,
+    pendingGroupQuestionIndex,
+    runnerStateReady,
+    selectedMatchingAnswers,
+    loading,
+    isAdminPreview,
+  ]);
+
+  useEffect(() => {
+    if (!items.length) {
+      return;
+    }
+
+    if (currentIndex < 0) {
+      setCurrentIndex(0);
+      return;
+    }
+
+    if (currentIndex > items.length - 1) {
+      setCurrentIndex(items.length - 1);
+    }
+  }, [currentIndex, items.length]);
 
   useEffect(() => {
     const loadLessonMeta = async () => {
@@ -3863,6 +3986,9 @@ function LessonRunner() {
             <button
               onClick={() => {
                 stopSpeechCapture();
+                if (lessonIdNumber && Number.isFinite(lessonIdNumber)) {
+                  clearRunnerState(getLessonRunnerStorageKey(lessonIdNumber));
+                }
                 setFinished(false);
                 setCurrentIndex(0);
                 setAnswers({});
