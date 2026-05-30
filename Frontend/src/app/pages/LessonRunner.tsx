@@ -40,7 +40,10 @@ import {
   readRunnerState,
   writeRunnerState,
 } from "@/app/utils/runnerStorage";
-import { playUiSound } from "@/app/utils/audioSettings";
+import {
+  playLessonCompleteSound,
+  playUiSound,
+} from "@/app/utils/audioSettings";
 import type {
   LessonQuestionResponse,
   QuestionDto,
@@ -119,6 +122,7 @@ type PersistedLessonRunnerState = {
 const LESSON_RUNNER_STATE_TTL_MS = 24 * 60 * 60 * 1000;
 const RIGHT_SOUND_SRC = "/audio/right.wav";
 const WRONG_SOUND_SRC = "/audio/false.wav";
+const DONE_LESSON_SOUND_SRC = "/audio/done_lesson.mp3";
 
 function getLessonRunnerStorageKey(lessonId: number) {
   return `lesson:${lessonId}`;
@@ -2597,6 +2601,7 @@ function LessonRunner() {
             currentExp: res.data.currentExp,
           });
 
+          playLessonCompleteSound(DONE_LESSON_SOUND_SRC);
           void refreshCurrentUser(false);
         } else if (!res.success) {
           setCompleteApiError(

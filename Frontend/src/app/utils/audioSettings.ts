@@ -1,6 +1,7 @@
 export type AudioSettings = {
   backgroundEnabled: boolean;
   feedbackEnabled: boolean;
+  lessonCompleteEnabled: boolean;
   volume: number;
 };
 
@@ -10,6 +11,7 @@ const AUDIO_SETTINGS_KEY = "uifive:audio-settings";
 const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   backgroundEnabled: true,
   feedbackEnabled: true,
+  lessonCompleteEnabled: true,
   volume: 0.35,
 };
 
@@ -41,6 +43,10 @@ export function getAudioSettings(): AudioSettings {
         typeof parsed.feedbackEnabled === "boolean"
           ? parsed.feedbackEnabled
           : (legacyEnabled ?? DEFAULT_AUDIO_SETTINGS.feedbackEnabled),
+      lessonCompleteEnabled:
+        typeof parsed.lessonCompleteEnabled === "boolean"
+          ? parsed.lessonCompleteEnabled
+          : (legacyEnabled ?? DEFAULT_AUDIO_SETTINGS.lessonCompleteEnabled),
       volume: clampVolume(Number(parsed.volume)),
     };
   } catch {
@@ -56,6 +62,7 @@ export function saveAudioSettings(settings: AudioSettings) {
   const normalized: AudioSettings = {
     backgroundEnabled: settings.backgroundEnabled,
     feedbackEnabled: settings.feedbackEnabled,
+    lessonCompleteEnabled: settings.lessonCompleteEnabled,
     volume: clampVolume(settings.volume),
   };
 
@@ -74,6 +81,23 @@ export function playUiSound(src: string, volumeScale = 1) {
 
   const settings = getAudioSettings();
   if (!settings.feedbackEnabled || settings.volume <= 0) {
+    return;
+  }
+
+  const audio = new Audio(src);
+  audio.volume = clampVolume(settings.volume * volumeScale);
+  void audio.play().catch(() => {
+    // Browsers may block sounds before the first user gesture.
+  });
+}
+
+export function playLessonCompleteSound(src: string, volumeScale = 1) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const settings = getAudioSettings();
+  if (!settings.lessonCompleteEnabled || settings.volume <= 0) {
     return;
   }
 

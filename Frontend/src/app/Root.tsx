@@ -126,6 +126,7 @@ export function Root() {
           backgroundImageUrl
             ? {
                 backgroundImage: `linear-gradient(rgba(245,248,252,0.42), rgba(245,248,252,0.42)), url(${backgroundImageUrl})`,
+                backgroundAttachment: "fixed",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
                 backgroundSize: "cover",

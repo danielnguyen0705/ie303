@@ -575,6 +575,10 @@ export function Profile() {
     setAudioSettings((prev) => ({ ...prev, feedbackEnabled }));
   };
 
+  const updateLessonCompleteAudioEnabled = (lessonCompleteEnabled: boolean) => {
+    setAudioSettings((prev) => ({ ...prev, lessonCompleteEnabled }));
+  };
+
   const updateAudioVolume = (volume: number) => {
     setAudioSettings((prev) => ({ ...prev, volume }));
   };
@@ -1092,6 +1096,40 @@ export function Profile() {
                 </button>
               </div>
 
+              <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-black text-slate-900 flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-[#155ca5]" />
+                    {copy(
+                      "Lesson Completion Sound",
+                      "Âm thanh hoàn thành lesson",
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateLessonCompleteAudioEnabled(
+                      !audioSettings.lessonCompleteEnabled,
+                    )
+                  }
+                  className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-bold transition-colors ${
+                    audioSettings.lessonCompleteEnabled
+                      ? "bg-[#155ca5] text-white hover:bg-[#0f4c88]"
+                      : "bg-white text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {audioSettings.lessonCompleteEnabled ? (
+                    <Volume2 className="w-5 h-5" />
+                  ) : (
+                    <VolumeX className="w-5 h-5" />
+                  )}
+                  {audioSettings.lessonCompleteEnabled
+                    ? copy("On", "Bật")
+                    : copy("Off", "Tắt")}
+                </button>
+              </div>
+
               <div className="rounded-lg border border-slate-200 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <span className="font-black text-slate-900">
@@ -1108,7 +1146,8 @@ export function Profile() {
                   step="1"
                   disabled={
                     !audioSettings.backgroundEnabled &&
-                    !audioSettings.feedbackEnabled
+                    !audioSettings.feedbackEnabled &&
+                    !audioSettings.lessonCompleteEnabled
                   }
                   value={Math.round(audioSettings.volume * 100)}
                   onChange={(event) =>
