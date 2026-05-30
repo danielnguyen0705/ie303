@@ -238,6 +238,19 @@
     z-index: 1;
   }
 
+  .learner-tech-shell.has-user-background::before,
+  .learner-tech-shell.has-user-background::after {
+    display: none;
+  }
+
+  .learner-page-surface {
+    transition: background-image 0.25s ease;
+  }
+
+  .learner-page-surface > main[class*="bg-"] {
+    background-color: transparent;
+  }
+
   .learner-tech-panel {
     border: 1px solid rgba(191, 216, 255, 0.78);
     background:

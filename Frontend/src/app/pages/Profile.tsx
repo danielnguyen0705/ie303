@@ -32,6 +32,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { ActivityCalendar } from "@/app/components/ActivityCalendar";
 import { useLanguage } from "@/context/LanguageContext";
+import { USER_BACKGROUND_CHANGED_EVENT } from "@/app/utils/backgroundEvents";
 
 type CurrentUserProfile = {
   id: number;
@@ -513,6 +514,14 @@ export function Profile() {
             }
           : prev,
       );
+
+      if (backgroundChanged) {
+        window.dispatchEvent(
+          new CustomEvent(USER_BACKGROUND_CHANGED_EVENT, {
+            detail: { imageUrl: selectedBackground?.imageUrl || null },
+          }),
+        );
+      }
 
       setIsCustomizeModalOpen(false);
     } catch (err) {
