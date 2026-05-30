@@ -298,6 +298,7 @@ export function Profile() {
                 0,
               ) / currentUser.studyingGrades.length
             : 0;
+        const nextStudyingGrades = currentUser.studyingGrades ?? [];
 
         setUser({
           id: Number(currentUser.id),
@@ -321,6 +322,7 @@ export function Profile() {
           weakSkill: currentUser.weakSkill ?? null,
           trendLabel: currentUser.trendLabel ?? null,
         });
+        setStudyingGrades(nextStudyingGrades);
 
         setStats((prev) => ({
           ...prev,

@@ -1,10 +1,73 @@
 param(
-    [string]$Namespace = $(if ($env:DOCKER_NAMESPACE) { $env:DOCKER_NAMESPACE } else { "yourname" }),
-    [string]$Tag = $(if ($env:IMAGE_TAG) { $env:IMAGE_TAG } else { "1.0" })
+    [string]$Namespace,
+    [string]$Tag,
+    [string]$EnvFile
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+function Get-EnvFileValue {
+    param(
+        [string]$Path,
+        [string]$Name
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $null
+    }
+
+    foreach ($line in Get-Content -LiteralPath $Path) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+            continue
+        }
+
+        if ($trimmed -match '^\s*([^=]+?)\s*=\s*(.*)\s*$') {
+            $key = $matches[1].Trim()
+            if ($key -eq $Name) {
+                return $matches[2].Trim().Trim('"').Trim("'")
+            }
+        }
+    }
+
+    return $null
+}
+
+if (-not $EnvFile) {
+    $candidatePaths = @(
+        (Join-Path $PSScriptRoot "..\.env.prod"),
+        (Join-Path (Get-Location) ".env.prod")
+    )
+
+    $EnvFile = $candidatePaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
+
+if (-not $Namespace) {
+    $Namespace = if ($env:DOCKER_NAMESPACE) {
+        $env:DOCKER_NAMESPACE
+    }
+    else {
+        Get-EnvFileValue -Path $EnvFile -Name "DOCKER_NAMESPACE"
+    }
+}
+
+if (-not $Tag) {
+    $Tag = if ($env:IMAGE_TAG) {
+        $env:IMAGE_TAG
+    }
+    else {
+        Get-EnvFileValue -Path $EnvFile -Name "IMAGE_TAG"
+    }
+}
+
+if (-not $Namespace) {
+    $Namespace = "yourname"
+}
+
+if (-not $Tag) {
+    $Tag = "1.0"
+}
 
 $services = @(
     @{ Name = "gateway"; Path = "GatewayService"; Args = @() },
