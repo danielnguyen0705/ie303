@@ -22,7 +22,11 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { getCurrentUser, getMyLearningAnalysis, refreshMyLearningAnalysis } from "@/api";
+import {
+  getCurrentUser,
+  getMyLearningAnalysis,
+  refreshMyLearningAnalysis,
+} from "@/api";
 import { getAllGrades } from "@/api/admin";
 import type { Grade } from "@/api/admin/types";
 import type { AILearningAnalysis } from "@/api/types";
@@ -203,6 +207,7 @@ export function Dashboard() {
 
       setLoadingInsights(true);
       const response = await getMyLearningAnalysis();
+
       if (response.success) {
         setAnalysis(response.data ?? null);
         setInsightsError(null);
@@ -210,6 +215,7 @@ export function Dashboard() {
         setAnalysis(null);
         setInsightsError(response.error?.message || "Could not load ML insights.");
       }
+
       setLoadingInsights(false);
     };
 

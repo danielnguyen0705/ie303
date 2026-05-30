@@ -30,6 +30,7 @@ import {
   equipBackground,
   getActiveShopItems,
   getCurrentUser,
+  getMyLearningAnalysisHistory,
   getMyShopItems,
 } from "@/api";
 import { useAuth } from "@/context/AuthContext";
@@ -41,6 +42,16 @@ import {
   saveAudioSettings,
   type AudioSettings,
 } from "@/app/utils/audioSettings";
+import type { AILearningAnalysis } from "@/api/types";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 type CurrentUserProfile = {
   id: number;
@@ -111,6 +122,15 @@ type StudyingGrade = {
   progressPercent: number;
 };
 
+type AnalysisPoint = {
+  label: string;
+  generatedAt: string;
+  trendLabel: string | null;
+  trendScore: number;
+  strongSkill: string | null;
+  weakSkill: string | null;
+};
+
 type StreakStatus = {
   label: string;
   description: string;
@@ -138,6 +158,28 @@ const sortCosmeticOptions = (options: CosmeticOption[]): CosmeticOption[] => {
     }
     return a.name.localeCompare(b.name);
   });
+};
+
+const getTrendScore = (trendLabel?: string | null): number => {
+  switch (trendLabel) {
+    case "IMPROVING":
+      return 1;
+    case "DECLINING":
+      return -1;
+    default:
+      return 0;
+  }
+};
+
+const getTrendDisplay = (trendLabel?: string | null): string => {
+  switch (trendLabel) {
+    case "IMPROVING":
+      return "Improving";
+    case "DECLINING":
+      return "Declining";
+    default:
+      return trendLabel || "Stable";
+  }
 };
 
 function getStreakStatus(user: ProfileUser | null): StreakStatus {
@@ -190,6 +232,13 @@ export function Profile() {
   const [backgroundOptions, setBackgroundOptions] = useState<CosmeticOption[]>(
     [],
   );
+  const [analysisHistory, setAnalysisHistory] = useState<AILearningAnalysis[]>(
+    [],
+  );
+  const [loadingAnalysisHistory, setLoadingAnalysisHistory] = useState(false);
+  const [analysisHistoryError, setAnalysisHistoryError] = useState<string | null>(
+    null,
+  );
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(null);
   const [selectedBackgroundId, setSelectedBackgroundId] = useState<
@@ -214,6 +263,34 @@ export function Profile() {
   useEffect(() => {
     saveAudioSettings(audioSettings);
   }, [audioSettings]);
+
+  useEffect(() => {
+    if (!user?.isVip) {
+      setAnalysisHistory([]);
+      setAnalysisHistoryError(null);
+      setLoadingAnalysisHistory(false);
+      return;
+    }
+
+    const loadAnalysisHistory = async () => {
+      setLoadingAnalysisHistory(true);
+      const response = await getMyLearningAnalysisHistory();
+
+      if (response.success) {
+        setAnalysisHistory(response.data ?? []);
+        setAnalysisHistoryError(null);
+      } else {
+        setAnalysisHistory([]);
+        setAnalysisHistoryError(
+          response.error?.message || copy("Could not load ML history.", "Không thể tải lịch sử ML."),
+        );
+      }
+
+      setLoadingAnalysisHistory(false);
+    };
+
+    void loadAnalysisHistory();
+  }, [user?.isVip, copy]);
 
   useEffect(() => {
     if (!isPasswordModalOpen || !passwordSuccess) {
@@ -360,6 +437,17 @@ export function Profile() {
       year: "numeric",
     });
   };
+
+  const analysisChartData: AnalysisPoint[] = [...analysisHistory]
+    .reverse()
+    .map((snapshot, index) => ({
+      label: `${index + 1}`,
+      generatedAt: snapshot.generatedAt,
+      trendLabel: snapshot.trendLabel,
+      trendScore: getTrendScore(snapshot.trendLabel),
+      strongSkill: snapshot.strongSkill ?? null,
+      weakSkill: snapshot.weakSkill ?? null,
+    }));
 
   const handleChangePassword = async () => {
     setPasswordError(null);
@@ -842,6 +930,115 @@ export function Profile() {
             </div>
           </div>
         </div>
+
+        {user.isVip && (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
+                  {copy("Trend Chart", "Biểu đồ xu hướng")}
+                </p>
+                <h3 className="mt-1 text-xl font-black text-slate-900">
+                  {copy("Recent learning snapshots", "Snapshot học gần đây")}
+                </h3>
+              </div>
+              <div className="text-xs font-bold text-slate-500">
+                {analysisHistory.length > 0
+                  ? copy(
+                      `${analysisHistory.length} snapshots`,
+                      `${analysisHistory.length} snapshot`,
+                    )
+                  : copy("No history yet", "Chưa có lịch sử")}
+              </div>
+            </div>
+
+            {loadingAnalysisHistory ? (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                <div className="mt-2">
+                  {copy("Loading chart data...", "Đang tải dữ liệu biểu đồ...")}
+                </div>
+              </div>
+            ) : analysisHistoryError ? (
+              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                {analysisHistoryError}
+              </div>
+            ) : analysisChartData.length > 0 ? (
+              <div className="mt-5 space-y-4">
+                <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                  <span className="rounded-full bg-green-50 px-3 py-1 text-green-700">
+                    {copy("Improving = +1", "Tiến bộ = +1")}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1">
+                    {copy("Stable = 0", "Ổn định = 0")}
+                  </span>
+                  <span className="rounded-full bg-red-50 px-3 py-1 text-red-700">
+                    {copy("Declining = -1", "Giảm = -1")}
+                  </span>
+                </div>
+
+                <div className="h-72 w-full rounded-2xl bg-white p-3 shadow-sm">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={analysisChartData}
+                      margin={{ top: 10, right: 20, left: 24, bottom: 10 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis
+                        dataKey="label"
+                        stroke="#64748b"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={10}
+                      />
+                      <YAxis
+                        width={96}
+                        domain={[-1, 1]}
+                        ticks={[-1, 0, 1]}
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={12}
+                        tickFormatter={(value) => {
+                          if (value === 1) return "Improving";
+                          if (value === -1) return "Declining";
+                          return "Stable";
+                        }}
+                      />
+                      <Tooltip
+                        labelFormatter={(_, payload) => {
+                          const item = payload?.[0]?.payload as AnalysisPoint | undefined;
+                          return item ? formatDate(item.generatedAt) : "";
+                        }}
+                        formatter={(value, _name, props) => {
+                          const item = props.payload as AnalysisPoint | undefined;
+                          return [
+                            getTrendDisplay(item?.trendLabel),
+                            copy("Trend", "Xu hướng"),
+                          ] as [string, string];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="trendScore"
+                        stroke="#155ca5"
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 2, fill: "#ffffff" }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+                {copy(
+                  "No chart yet. Refresh ML a few times to build a trend line.",
+                  "Chưa có biểu đồ. Hãy làm mới ML vài lần để tạo đường xu hướng.",
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="bg-white rounded-lg shadow-sm p-8">
