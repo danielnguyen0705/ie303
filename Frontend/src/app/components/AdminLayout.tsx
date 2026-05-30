@@ -28,6 +28,7 @@ const navigation = [
   { name: "Semester Tests", href: "/admin/semester-tests", icon: ClipboardCheck },
   { name: "Payment Offers", href: "/admin/payments", icon: DollarSign },
   { name: "Shop Management", href: "/admin/shop", icon: ShoppingBag },
+  { name: "Quests & Badges", href: "/admin/quests", icon: Target },
 ];
 
 export function AdminLayout() {

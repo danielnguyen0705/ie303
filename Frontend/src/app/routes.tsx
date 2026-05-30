@@ -105,6 +105,7 @@ export const router = createBrowserRouter([
           { path: "semester-tests", Component: SemesterTests },
           { path: "payments", Component: PaymentOffers },
           { path: "shop", Component: ShopManagement },
+          { path: "quests", Component: QuestManagement },
           { path: "*", Component: NotFound },
         ],
       },
