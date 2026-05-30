@@ -40,6 +40,7 @@ import {
   readRunnerState,
   writeRunnerState,
 } from "@/app/utils/runnerStorage";
+import { playUiSound } from "@/app/utils/audioSettings";
 import type {
   LessonQuestionResponse,
   QuestionDto,
@@ -116,6 +117,8 @@ type PersistedLessonRunnerState = {
 };
 
 const LESSON_RUNNER_STATE_TTL_MS = 24 * 60 * 60 * 1000;
+const RIGHT_SOUND_SRC = "/audio/right.wav";
+const WRONG_SOUND_SRC = "/audio/false.wav";
 
 function getLessonRunnerStorageKey(lessonId: number) {
   return `lesson:${lessonId}`;
@@ -144,6 +147,14 @@ function buildRunnerItems(data: LessonQuestionResponse): RunnerItem[] {
   }
 
   return flat;
+}
+
+function playAnswerFeedbackSound(correct: boolean | null) {
+  if (correct === true) {
+    playUiSound(RIGHT_SOUND_SRC);
+  } else if (correct === false) {
+    playUiSound(WRONG_SOUND_SRC);
+  }
 }
 
 function getQuestionTypeLabel(type: QuestionType) {
@@ -2369,6 +2380,7 @@ function LessonRunner() {
             score: null,
           },
         }));
+        playAnswerFeedbackSound(preview.correct);
         return;
       }
 
@@ -2531,6 +2543,7 @@ function LessonRunner() {
           issueSummary,
         },
       }));
+      playAnswerFeedbackSound(correct);
     } finally {
       setSubmittingCurrent(false);
     }

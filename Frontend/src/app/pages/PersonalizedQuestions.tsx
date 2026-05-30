@@ -20,6 +20,10 @@ import type { UnitProgressItem } from "@/api/units";
 import { useLanguage } from "@/context/LanguageContext";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
+import { playUiSound } from "@/app/utils/audioSettings";
+
+const RIGHT_SOUND_SRC = "/audio/right.wav";
+const WRONG_SOUND_SRC = "/audio/false.wav";
 
 const initialForm: PersonalizedQuestionsRequest = {
   questionCount: 10,  // Reduced from 20 to 10 for better API stability
@@ -108,6 +112,10 @@ function isOptionCorrect(question: QuestionDto, option: QuestionDto["options"][0
 
   // Fallback to isCorrect flag
   return option.isCorrect ?? false;
+}
+
+function playAnswerFeedbackSound(correct: boolean) {
+  playUiSound(correct ? RIGHT_SOUND_SRC : WRONG_SOUND_SRC);
 }
 
 export function PersonalizedQuestions() {
@@ -332,6 +340,20 @@ export function PersonalizedQuestions() {
       }),
     );
     setSubmitted(true);
+    const currentQuestion = questions[currentIndex];
+    const currentAnswer = currentQuestion ? answers[currentQuestion.id] : null;
+    const currentSelectedOption = currentQuestion?.options?.find((option, idx) => {
+      const displayKey =
+        option.optionKey ||
+        ["A", "B", "C", "D"][idx] ||
+        String.fromCharCode(65 + idx);
+      return displayKey === currentAnswer;
+    });
+    if (currentQuestion && currentSelectedOption) {
+      playAnswerFeedbackSound(
+        isOptionCorrect(currentQuestion, currentSelectedOption),
+      );
+    }
     setSubmitting(false);
   };
 

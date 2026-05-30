@@ -20,6 +20,9 @@ import {
   BrainCircuit,
   AlertTriangle,
   Sparkles,
+  Music,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
   changePassword as changePasswordApi,
@@ -33,6 +36,11 @@ import { useAuth } from "@/context/AuthContext";
 import { ActivityCalendar } from "@/app/components/ActivityCalendar";
 import { useLanguage } from "@/context/LanguageContext";
 import { USER_BACKGROUND_CHANGED_EVENT } from "@/app/utils/backgroundEvents";
+import {
+  getAudioSettings,
+  saveAudioSettings,
+  type AudioSettings,
+} from "@/app/utils/audioSettings";
 
 type CurrentUserProfile = {
   id: number;
@@ -194,10 +202,18 @@ export function Profile() {
   const [isAvatarPickerModalOpen, setIsAvatarPickerModalOpen] = useState(false);
   const [isBackgroundPickerModalOpen, setIsBackgroundPickerModalOpen] =
     useState(false);
+  const [audioSettings, setAudioSettings] = useState<AudioSettings>(() =>
+    getAudioSettings(),
+  );
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   useEffect(() => {
     loadProfileData();
   }, []);
+
+  useEffect(() => {
+    saveAudioSettings(audioSettings);
+  }, [audioSettings]);
 
   useEffect(() => {
     if (!isPasswordModalOpen || !passwordSuccess) {
@@ -551,6 +567,22 @@ export function Profile() {
     }
   };
 
+  const updateBackgroundAudioEnabled = (backgroundEnabled: boolean) => {
+    setAudioSettings((prev) => ({ ...prev, backgroundEnabled }));
+  };
+
+  const updateFeedbackAudioEnabled = (feedbackEnabled: boolean) => {
+    setAudioSettings((prev) => ({ ...prev, feedbackEnabled }));
+  };
+
+  const updateAudioVolume = (volume: number) => {
+    setAudioSettings((prev) => ({ ...prev, volume }));
+  };
+
+  const closeSettingsModal = () => {
+    setIsSettingsModalOpen(false);
+  };
+
   if (loading) {
     return (
       <main className="max-w-7xl mx-auto px-6 py-10 flex items-center justify-center min-h-[60vh]">
@@ -674,7 +706,11 @@ export function Profile() {
             >
               {copy("Edit Profile", "Chỉnh hồ sơ")}
             </button>
-            <button className="bg-gray-100 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors">
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="bg-gray-100 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors"
+            >
               <Settings className="w-5 h-5 inline mr-2" />
               {copy("Settings", "Cài đặt")}
             </button>
@@ -971,6 +1007,121 @@ export function Profile() {
           )}
         </div>
       </section>
+
+      {isSettingsModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] px-4 flex items-center justify-center"
+          onClick={closeSettingsModal}
+        >
+          <div
+            className="w-full max-w-xl bg-white rounded-xl shadow-xl p-6 space-y-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3">
+                <Settings className="w-6 h-6 text-[#155ca5]" />
+                {copy("Settings", "Cài đặt")}
+              </h3>
+              <button
+                type="button"
+                onClick={closeSettingsModal}
+                className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-200"
+              >
+                {copy("Close", "Đóng")}
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-black text-slate-900 flex items-center gap-2">
+                    <Music className="w-5 h-5 text-[#155ca5]" />
+                    {copy("Background Music", "Nhạc nền")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateBackgroundAudioEnabled(
+                      !audioSettings.backgroundEnabled,
+                    )
+                  }
+                  className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-bold transition-colors ${
+                    audioSettings.backgroundEnabled
+                      ? "bg-[#155ca5] text-white hover:bg-[#0f4c88]"
+                      : "bg-white text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {audioSettings.backgroundEnabled ? (
+                    <Volume2 className="w-5 h-5" />
+                  ) : (
+                    <VolumeX className="w-5 h-5" />
+                  )}
+                  {audioSettings.backgroundEnabled
+                    ? copy("On", "Bật")
+                    : copy("Off", "Tắt")}
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-black text-slate-900 flex items-center gap-2">
+                    <Volume2 className="w-5 h-5 text-[#155ca5]" />
+                    {copy("Answer Feedback Sounds", "Âm đúng/sai khi làm bài")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateFeedbackAudioEnabled(!audioSettings.feedbackEnabled)
+                  }
+                  className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-bold transition-colors ${
+                    audioSettings.feedbackEnabled
+                      ? "bg-[#155ca5] text-white hover:bg-[#0f4c88]"
+                      : "bg-white text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {audioSettings.feedbackEnabled ? (
+                    <Volume2 className="w-5 h-5" />
+                  ) : (
+                    <VolumeX className="w-5 h-5" />
+                  )}
+                  {audioSettings.feedbackEnabled
+                    ? copy("On", "Bật")
+                    : copy("Off", "Tắt")}
+                </button>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="font-black text-slate-900">
+                    {copy("Volume", "Âm lượng")}
+                  </span>
+                  <span className="rounded-lg bg-slate-50 px-4 py-2 text-center font-mono font-black text-[#155ca5]">
+                    {Math.round(audioSettings.volume * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  disabled={
+                    !audioSettings.backgroundEnabled &&
+                    !audioSettings.feedbackEnabled
+                  }
+                  value={Math.round(audioSettings.volume * 100)}
+                  onChange={(event) =>
+                    updateAudioVolume(Number(event.target.value) / 100)
+                  }
+                  className="w-full accent-[#155ca5] disabled:opacity-50"
+                  aria-label={copy("Audio volume", "Âm lượng")}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isPasswordModalOpen && (
         <div

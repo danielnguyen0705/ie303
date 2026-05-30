@@ -7,6 +7,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { PublicLanding } from "./pages/PublicLanding";
 import { getMyShopItems } from "@/api/shop";
 import { USER_BACKGROUND_CHANGED_EVENT } from "./utils/backgroundEvents";
+import { BackgroundMusic } from "./components/BackgroundMusic";
 
 export function Root() {
   const location = useLocation();
@@ -117,6 +118,7 @@ export function Root() {
         backgroundImageUrl ? "has-user-background" : ""
       }`}
     >
+      <BackgroundMusic />
       <Navbar />
       <main
         className="learner-page-surface flex-1"

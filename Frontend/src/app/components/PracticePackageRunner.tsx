@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ENV } from "@/config/env";
 import { useLanguage } from "@/context/LanguageContext";
+import { playUiSound } from "@/app/utils/audioSettings";
 import type { QuestionDto, QuestionGroupDto, QuestionType } from "@/api/questions";
 
 type UserAnswer = string | string[] | Record<string, string>;
@@ -37,6 +38,17 @@ type LoadedPracticePackage<TItem> = {
   questions: QuestionDto[];
   questionGroups: Record<number, QuestionGroupDto>;
 };
+
+const RIGHT_SOUND_SRC = "/audio/right.wav";
+const WRONG_SOUND_SRC = "/audio/false.wav";
+
+function playAnswerFeedbackSound(correct: boolean | null) {
+  if (correct === true) {
+    playUiSound(RIGHT_SOUND_SRC);
+  } else if (correct === false) {
+    playUiSound(WRONG_SOUND_SRC);
+  }
+}
 
 type PracticePackageRunnerProps<TItem extends { id: number; title: string }> = {
   badgeLabel: string;
@@ -805,6 +817,9 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
       scorePercent:
         gradedAnswers.length > 0 ? Math.round((correctCount / gradedAnswers.length) * 100) : 0,
     });
+    playAnswerFeedbackSound(
+      currentQuestion ? nextAnswers[currentQuestion.id]?.correct ?? null : null,
+    );
     setSubmitting(false);
   };
 
