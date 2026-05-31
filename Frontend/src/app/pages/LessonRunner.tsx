@@ -20,6 +20,8 @@ import {
   Pause,
   RotateCcw,
   SkipBack,
+  Volume2,
+  VolumeX,
   XCircle,
 } from "lucide-react";
 import {
@@ -41,8 +43,10 @@ import {
   writeRunnerState,
 } from "@/app/utils/runnerStorage";
 import {
+  getAudioSettings,
   playLessonCompleteSound,
   playUiSound,
+  saveAudioSettings,
 } from "@/app/utils/audioSettings";
 import type {
   LessonQuestionResponse,
@@ -430,7 +434,7 @@ function renderFormattedInlineText(value: string): ReactNode[] {
         return (
           <u
             key={`${underlinedText}-${index}`}
-            className="font-semibold decoration-2 underline-offset-2"
+            className="font-semibold underline decoration-2 underline-offset-2"
           >
             {underlinedText}
           </u>
@@ -439,6 +443,11 @@ function renderFormattedInlineText(value: string): ReactNode[] {
 
       return <span key={`${segment}-${index}`}>{segment}</span>;
     });
+}
+
+function hasUnderlineMarkers(value?: string | null) {
+  if (!value) return false;
+  return /<u>.*?<\/u>|__.*?__|\[\[.*?\]\]/i.test(value);
 }
 
 function renderTextWithBreaks(value?: string | null) {
@@ -534,6 +543,10 @@ function splitFillSentence(content?: string | null) {
 
   if (!hasBlank) return null;
   return parts;
+}
+
+function supportsInlineFillPreview(questionType: QuestionType) {
+  return questionType === "LIMITED_FILL" || questionType === "WORD_BANK_FILL";
 }
 
 type PassageSegment =
@@ -947,6 +960,10 @@ function LessonRunner() {
   const [sectionLessons, setSectionLessons] = useState<
     SectionLessonProgressItem[]
   >([]);
+  const [audioMuted, setAudioMuted] = useState(() => {
+    const settings = getAudioSettings();
+    return !settings.backgroundEnabled && !settings.feedbackEnabled && !settings.lessonCompleteEnabled;
+  });
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [speechError, setSpeechError] = useState<string | null>(null);
@@ -979,6 +996,23 @@ function LessonRunner() {
   useEffect(() => {
     answersRef.current = answers;
   }, [answers]);
+
+  useEffect(() => {
+    const handleAudioSettingsChanged = () => {
+      const settings = getAudioSettings();
+      setAudioMuted(
+        !settings.backgroundEnabled &&
+          !settings.feedbackEnabled &&
+          !settings.lessonCompleteEnabled,
+      );
+    };
+
+    handleAudioSettingsChanged();
+    window.addEventListener("uifive:audio-settings-changed", handleAudioSettingsChanged);
+    return () => {
+      window.removeEventListener("uifive:audio-settings-changed", handleAudioSettingsChanged);
+    };
+  }, []);
 
   useEffect(() => {
     setRunnerStateReady(false);
@@ -1687,6 +1721,36 @@ function LessonRunner() {
     );
   };
 
+  const renderStandaloneFillBlank = (
+    question: QuestionDto,
+    currentAnswer: AnswerState[number] | undefined,
+    isAnswerLocked: boolean,
+    placeholder: string,
+  ) => (
+    <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4">
+      <p className="mb-3 text-sm font-bold text-[#155ca5]">
+        {copy("Fill in the blank here", "Điền vào chỗ trống ở đây")}
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="inline-flex min-w-[180px] items-center rounded-2xl border border-dashed border-[#9bc2ff] bg-white px-4 py-3 text-base font-bold text-[#155ca5] shadow-[0_8px_24px_rgba(21,92,165,0.08)]">
+          <input
+            type="text"
+            disabled={isAnswerLocked}
+            value={
+              typeof currentAnswer?.answer === "string"
+                ? currentAnswer.answer
+                : ""
+            }
+            onChange={(e) => setAnswer(question.id, e.target.value)}
+            onKeyDown={(e) => handleSubmitOnEnter(e, question)}
+            placeholder={placeholder}
+            className="w-full bg-transparent text-base font-bold text-[#155ca5] outline-none placeholder:text-[#7aa8e8]"
+          />
+        </span>
+      </div>
+    </div>
+  );
+
   const getReorderWords = (question: QuestionDto) => {
     if (question.questionType !== "SENTENCE_REORDER") {
       return [];
@@ -1774,6 +1838,22 @@ function LessonRunner() {
       default:
         return "Đọc kỹ yêu cầu và chọn đáp án đúng nhất trước khi nộp.";
     }
+  };
+
+  const toggleAudioMute = () => {
+    const settings = getAudioSettings();
+    const nextMuted =
+      settings.backgroundEnabled ||
+      settings.feedbackEnabled ||
+      settings.lessonCompleteEnabled;
+
+    saveAudioSettings({
+      ...settings,
+      backgroundEnabled: !nextMuted,
+      feedbackEnabled: !nextMuted,
+      lessonCompleteEnabled: !nextMuted,
+    });
+    setAudioMuted(nextMuted);
   };
 
   const toAnswerText = (answer: UserAnswer, question: QuestionDto) => {
@@ -2794,6 +2874,9 @@ function LessonRunner() {
               question.id,
               option.optionKey,
             );
+            const shouldUnderlineWholeOption =
+              question.questionType === "PRONUNCIATION" &&
+              !hasUnderlineMarkers(option.content);
 
             let extraClass =
               "border-gray-200 bg-white hover:border-[#155ca5]/40 hover:bg-[#f8fbff]";
@@ -2831,7 +2914,13 @@ function LessonRunner() {
                     <div
                       className={`${compact ? "text-sm font-semibold" : "text-sm font-semibold"} ${eliminated && !selected ? "text-slate-400 line-through" : "text-[#1e2e51]"}`}
                     >
-                      {renderFormattedInlineText(option.content)}
+                      {shouldUnderlineWholeOption ? (
+                        <span className="underline decoration-2 underline-offset-2">
+                          {option.content}
+                        </span>
+                      ) : (
+                        renderFormattedInlineText(option.content)
+                      )}
                     </div>
                   </div>
                 </button>
@@ -2891,6 +2980,15 @@ function LessonRunner() {
         return inlineFillSentence;
       }
 
+      if (question.questionType === "LIMITED_FILL") {
+        return renderStandaloneFillBlank(
+          question,
+          currentAnswer,
+          isAnswerLocked,
+          copy("Type one word", "Nhập một từ"),
+        );
+      }
+
       return (
         <div className="space-y-3">
           <input
@@ -2917,6 +3015,12 @@ function LessonRunner() {
 
       return (
         <div className="space-y-4">
+          {renderStandaloneFillBlank(
+            question,
+            currentAnswer,
+            isAnswerLocked,
+            copy("Fill the blank", "Điền vào chỗ trống"),
+          )}
           {false && (
             <div className="rounded-[1.5rem] border border-[#dbeafe] bg-[#f8fbff] p-4">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-[#155ca5]">
@@ -3871,24 +3975,6 @@ function LessonRunner() {
               </p>
             )}
 
-            {!currentAnswer.correct && correctOption && (
-              <p className="text-sm font-semibold text-gray-700">
-                {copy("Correct answer:", "Dap an dung:")}{" "}
-                {correctOption.optionKey}.{" "}
-                {renderFormattedInlineText(correctOption.content)}
-              </p>
-            )}
-
-            {!currentAnswer.correct &&
-              !correctOption &&
-              question.correctAnswer &&
-              !isManualQuestion && (
-                <p className="text-sm font-semibold text-gray-700">
-                  {copy("Correct answer:", "Dap an dung:")}{" "}
-                  {question.correctAnswer}
-                </p>
-              )}
-
             {question.questionType === "MATCHING" &&
               currentAnswer.correct === null && (
                 <p className="text-sm text-gray-600">
@@ -4088,11 +4174,7 @@ function LessonRunner() {
                     navigate(buildLessonPath(nextLesson.lessonId));
                     return;
                   }
-                  navigate(
-                    isAdminPreview
-                      ? "/admin/content"
-                      : `/sections/${sectionId}/lessons`,
-                  );
+                  navigate(isAdminPreview ? "/admin/content" : "/");
                 }}
                 className="px-6 py-3 rounded-xl bg-[#27ae60] text-white font-bold hover:bg-[#1f8b4d]"
               >
@@ -4103,7 +4185,7 @@ function LessonRunner() {
                         ? "Review tiep theo"
                         : "Lesson tiep theo",
                     )
-                  : copy("Back to dashboard", "Ve dashboard")}
+                  : copy("Back to home", "Ve trang chu")}
               </button>
             )}
           </div>
@@ -4430,16 +4512,6 @@ function LessonRunner() {
                               question.id,
                             ) ?? index + 1}
                           </p>
-                          {questionAnswer.correct === false && (
-                            <p className="mt-1 text-sm text-gray-700">
-                              {copy("Correct answer:", "Dap an dung:")}{" "}
-                              <span className="font-semibold">
-                                {question.options.find(
-                                  (option) => option.isCorrect,
-                                )?.content || question.correctAnswer}
-                              </span>
-                            </p>
-                          )}
                           {question.explanation && (
                             <p className="mt-1 text-sm text-gray-600">
                               {question.explanation}
@@ -4479,14 +4551,6 @@ function LessonRunner() {
                   >
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-3 flex-wrap">
-                        {(isAdminPreview ||
-                          question.questionType !== "MATCHING") && (
-                          <div
-                            className={`inline-flex items-center justify-center rounded-full bg-[#155ca5] px-2 font-black text-white ${isCompactPassageItem ? "h-7 min-w-7 text-[11px]" : "h-7 min-w-7 text-[11px] sm:h-8 sm:min-w-8 sm:text-xs"}`}
-                          >
-                            {questionIndex + 1}
-                          </div>
-                        )}
                         {isAdminPreview && (
                           <div className="inline-block rounded-full bg-[#f3f7ff] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#155ca5]">
                             {getQuestionTypeLabel(question.questionType)}
@@ -4635,13 +4699,7 @@ function LessonRunner() {
         </div>
       </section>
 
-      <footer className="mt-8 flex items-center justify-between gap-4 flex-wrap">
-        <div className="text-sm text-gray-500 font-medium">
-          {copy("Correct", "Dung")} {totalCorrect}/{totalQuestions}{" "}
-          {copy("question(s)", "cau")} | {copy("Completed", "Hoan thanh")}{" "}
-          {submittedPercent}%
-        </div>
-
+      <footer className="mt-8 flex items-center justify-end gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           {!isAdminPreview &&
             isCompactPassageItem &&

@@ -208,7 +208,7 @@ function renderFormattedInlineText(value: string): ReactNode[] {
         return (
           <u
             key={`${underlinedText}-${index}`}
-            className="font-semibold decoration-2 underline-offset-2"
+            className="font-semibold underline decoration-2 underline-offset-2"
           >
             {underlinedText}
           </u>

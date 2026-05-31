@@ -64,13 +64,7 @@ export function PublicLanding() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => openAuthModal("login")}
-              className="font-['Lexend'] text-sm font-medium text-slate-600 transition-colors hover:text-blue-800"
-            >
-              {copy("Login", "Đăng nhập")}
-            </button>
+            
             <button
               type="button"
               onClick={() => openAuthModal("register")}
@@ -113,16 +107,7 @@ export function PublicLanding() {
                 >
                   {copy("Start Learning Now", "Bắt đầu học ngay")}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => openAuthModal("login")}
-                  className="group flex items-center gap-2 font-bold text-[#155ca5]"
-                >
-                  {copy("Login", "Đăng nhập")}
-                  <span className="transition-transform group-hover:translate-x-1">
-                    →
-                  </span>
-                </button>
+
               </div>
             </div>
 

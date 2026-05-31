@@ -354,8 +354,8 @@ export function Dashboard() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#4a617d] md:text-base">
               {copy(
-                "A cleaner dashboard for tracking progress, ML insights, and a more technology-forward study experience.",
-                "Dashboard gọn hơn để theo dõi tiến độ, xem insight ML và tạo cảm giác công nghệ rõ hơn khi học.",
+                "Learning English is not just about mastering a language; it is about opening doors to new opportunities, connecting with people around the world, and becoming a more confident version of yourself every single day.",
+                "Học tiếng Anh không chỉ là học một ngôn ngữ mới mà còn là mở ra những cơ hội mới, kết nối với mọi người trên khắp thế giới và trở thành phiên bản tự tin hơn của chính mình mỗi ngày.",
               )}
             </p>
             <div className="mt-4 flex flex-wrap gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-[#4b6f97]">
