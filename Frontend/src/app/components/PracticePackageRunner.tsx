@@ -41,12 +41,19 @@ type LoadedPracticePackage<TItem> = {
 
 const RIGHT_SOUND_SRC = "/audio/right.wav";
 const WRONG_SOUND_SRC = "/audio/false.wav";
+const PARTIAL_SOUND_SRC = "/audio/partial.mp3";
 
-function playAnswerFeedbackSound(correct: boolean | null) {
-  if (correct === true) {
+function playBatchAnswerFeedbackSound(correctCount: number, gradedCount: number) {
+  if (gradedCount === 0) {
+    return;
+  }
+
+  if (correctCount === gradedCount) {
     playUiSound(RIGHT_SOUND_SRC);
-  } else if (correct === false) {
+  } else if (correctCount === 0) {
     playUiSound(WRONG_SOUND_SRC);
+  } else {
+    playUiSound(PARTIAL_SOUND_SRC);
   }
 }
 
@@ -817,9 +824,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
       scorePercent:
         gradedAnswers.length > 0 ? Math.round((correctCount / gradedAnswers.length) * 100) : 0,
     });
-    playAnswerFeedbackSound(
-      currentQuestion ? nextAnswers[currentQuestion.id]?.correct ?? null : null,
-    );
+    playBatchAnswerFeedbackSound(correctCount, gradedAnswers.length);
     setSubmitting(false);
   };
 

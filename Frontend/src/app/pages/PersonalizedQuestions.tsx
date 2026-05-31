@@ -24,6 +24,7 @@ import { playUiSound } from "@/app/utils/audioSettings";
 
 const RIGHT_SOUND_SRC = "/audio/right.wav";
 const WRONG_SOUND_SRC = "/audio/false.wav";
+const PARTIAL_SOUND_SRC = "/audio/partial.mp3";
 
 const initialForm: PersonalizedQuestionsRequest = {
   questionCount: 10,  // Reduced from 20 to 10 for better API stability
@@ -114,8 +115,18 @@ function isOptionCorrect(question: QuestionDto, option: QuestionDto["options"][0
   return option.isCorrect ?? false;
 }
 
-function playAnswerFeedbackSound(correct: boolean) {
-  playUiSound(correct ? RIGHT_SOUND_SRC : WRONG_SOUND_SRC);
+function playBatchAnswerFeedbackSound(correctCount: number, gradedCount: number) {
+  if (gradedCount === 0) {
+    return;
+  }
+
+  if (correctCount === gradedCount) {
+    playUiSound(RIGHT_SOUND_SRC);
+  } else if (correctCount === 0) {
+    playUiSound(WRONG_SOUND_SRC);
+  } else {
+    playUiSound(PARTIAL_SOUND_SRC);
+  }
 }
 
 export function PersonalizedQuestions() {
@@ -324,6 +335,9 @@ export function PersonalizedQuestions() {
     }
 
     setSubmitting(true);
+    let correctCount = 0;
+    let gradedCount = 0;
+
     await Promise.all(
       answeredQuestions.map(async (question) => {
         const selectedKey = answers[question.id];
@@ -333,6 +347,11 @@ export function PersonalizedQuestions() {
         });
         if (!selectedOption) return;
 
+        gradedCount += 1;
+        if (isOptionCorrect(question, selectedOption)) {
+          correctCount += 1;
+        }
+
         await submitQuestionHistory({
           questionId: question.id,
           answer_text: selectedOption.content,
@@ -340,20 +359,7 @@ export function PersonalizedQuestions() {
       }),
     );
     setSubmitted(true);
-    const currentQuestion = questions[currentIndex];
-    const currentAnswer = currentQuestion ? answers[currentQuestion.id] : null;
-    const currentSelectedOption = currentQuestion?.options?.find((option, idx) => {
-      const displayKey =
-        option.optionKey ||
-        ["A", "B", "C", "D"][idx] ||
-        String.fromCharCode(65 + idx);
-      return displayKey === currentAnswer;
-    });
-    if (currentQuestion && currentSelectedOption) {
-      playAnswerFeedbackSound(
-        isOptionCorrect(currentQuestion, currentSelectedOption),
-      );
-    }
+    playBatchAnswerFeedbackSound(correctCount, gradedCount);
     setSubmitting(false);
   };
 

@@ -122,6 +122,7 @@ type PersistedLessonRunnerState = {
 const LESSON_RUNNER_STATE_TTL_MS = 24 * 60 * 60 * 1000;
 const RIGHT_SOUND_SRC = "/audio/right.wav";
 const WRONG_SOUND_SRC = "/audio/false.wav";
+const PARTIAL_SOUND_SRC = "/audio/partial.mp3";
 const DONE_LESSON_SOUND_SRC = "/audio/done_lesson.mp3";
 
 function getLessonRunnerStorageKey(lessonId: number) {
@@ -158,6 +159,25 @@ function playAnswerFeedbackSound(correct: boolean | null) {
     playUiSound(RIGHT_SOUND_SRC);
   } else if (correct === false) {
     playUiSound(WRONG_SOUND_SRC);
+  }
+}
+
+function playBatchAnswerFeedbackSound(results: Array<boolean | null>) {
+  const gradedResults = results.filter(
+    (result): result is boolean => result !== null,
+  );
+
+  if (gradedResults.length === 0) {
+    return;
+  }
+
+  const correctCount = gradedResults.filter(Boolean).length;
+  if (correctCount === gradedResults.length) {
+    playUiSound(RIGHT_SOUND_SRC);
+  } else if (correctCount === 0) {
+    playUiSound(WRONG_SOUND_SRC);
+  } else {
+    playUiSound(PARTIAL_SOUND_SRC);
   }
 }
 
@@ -2364,7 +2384,11 @@ function LessonRunner() {
     };
   };
 
-  const submitQuestion = async (question: QuestionDto) => {
+  const submitQuestion = async (
+    question: QuestionDto,
+    options?: { playSound?: boolean },
+  ): Promise<boolean | null | undefined> => {
+    const shouldPlaySound = options?.playSound ?? true;
     const saved = answers[question.id];
     if (!saved) return;
 
@@ -2384,8 +2408,10 @@ function LessonRunner() {
             score: null,
           },
         }));
-        playAnswerFeedbackSound(preview.correct);
-        return;
+        if (shouldPlaySound) {
+          playAnswerFeedbackSound(preview.correct);
+        }
+        return preview.correct;
       }
 
       let correct: boolean | null = null;
@@ -2547,18 +2573,38 @@ function LessonRunner() {
           issueSummary,
         },
       }));
-      playAnswerFeedbackSound(correct);
+      if (shouldPlaySound) {
+        playAnswerFeedbackSound(correct);
+      }
+      return correct;
     } finally {
       setSubmittingCurrent(false);
     }
   };
 
   const submitCurrentItem = async () => {
-    for (const question of currentQuestions) {
-      if (!answers[question.id]?.submitted && canSubmitQuestion(question)) {
+    const submittableQuestions = currentQuestions.filter(
+      (question) =>
+        !answers[question.id]?.submitted && canSubmitQuestion(question),
+    );
+
+    if (submittableQuestions.length <= 1) {
+      for (const question of submittableQuestions) {
         await submitQuestion(question);
       }
+      return;
     }
+
+    const results: Array<boolean | null> = [];
+
+    for (const question of submittableQuestions) {
+      const result = await submitQuestion(question, { playSound: false });
+      if (result !== undefined) {
+        results.push(result);
+      }
+    }
+
+    playBatchAnswerFeedbackSound(results);
   };
 
   const goNext = async () => {
