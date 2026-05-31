@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { Root } from "./Root";
 import { Dashboard } from "./pages/Dashboard";
 import { UnitView } from "./pages/UnitView";
@@ -26,7 +26,6 @@ import { UserUnitReviews } from "./pages/UserUnitReviews";
 import { UserGroupReviews } from "./pages/UserGroupReviews";
 import { UserSemesterTests } from "./pages/UserSemesterTests";
 import { AdminLayout } from "./components/AdminLayout";
-import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { UserManagement } from "./pages/admin/UserManagement";
 import { ContentManagement } from "./pages/admin/ContentManagement";
 import { QuestionBank } from "./pages/admin/QuestionBank";
@@ -40,6 +39,8 @@ import { Forbidden } from "./pages/Forbidden";
 import { NotFound } from "./pages/NotFound";
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { OAuth2Callback } from "./pages/OAuth2Callback";
+
+const RedirectToAdminUsers = () => <Navigate to="/admin/users" replace />;
 
 export const router = createBrowserRouter([
   {
@@ -96,7 +97,7 @@ export const router = createBrowserRouter([
         path: "/admin",
         Component: AdminLayout,
         children: [
-          { index: true, Component: AdminDashboard },
+          { index: true, Component: RedirectToAdminUsers },
           { path: "users", Component: UserManagement },
           { path: "content", Component: ContentManagement },
           { path: "content/preview/:lessonId", Component: LessonRunner },

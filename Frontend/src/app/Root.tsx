@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import { useEffect, useState } from "react";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
@@ -17,17 +17,6 @@ export function Root() {
     null,
   );
 
-  const adminAllowedLearnerPaths = [
-    "/lessons/",
-    "/reviews/",
-    "/tests/semester",
-    "/test/review",
-    "/test/revision",
-  ];
-
-  const canAdminAccessLearnerPath = adminAllowedLearnerPaths.some((path) =>
-    location.pathname.startsWith(path),
-  );
   const focusRoutes = [
     "/grades/",
     "/units/",
@@ -106,10 +95,6 @@ export function Root() {
 
   if (!isAuthenticated) {
     return <PublicLanding />;
-  }
-
-  if (user?.role === "ADMIN" && !canAdminAccessLearnerPath) {
-    return <Navigate to="/admin" replace />;
   }
 
   return (
