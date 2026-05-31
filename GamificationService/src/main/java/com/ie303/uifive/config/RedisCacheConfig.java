@@ -25,7 +25,7 @@ public class RedisCacheConfig {
             connection.ping();
             return redisCacheManager(connectionFactory, objectMapper);
         } catch (Exception ex) {
-            log.warn("Redis is unavailable, falling back to in-memory cache.", ex);
+            log.warn("Redis is unavailable, falling back to in-memory cache.");
             return new ConcurrentMapCacheManager();
         }
     }

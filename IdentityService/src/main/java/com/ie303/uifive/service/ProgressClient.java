@@ -9,8 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.List;
 
 @FeignClient(
-        name = "progress-service",
-        url = "${progress.service.base-url:http://localhost:8087}"
+        name = "progress-service"
 )
 public interface ProgressClient {
 

@@ -5,6 +5,16 @@ x-app-env: &app-env
     - ./.env.prod
 
 services:
+  eureka-service:
+    image: ${DOCKER_NAMESPACE:-yourname}/uifive-eureka:${IMAGE_TAG:-1.0}
+    container_name: uifive-eureka
+    restart: unless-stopped
+    <<: *app-env
+    environment:
+      PORT: "8761"
+    ports:
+      - "8761:8761"
+
   gateway-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-gateway:${IMAGE_TAG:-1.0}
     container_name: uifive-gateway
@@ -13,15 +23,11 @@ services:
     environment:
       PORT: "8081"
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
-      IDENTITY_SERVICE_BASE_URL: http://identity-service:8084
-      PAYMENT_SERVICE_BASE_URL: http://payment-service:8083
-      PROGRESS_SERVICE_BASE_URL: http://progress-service:8087
-      CONTENT_SERVICE_BASE_URL: http://content-service:8086
-      GAMIFICATION_SERVICE_BASE_URL: http://gamification-service:8085
-      AI_SERVICE_BASE_URL: http://ai-service:8088
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
     ports:
       - "8081:8081"
     depends_on:
+      - eureka-service
       - identity-service
       - payment-service
       - progress-service
@@ -40,9 +46,12 @@ services:
       BACKEND_PUBLIC_BASE_URL: ${BACKEND_PUBLIC_BASE_URL:-http://localhost:8081}
       NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
       PROGRESS_SERVICE_BASE_URL: http://progress-service:8087
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
     ports:
       - "8084:8084"
     depends_on:
+      eureka-service:
+        condition: service_started
       notification-service:
         condition: service_started
       progress-service:
@@ -60,9 +69,12 @@ services:
       NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
       PAYMENT_MOCK_CONFIRM_ENABLED: ${PAYMENT_MOCK_CONFIRM_ENABLED:-false}
       PAYMENT_MOMO_ENABLED: ${PAYMENT_MOMO_ENABLED:-false}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
     ports:
       - "8083:8083"
     depends_on:
+      eureka-service:
+        condition: service_started
       notification-service:
         condition: service_started
 
@@ -80,8 +92,12 @@ services:
       NOTIFICATION_STREAK_RESET_CRON: ${NOTIFICATION_STREAK_RESET_CRON:-0 5 0 * * *}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@uifive.local}
       SPRING_RABBITMQ_LISTENER_AUTO_STARTUP: "true"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
     ports:
       - "8082:8082"
+    depends_on:
+      eureka-service:
+        condition: service_started
   gamification-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-gamification:${IMAGE_TAG:-1.0}
     container_name: uifive-gamification
@@ -91,9 +107,12 @@ services:
       PORT: "8085"
       NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
       REDIS_URL: ${REDIS_URL}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
     ports:
       - "8085:8085"
     depends_on:
+      eureka-service:
+        condition: service_started
       notification-service:
         condition: service_started
 
@@ -107,8 +126,12 @@ services:
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
       BACKEND_PUBLIC_BASE_URL: ${BACKEND_PUBLIC_BASE_URL:-http://localhost:8081}
       REDIS_URL: ${REDIS_URL}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
     ports:
       - "8086:8086"
+    depends_on:
+      eureka-service:
+        condition: service_started
 
   progress-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-progress:${IMAGE_TAG:-1.0}
@@ -120,10 +143,14 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       ML_API_URL: http://ml-service:8000/predict
       REDIS_URL: ${REDIS_URL}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
     ports:
       - "8087:8087"
     depends_on:
-      - ml-service
+      eureka-service:
+        condition: service_started
+      ml-service:
+        condition: service_started
 
   ai-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-ai:${IMAGE_TAG:-1.0}
@@ -133,8 +160,12 @@ services:
     environment:
       PORT: "8088"
       REDIS_URL: ${REDIS_URL}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
     ports:
       - "8088:8088"
+    depends_on:
+      eureka-service:
+        condition: service_started
 
   ml-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-ml:${IMAGE_TAG:-1.0}
