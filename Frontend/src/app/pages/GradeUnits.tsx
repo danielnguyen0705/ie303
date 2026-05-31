@@ -189,7 +189,11 @@ export function GradeUnits() {
       }
 
       const response = await getGrade(gradeIdNumber);
-      setGradeTitle(response.success && response.data ? response.data.title : null);
+      setGradeTitle(
+        response.success && response.data
+          ? response.data.description ?? response.data.name ?? response.data.title ?? null
+          : null,
+      );
     };
 
     void loadGradeMeta();

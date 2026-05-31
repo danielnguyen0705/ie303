@@ -57,7 +57,12 @@ export function UserGroupReviews() {
       }
 
       setGradeTitles(
-        Object.fromEntries(response.data.map((grade) => [grade.id, grade.title])),
+        Object.fromEntries(
+          response.data.map((grade) => [
+            grade.id,
+            grade.description ?? grade.name ?? grade.title ?? `Grade ${grade.id}`,
+          ]),
+        ),
       );
     };
 

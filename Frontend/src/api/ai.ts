@@ -40,16 +40,20 @@ export async function submitEssayWithImage(
     return createError("Invalid question id", "VALIDATION_ERROR");
   }
 
-  if (!payload.answerText.trim()) {
-    return createError("Answer text is required", "VALIDATION_ERROR");
+  const answerText = payload.answerText.trim();
+  const imageUrl = payload.imageUrl?.trim() || "";
+  const hasImage = Boolean(imageUrl) || Boolean(payload.imageFile);
+
+  if (!answerText && !hasImage) {
+    return createError("Answer text or essay image is required", "VALIDATION_ERROR");
   }
 
   const formData = new FormData();
   formData.append("questionId", String(payload.questionId));
-  formData.append("answerText", payload.answerText);
+  formData.append("answerText", answerText);
 
-  if (payload.imageUrl?.trim()) {
-    formData.append("imageUrl", payload.imageUrl.trim());
+  if (imageUrl) {
+    formData.append("imageUrl", imageUrl);
   }
 
   if (payload.imageFile) {

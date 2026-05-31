@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -39,10 +40,7 @@ public class PersonalizedPracticeService {
     private static final int TARGET_AUTO_QUESTION_COUNT = 20;
     private static final int QUESTIONS_PER_WRONG_REFERENCE = 4;
     private static final int MAX_QUESTION_COUNT = 15;
-    private static final Set<QuestionType> REUSABLE_SOURCE_TYPES = Set.of(
-            QuestionType.QUALITATIVE_MC,
-            QuestionType.CLOZE_MC
-    );
+    private static final Set<QuestionType> REUSABLE_SOURCE_TYPES = Set.copyOf(Arrays.asList(QuestionType.values()));
     private static final Set<QuestionType> SUPPORTED_PERSONALIZED_TYPES = Set.of(
             QuestionType.QUALITATIVE_MC
     );
@@ -177,17 +175,19 @@ public class PersonalizedPracticeService {
     }
 
     private boolean isQuestionReusableForPersonalizedSet(Question question) {
-        if (!isOptionBasedType(question.getQuestionType())) {
-            return false;
-        }
-
         List<QuestionOption> options = questionOptionRepo.findByQuestionId(question.getId());
-        if (options.size() != 4) {
-            return false;
+        if (isOptionBasedType(question.getQuestionType())) {
+            if (!hasSupportedOptionCount(question.getQuestionType(), options.size())) {
+                return false;
+            }
+
+            long correctCount = options.stream().filter(QuestionOption::isCorrect).count();
+            if (correctCount != 1) {
+                return false;
+            }
         }
 
-        long correctCount = options.stream().filter(QuestionOption::isCorrect).count();
-        return correctCount == 1;
+        return hasReusablePrompt(question) || hasReusableAnswer(question, options);
     }
 
     private List<AiGenerationService.GeneratedPersonalizedQuestionDraft> filterValidPersonalizedDrafts(
@@ -389,7 +389,27 @@ public class PersonalizedPracticeService {
 
     private boolean isOptionBasedType(QuestionType questionType) {
         return questionType == QuestionType.QUALITATIVE_MC
-                || questionType == QuestionType.CLOZE_MC;
+                || questionType == QuestionType.CLOZE_MC
+                || questionType == QuestionType.TRUE_FALSE_NG;
+    }
+
+    private boolean hasSupportedOptionCount(QuestionType questionType, int optionCount) {
+        if (questionType == QuestionType.TRUE_FALSE_NG) {
+            return optionCount == 3;
+        }
+
+        return optionCount == 4;
+    }
+
+    private boolean hasReusablePrompt(Question question) {
+        return !nullToEmpty(question.getContent()).isBlank()
+                || !nullToEmpty(question.getInstruction()).isBlank()
+                || !nullToEmpty(question.getExplanation()).isBlank();
+    }
+
+    private boolean hasReusableAnswer(Question question, List<QuestionOption> options) {
+        String targetAnswer = resolveTargetAnswer(question, options);
+        return targetAnswer != null && !targetAnswer.isBlank();
     }
 
     private boolean hasDetachedBlankPrompt(String content) {

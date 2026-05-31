@@ -73,18 +73,19 @@ public class EssayService {
                 .orElseThrow(() -> new AppException(ErrorCode.QUESTION_NOT_FOUND));
 
         String imageUrl = resolveImageUrl(request.imageFile(), request.imageUrl());
+        String answerText = request.answerText() == null ? "" : request.answerText().trim();
 
         WritingEvaluationResponse aiResult = aiGenerationService.evaluateEssay(
                 question.getContent(),
                 question.getExplanation(),
-                request.answerText(),
+                answerText,
                 imageUrl
         );
 
         UserQuestionHistory history = new UserQuestionHistory();
         history.setUser(user);
         history.setQuestion(question);
-        history.setAnswerText(request.answerText());
+        history.setAnswerText(answerText);
         history.setCorrect(aiResult.score() >= 5.0);
         historyRepo.save(history);
 

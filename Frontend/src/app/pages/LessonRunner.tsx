@@ -1607,6 +1607,28 @@ function LessonRunner() {
         file,
       },
     }));
+    setAnswers((prev) => {
+      if (prev[questionId]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [questionId]: {
+          answer: "",
+          submitted: false,
+          correct: null,
+          feedback: null,
+          score: null,
+          attemptCount: 0,
+          maxAttempts: 3,
+          expectedAnswer: null,
+          recognizedText: null,
+          similarity: null,
+          issueSummary: null,
+        },
+      };
+    });
   };
 
   const getQuestionAnswer = (questionId: number) => answers[questionId];
@@ -2298,6 +2320,18 @@ function LessonRunner() {
 
   const canSubmitQuestion = (question: QuestionDto) => {
     const currentAnswer = getQuestionAnswer(question.id);
+
+    if (question.questionType === "ESSAY_WRITING") {
+      if (!currentAnswer) {
+        return Boolean(essayAttachments[question.id]?.file);
+      }
+
+      const typedAnswer =
+        typeof currentAnswer.answer === "string" ? currentAnswer.answer.trim() : "";
+      const hasImage = Boolean(essayAttachments[question.id]?.file);
+      return typedAnswer.length > 0 || hasImage;
+    }
+
     if (!currentAnswer) return false;
 
     const answer = currentAnswer.answer;
@@ -3276,10 +3310,10 @@ function LessonRunner() {
             <div className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
               Essay Image
             </div>
-            <p className="mt-2 text-sm text-slate-600">
-              Attach a photo of your handwritten or printed essay if you want
-              the AI to review it together with your typed answer.
-            </p>
+              <p className="mt-2 text-sm text-slate-600">
+                Attach a photo of your handwritten or printed essay if you want
+                the AI to review it together with, or instead of, your typed answer.
+              </p>
             <input
               type="file"
               accept="image/*"
@@ -3289,11 +3323,11 @@ function LessonRunner() {
               }
               className="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-[#155ca5] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#0f4c88]"
             />
-            <p className="mt-2 text-sm text-slate-500">
-              {attachedImage
-                ? `Selected image: ${attachedImage.name}`
-                : "No image selected. Text-only essay scoring still works."}
-            </p>
+              <p className="mt-2 text-sm text-slate-500">
+                {attachedImage
+                  ? `Selected image: ${attachedImage.name}`
+                  : "No image selected. You can submit text only, or attach an image only."}
+              </p>
           </div>
         </div>
       );
