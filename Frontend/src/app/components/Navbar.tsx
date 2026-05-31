@@ -1,24 +1,11 @@
 ﻿import { Link, useLocation, useNavigate } from "react-router";
-import {
-  Flame,
-  Coins,
-  User,
-  LogOut,
-  History,
-  Backpack,
-  X,
-  BookOpen,
-  Target,
-  Trophy,
-  ShoppingBag,
-  CircleDollarSign,
-} from "lucide-react";
+import { Flame, Coins, User, LogOut, History, Package, X } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { getMyShopItems, useSkipItem } from "@/api/shop";
-import type { UserItemResponse } from "@/api/types";
+import { getMyShopItems } from "@/api/shop";
+import type { ShopItemType, UserItemResponse } from "@/api/types";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
 import {
@@ -37,68 +24,50 @@ type InventoryItem = {
   quantity: number;
   recommended?: boolean;
   userItemId?: number;
-  useMode?: "skip";
-  itemType?: string;
+  itemType: ShopItemType;
+  imageUrl?: string;
 };
 
 const ITEM_CONFIGS: Record<string, Partial<InventoryItem>> = {
-  freeze: {
-    icon: "❄️",
-    description: "Freeze your streak through the next midnight.",
+  SKIP: {
+    icon: "⏭️",
+    description: "Skip item.",
     recommended: false,
-    useMode: "skip",
   },
-  "xp-boost": {
-    icon: "⚡",
-    description: "Earn bonus XP on your next completed lesson.",
+  VIP: {
+    icon: "⭐",
+    description: "Premium access item.",
     recommended: true,
-    useMode: undefined,
+  },
+  EXP: {
+    icon: "⚡",
+    description: "Experience boost item.",
+    recommended: true,
   },
 };
 
-const getItemConfig = (name: string, type: string): Partial<InventoryItem> => {
-  const normalized = name.toLowerCase();
-
-  // Check if name contains freeze/streak keywords
-  if (normalized.includes("freeze") || normalized.includes("streak")) {
-    return ITEM_CONFIGS.freeze;
-  }
-
-  // Check if name contains xp/exp/boost keywords
-  if (
-    normalized.includes("xp") ||
-    normalized.includes("exp") ||
-    normalized.includes("boost")
-  ) {
-    return ITEM_CONFIGS["xp-boost"];
-  }
-
-  // Default config for unknown items
-  return {
-    icon: "📦",
-    description: type === "SKIP" ? "Use this item." : "Earn rewards.",
-    useMode: type === "SKIP" ? "skip" : undefined,
-  };
-};
+const VISIBLE_INVENTORY_TYPES = new Set<ShopItemType>(["SKIP", "VIP", "EXP"]);
 
 function mapInventoryItemsFromApi(
   userItems: UserItemResponse[],
 ): InventoryItem[] {
-  return userItems.map((item) => {
-    const config = getItemConfig(item.name, item.type);
+  return userItems
+    .filter((item) => VISIBLE_INVENTORY_TYPES.has(item.type))
+    .map((item) => {
+      const config = ITEM_CONFIGS[item.type];
 
-    return {
-      id: `item-${item.userItemId}`,
-      name: item.name,
-      quantity: item.quantity,
-      userItemId: item.userItemId,
-      itemType: item.type,
-      icon: config.icon ?? "📦",
-      description: config.description ?? "Use this item.",
-      recommended: config.recommended ?? false,
-      useMode: config.useMode as "skip" | undefined,
-    };
-  });
+      return {
+        id: `item-${item.userItemId}`,
+        name: item.name,
+        quantity: item.quantity,
+        userItemId: item.userItemId,
+        itemType: item.type,
+        imageUrl: item.imageUrl,
+        icon: config.icon ?? "📦",
+        description: config.description ?? "Owned item.",
+        recommended: config.recommended ?? false,
+      };
+    });
 }
 
 function getNumericField(
@@ -156,7 +125,6 @@ function NavbarContent() {
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
-  const [usingItemId, setUsingItemId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -220,28 +188,6 @@ function NavbarContent() {
   }, [isDropdownOpen]);
 
   useEffect(() => {
-    if (!isInventoryModalOpen) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsInventoryModalOpen(false);
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isInventoryModalOpen]);
-
-  useEffect(() => {
     return () => {
       timeoutIdsRef.current.forEach((timeoutId) => {
         window.clearTimeout(timeoutId);
@@ -286,7 +232,22 @@ function NavbarContent() {
       return;
     }
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsInventoryModalOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
     void loadInventoryItems();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [isInventoryModalOpen, loadInventoryItems]);
 
   const handleLogout = async () => {
@@ -300,45 +261,9 @@ function NavbarContent() {
     setIsDropdownOpen(false);
   };
 
-  const handleUseInventoryItem = async (itemId: string) => {
-    if (usingItemId) {
-      return;
-    }
-
-    const selectedItem = inventoryItems.find((item) => item.id === itemId);
-    if (!selectedItem || selectedItem.quantity <= 0) {
-      return;
-    }
-
-    if (selectedItem.useMode !== "skip" || !selectedItem.userItemId) {
-      showToast(
-        copy(
-          "This item does not have a direct-use API yet.",
-          "Vật phẩm này chưa có API sử dụng trực tiếp.",
-        ),
-      );
-      return;
-    }
-
-    setUsingItemId(itemId);
-
-    const response = await useSkipItem(selectedItem.userItemId);
-
-    if (!response.success) {
-      showToast(
-        response.error?.message ||
-          copy("Use item failed.", "Dùng vật phẩm thất bại."),
-      );
-      setUsingItemId(null);
-      return;
-    }
-
-    await loadInventoryItems();
-    setUsingItemId(null);
-
-    showToast(
-      `${selectedItem.icon} ${selectedItem.name} ${copy("used successfully.", "đã được dùng thành công.")}`,
-    );
+  const handleOpenInventory = () => {
+    setIsDropdownOpen(false);
+    setIsInventoryModalOpen(true);
   };
 
   return (
@@ -433,15 +358,6 @@ function NavbarContent() {
               </div>
             )}
 
-            <button
-              type="button"
-              aria-label={copy("Open inventory", "Mở túi đồ")}
-              onClick={() => setIsInventoryModalOpen(true)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#155ca5] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-100 hover:text-[#124e8b]"
-            >
-              <Backpack className="h-4 w-4" />
-            </button>
-
             <div className="hidden items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 transition-all hover:scale-105 sm:flex lg:hidden xl:flex">
               <Flame className="w-4 h-4 text-[#f39c12]" fill="#f39c12" />
               <span className="font-bold text-sm">
@@ -514,6 +430,14 @@ function NavbarContent() {
                       >
                         <History className="w-4 h-4 text-[#155ca5]" />
                         {copy("Payment History", "Lịch sử nạp")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleOpenInventory}
+                        className="w-full px-4 py-2.5 text-left hover:bg-slate-100 text-slate-700 font-medium text-sm transition-colors flex items-center gap-3"
+                      >
+                        <Package className="w-4 h-4 text-[#155ca5]" />
+                        {copy("Items", "Vật phẩm")}
                       </button>
                       <hr className="my-1" />
                       <button
@@ -605,91 +529,82 @@ function NavbarContent() {
           onClick={() => setIsInventoryModalOpen(false)}
         >
           <div
-            className="w-full max-w-xl rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.22)] sm:p-6"
+            className="w-full max-w-lg rounded-[18px] bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.22)] sm:p-6"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mb-5 flex items-start justify-between">
-              <h2 className="text-xl font-extrabold tracking-tight text-slate-800 sm:text-2xl">
-                {copy("Your Items", "Vật phẩm của bạn")}
-              </h2>
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-extrabold tracking-tight text-slate-800 sm:text-2xl">
+                  {copy("Your Items", "Vật phẩm của bạn")}
+                </h2>
+                <p className="mt-1 text-xs font-medium text-slate-500 sm:text-sm">
+                  {copy(
+                    "Showing only SKIP and VIP items.",
+                    "Chỉ hiển thị vật phẩm SKIP và VIP.",
+                  )}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsInventoryModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                aria-label={copy("Close inventory", "Đóng túi đồ")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                aria-label={copy("Close items", "Đóng vật phẩm")}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              {inventoryItems.map((item) => {
-                const hasUseApi =
-                  item.useMode === "skip" && Boolean(item.userItemId);
-                const isDisabled =
-                  item.quantity <= 0 ||
-                  usingItemId === item.id ||
-                  isInventoryLoading ||
-                  !hasUseApi;
-                const isUsing = usingItemId === item.id;
-
-                return (
+            {isInventoryLoading ? (
+              <div className="flex min-h-32 items-center justify-center">
+                <span className="h-8 w-8 animate-spin rounded-full border-4 border-[#155ca5]/20 border-t-[#155ca5]" />
+              </div>
+            ) : inventoryItems.length === 0 ? (
+              <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">
+                {copy(
+                  "No SKIP, VIP or EXP items.",
+                  "Chưa có vật phẩm SKIP, VIP hoặc EXP.",
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {inventoryItems.map((item) => (
                   <div
                     key={item.id}
-                    className={`flex items-center gap-3 rounded-2xl border px-3 py-3 transition-all duration-200 sm:px-4 ${
-                      item.recommended
-                        ? "border-amber-200 bg-amber-50/65 shadow-sm hover:-translate-y-0.5 hover:shadow-md"
-                        : "border-slate-200 bg-slate-50/70 shadow-sm hover:-translate-y-0.5 hover:shadow-md"
-                    }`}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3 shadow-sm sm:px-4"
                   >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
-                      {item.icon}
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white text-xl shadow-sm">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        item.icon
+                      )}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         <p className="truncate text-sm font-bold text-slate-800 sm:text-base">
                           {item.name}
                         </p>
-                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-[#155ca5]">
-                          x{item.quantity}
+                        <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-[#155ca5]">
+                          {item.itemType}
                         </span>
-                        {item.recommended && (
-                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
-                            {copy("Recommended", "Đề xuất")}
-                          </span>
-                        )}
                       </div>
                       <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                         {item.description}
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleUseInventoryItem(item.id);
-                      }}
-                      disabled={isDisabled}
-                      className="inline-flex min-w-[88px] items-center justify-center rounded-full bg-[#155ca5] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-[#124e8b] hover:shadow-md active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
-                    >
-                      {isUsing ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/80 border-t-transparent" />
-                          {copy("Using...", "Đang dùng...")}
-                        </span>
-                      ) : isInventoryLoading ? (
-                        "..."
-                      ) : !hasUseApi ? (
-                        copy("Not usable", "Không dùng được")
-                      ) : (
-                        copy("Use", "Dùng")
-                      )}
-                    </button>
+                    <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-[#155ca5]">
+                      x{item.quantity}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
