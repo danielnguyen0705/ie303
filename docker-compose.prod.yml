@@ -5,24 +5,6 @@ x-app-env: &app-env
     - ./.env.prod
 
 services:
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: uifive-rabbitmq
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   gateway-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-gateway:${IMAGE_TAG:-1.0}
     container_name: uifive-gateway
@@ -58,15 +40,9 @@ services:
       BACKEND_PUBLIC_BASE_URL: ${BACKEND_PUBLIC_BASE_URL:-http://localhost:8081}
       NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
       PROGRESS_SERVICE_BASE_URL: http://progress-service:8087
-      SPRING_RABBITMQ_HOST: ${SPRING_RABBITMQ_HOST:-rabbitmq}
-      SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT:-5672}
-      SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
     ports:
       - "8084:8084"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       notification-service:
         condition: service_started
       progress-service:
@@ -84,15 +60,9 @@ services:
       NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
       PAYMENT_MOCK_CONFIRM_ENABLED: ${PAYMENT_MOCK_CONFIRM_ENABLED:-false}
       PAYMENT_MOMO_ENABLED: ${PAYMENT_MOMO_ENABLED:-false}
-      SPRING_RABBITMQ_HOST: ${SPRING_RABBITMQ_HOST:-rabbitmq}
-      SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT:-5672}
-      SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
     ports:
       - "8083:8083"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       notification-service:
         condition: service_started
 
@@ -109,17 +79,9 @@ services:
       NOTIFICATION_STREAK_REMINDER_CRON: ${NOTIFICATION_STREAK_REMINDER_CRON:-0 0 9 * * *}
       NOTIFICATION_STREAK_RESET_CRON: ${NOTIFICATION_STREAK_RESET_CRON:-0 5 0 * * *}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@uifive.local}
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: "5672"
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
       SPRING_RABBITMQ_LISTENER_AUTO_STARTUP: "true"
     ports:
       - "8082:8082"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-
   gamification-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-gamification:${IMAGE_TAG:-1.0}
     container_name: uifive-gamification
@@ -128,16 +90,10 @@ services:
     environment:
       PORT: "8085"
       NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8082
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: "5672"
-      SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD:-guest}
       REDIS_URL: ${REDIS_URL}
     ports:
       - "8085:8085"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       notification-service:
         condition: service_started
 
@@ -153,8 +109,6 @@ services:
       REDIS_URL: ${REDIS_URL}
     ports:
       - "8086:8086"
-    depends_on:
-      - rabbitmq
 
   progress-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-progress:${IMAGE_TAG:-1.0}
@@ -170,7 +124,6 @@ services:
       - "8087:8087"
     depends_on:
       - ml-service
-      - rabbitmq
 
   ai-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-ai:${IMAGE_TAG:-1.0}
@@ -182,8 +135,6 @@ services:
       REDIS_URL: ${REDIS_URL}
     ports:
       - "8088:8088"
-    depends_on:
-      - rabbitmq
 
   ml-service:
     image: ${DOCKER_NAMESPACE:-yourname}/uifive-ml:${IMAGE_TAG:-1.0}
@@ -202,6 +153,3 @@ services:
       - "3000:80"
     depends_on:
       - gateway-service
-
-volumes:
-  rabbitmq_data:

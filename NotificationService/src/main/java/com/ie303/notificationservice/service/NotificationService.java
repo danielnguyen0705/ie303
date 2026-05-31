@@ -190,6 +190,7 @@ public class NotificationService {
     }
 
     public void sendVerificationEmail(String toEmail, String verifyLink) {
+        log.info("Handling verification email request via HTTP endpoint for {}", toEmail);
         sendVerificationEmail(new VerificationEmailRequest(toEmail, verifyLink));
     }
 

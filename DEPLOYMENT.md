@@ -52,6 +52,7 @@ Kết nối thư mục `IdentityService/` với Render:
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
 - `JWT_SECRET`, `JWT_EXPIRATION`
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- `CLOUDAMQP_URL=amqps://<user>:<password>@<host>/<vhost>`
 - `FRONTEND_BASE_URL=https://uifive.io.vn`
 - `BACKEND_PUBLIC_BASE_URL=<your-render-gateway-url>`
 - `CORS_ALLOWED_ORIGINS=https://uifive.io.vn`
@@ -78,6 +79,7 @@ Kết nối thư mục `GamificationService/` với Render:
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
 - `JWT_SECRET`, `JWT_EXPIRATION`
 - `CLOUD_NAME`, `API_KEY`, `API_SECRET`
+- `CLOUDAMQP_URL=amqps://<user>:<password>@<host>/<vhost>`
 - `NOTIFICATION_SERVICE_BASE_URL=<your-notification-service-url>`
 - `CORS_ALLOWED_ORIGINS=https://uifive.io.vn`
 - `PORT=8085`
@@ -165,6 +167,7 @@ Kết nối thư mục `NotificationService/` với Render:
 **Biến môi trường cần thiết**:
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
 - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+- `CLOUDAMQP_URL=amqps://<user>:<password>@<host>/<vhost>`
 - `NOTIFICATION_TIME_ZONE=Asia/Ho_Chi_Minh`
 - `NOTIFICATION_VIP_REMINDER_CRON`
 - `NOTIFICATION_VIP_REMINDER_DAYS_BEFORE`

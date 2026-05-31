@@ -246,7 +246,7 @@ Lưu ý:
 
 - `IdentityService` cần `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET` không rỗng để khởi động OAuth2.
 - `PostgreSQL` và `Redis` có thể dùng cloud service như Neon/Upstash.
-- `RabbitMQ` trong file production hiện được dựng local bằng Docker để các service giao tiếp nội bộ.
+- `RabbitMQ` local dùng Docker trong `docker-compose.yml`, còn production/cloud dùng `CLOUDAMQP_URL`.
 
 ## 8. API Gateway & API Documentation
 

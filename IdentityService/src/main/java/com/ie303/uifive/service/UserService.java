@@ -329,7 +329,12 @@ public class UserService implements UserDetailsService {
             );
             log.info("Published verification email event to RabbitMQ for {}", toEmail);
         } catch (Exception rabbitException) {
-            log.warn("Failed to publish verification email event for {}: {}", toEmail, rabbitException.getMessage());
+            log.warn("Failed to publish verification email event for {} via RabbitMQ. Exception type={}, message={}, cause={}",
+                    toEmail,
+                    rabbitException.getClass().getName(),
+                    rabbitException.getMessage(),
+                    rabbitException.getCause() == null ? "null" : rabbitException.getCause().toString(),
+                    rabbitException);
             try {
                 notificationClient.sendVerificationEmail(request);
                 log.info("Published verification email event via fallback HTTP for {}", toEmail);
