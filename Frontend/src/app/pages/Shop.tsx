@@ -281,15 +281,18 @@ export function Shop() {
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8 pb-24 md:pb-12">
+    <main className="mx-auto min-h-screen w-full max-w-7xl space-y-6 overflow-x-hidden px-4 py-6 pb-24 sm:space-y-8 sm:px-6 sm:py-10 md:pb-12">
       {/* Header */}
-      <section className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
-          <div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#155ca5] tracking-tight mb-2">
+      <section className="space-y-5 rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_18px_48px_rgba(45,88,133,0.12)] backdrop-blur-md sm:p-7">
+        <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#155ca5] sm:text-xs">
+              {copy("Rewards", "Phần thưởng")}
+            </p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-[#155ca5] sm:text-4xl lg:text-5xl">
               {copy("Item Shop", "Cửa hàng vật phẩm")}
             </h1>
-            <p className="text-base sm:text-lg lg:text-xl text-gray-600 font-medium">
+            <p className="mt-2 text-sm font-medium leading-6 text-gray-600 sm:text-lg">
               {copy(
                 "Enhance your learning experience with powerful items!",
                 "Nâng cấp trải nghiệm học tập với các vật phẩm hữu ích!",
@@ -298,7 +301,7 @@ export function Shop() {
           </div>
 
           {/* Coin Balance */}
-          <div className="w-full sm:w-auto bg-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg shadow-sm flex items-center gap-3">
+          <div className="flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm sm:w-auto sm:px-6 sm:py-4">
             <Coins
               className="w-7 h-7 sm:w-8 sm:h-8 text-[#f1c40f]"
               fill="#f1c40f"
@@ -315,7 +318,7 @@ export function Shop() {
         </div>
 
         {/* Category Filter */}
-        <div className="flex items-center gap-2 sm:gap-3 bg-white p-2 sm:p-3 rounded-lg shadow-sm overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto rounded-2xl bg-white p-2 shadow-sm sm:gap-3 sm:p-3">
           <button
             onClick={() => handleCategoryChange("ALL")}
             className={`shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-md font-bold text-sm sm:text-base transition-all flex items-center gap-2 ${

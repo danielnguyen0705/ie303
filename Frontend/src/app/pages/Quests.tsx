@@ -160,8 +160,8 @@ export function Quests() {
   }
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-7xl space-y-6 overflow-x-hidden px-4 py-5 pb-24 sm:space-y-8 sm:px-6 sm:py-8 md:pb-12">
-      <section className="space-y-5">
+    <main className="mx-auto min-h-screen w-full max-w-7xl space-y-6 overflow-x-hidden px-4 py-6 pb-24 sm:space-y-8 sm:px-6 sm:py-10 md:pb-12">
+      <section className="space-y-5 rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_18px_48px_rgba(45,88,133,0.12)] backdrop-blur-md sm:p-7">
         {claimNotice && (
           <div
             className={`flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-sm ${

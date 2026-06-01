@@ -8,12 +8,14 @@ import {
   Package,
   X,
   ShieldCheck,
+  Zap,
+  Loader2,
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { getMyShopItems } from "@/api/shop";
+import { getMyShopItems, useSkipItem } from "@/api/shop";
 import type { ShopItemType, UserItemResponse } from "@/api/types";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
@@ -145,6 +147,7 @@ function NavbarContent() {
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
+  const [usingSkipItemId, setUsingSkipItemId] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -153,7 +156,8 @@ function NavbarContent() {
     autoClose: true,
     autoCloseDuration: 2500,
   });
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  const { user, loading, isAuthenticated, logout, refreshCurrentUser } =
+    useAuth();
   const { language, setLanguage, copy } = useLanguage();
   const userProfile = (user ?? null) as Record<string, unknown> | null;
   const isVipUser = isVipActive(userProfile);
@@ -283,6 +287,38 @@ function NavbarContent() {
   const handleOpenInventory = () => {
     setIsDropdownOpen(false);
     setIsInventoryModalOpen(true);
+  };
+
+  const handleUseSkipItem = async (item: InventoryItem) => {
+    if (!item.userItemId || usingSkipItemId !== null) {
+      return;
+    }
+
+    setUsingSkipItemId(item.userItemId);
+    try {
+      const response = await useSkipItem(item.userItemId);
+
+      if (response.success) {
+        showToast(
+          response.data ||
+            copy("SKIP item used successfully.", "Đã dùng vật phẩm SKIP."),
+        );
+        await Promise.all([loadInventoryItems(), refreshCurrentUser(false)]);
+        return;
+      }
+
+      showToast(
+        response.error?.message ||
+          copy("Failed to use SKIP item.", "Không thể dùng vật phẩm SKIP."),
+      );
+    } catch (error) {
+      console.error("Error using SKIP item:", error);
+      showToast(
+        copy("Failed to use SKIP item.", "Không thể dùng vật phẩm SKIP."),
+      );
+    } finally {
+      setUsingSkipItemId(null);
+    }
   };
 
   const handleLoginSuccess = (authenticatedUser: { role?: string }) => {
@@ -630,9 +666,31 @@ function NavbarContent() {
                       </p>
                     </div>
 
-                    <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-[#155ca5]">
-                      x{item.quantity}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-[#155ca5]">
+                        x{item.quantity}
+                      </span>
+
+                      {item.itemType === "SKIP" && (
+                        <button
+                          type="button"
+                          onClick={() => void handleUseSkipItem(item)}
+                          disabled={
+                            !item.userItemId ||
+                            item.quantity <= 0 ||
+                            usingSkipItemId !== null
+                          }
+                          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#155ca5] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#0f4f8f] disabled:cursor-not-allowed disabled:bg-slate-300"
+                        >
+                          {usingSkipItemId === item.userItemId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Zap className="h-3.5 w-3.5" />
+                          )}
+                          {copy("Use", "Dùng")}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
