@@ -214,6 +214,10 @@ public class PersonalizedPracticeService {
             return false;
         }
 
+        if (!isMeaningfulPrompt(draft.content())) {
+            return false;
+        }
+
         if (hasDetachedBlankPrompt(draft.content())) {
             return false;
         }
@@ -234,6 +238,10 @@ public class PersonalizedPracticeService {
                     .collect(Collectors.toCollection(LinkedHashSet::new));
 
             if (optionKeys.size() != 4 || !optionKeys.containsAll(List.of("A", "B", "C", "D"))) {
+                return false;
+            }
+
+            if (!hasMeaningfulOptions(options)) {
                 return false;
             }
 
@@ -402,8 +410,8 @@ public class PersonalizedPracticeService {
     }
 
     private boolean hasReusablePrompt(Question question) {
-        return !nullToEmpty(question.getContent()).isBlank()
-                || !nullToEmpty(question.getInstruction()).isBlank()
+        return isMeaningfulPrompt(question.getContent())
+                || isMeaningfulPrompt(question.getInstruction())
                 || !nullToEmpty(question.getExplanation()).isBlank();
     }
 
@@ -423,11 +431,23 @@ public class PersonalizedPracticeService {
 
     private String buildFallbackContent(Question source) {
         String content = nullToEmpty(source.getContent()).trim();
-        if (!hasDetachedBlankPrompt(content)) {
+        if (isMeaningfulPrompt(content) && !hasDetachedBlankPrompt(content)) {
             return content;
         }
 
+        String instruction = nullToEmpty(source.getInstruction()).trim();
+        if (isMeaningfulPrompt(instruction)) {
+            return instruction;
+        }
+
         String explanation = nullToEmpty(source.getExplanation()).trim();
+        if (isMeaningfulPrompt(explanation)) {
+            return "Choose the best answer based on this clue: " + explanation;
+        }
+
+        if (!hasDetachedBlankPrompt(content)) {
+            return content;
+        }
         if (!explanation.isBlank()) {
             return "Choose the best answer based on this clue: " + explanation;
         }
@@ -686,6 +706,53 @@ public class PersonalizedPracticeService {
                 .replaceAll("[_-]+", " ")
                 .replaceAll("\\s+", " ")
                 .toLowerCase();
+    }
+
+    private boolean hasMeaningfulOptions(List<AiGenerationService.GeneratedMcqOptionDraft> options) {
+        Set<String> normalized = new LinkedHashSet<>();
+        for (AiGenerationService.GeneratedMcqOptionDraft option : options) {
+            if (option == null || option.content() == null) {
+                return false;
+            }
+
+            String content = option.content().trim();
+            if (content.isBlank() || !isMeaningfulOption(content)) {
+                return false;
+            }
+
+            normalized.add(normalizeComparableAnswer(content));
+        }
+
+        return normalized.size() == 4;
+    }
+
+    private boolean isMeaningfulOption(String value) {
+        String normalized = normalizeComparableAnswer(value);
+        if (normalized.isBlank()) {
+            return false;
+        }
+
+        return !normalized.equals("n/a")
+                && !normalized.equals("none")
+                && !normalized.equals("all of the above")
+                && !normalized.equals("choose the best answer")
+                && !normalized.equals("fill in the blank");
+    }
+
+    private boolean isMeaningfulPrompt(String value) {
+        String normalized = normalizeComparableAnswer(value);
+        if (normalized.isBlank()) {
+            return false;
+        }
+
+        if (normalized.equals("choose the best answer")
+                || normalized.equals("fill in the blank")
+                || normalized.equals("select the correct answer")
+                || normalized.equals("complete the sentence")) {
+            return false;
+        }
+
+        return normalized.length() >= 12;
     }
 
     private QuestionResponse toResponse(Question question) {
