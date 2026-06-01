@@ -80,27 +80,27 @@ export function UserUnitReviews() {
 
   return (
     <PracticePackageRunner<UnitReviewResponse>
-      badgeLabel={copy("Review Retake", "Lam lai on tap")}
+      badgeLabel={copy("Review Retake", "Làm lại ôn tập")}
       pageTitle={copy("Unit Review Packages", "Goi on tap Unit")}
       pageDescription={copy(
         "Admin prepares a unit review package. You reopen it here and practice again with the same question styles used in lessons.",
-        "Admin chuan bi goi on tap unit. Ban co the mo lai tai day de luyen lai voi dung kieu cau hoi trong bai hoc.",
+        "Admin chuẩn bị gói ôn tập unit. Bạn có thể mở lại tại đây để luyện lại với đúng kiểu câu hỏi trong bài học.",
       )}
       packageKindLabel={copy("Review Pack", "Goi on tap")}
       introText={copy(
         "Start the package to retake questions in the same layout as the lesson runner. After you submit, each question will show its own correct or incorrect result.",
-        "Bat dau goi de lam lai cau hoi theo bo cuc giong lesson runner. Sau khi nop, tung cau se hien ket qua dung hoac sai.",
+        "Bắt đầu gói để làm lại câu hỏi theo bố cục giống lesson runner. Sau khi nộp, từng câu sẽ hiện kết quả đúng hoặc sai.",
       )}
-      emptyListText={copy("No unit reviews available yet.", "Chua co goi on tap unit nao.")}
+      emptyListText={copy("No unit reviews available yet.", "Chưa có gói ôn tập unit nào.")}
       emptyQuestionsText={copy(
         "This unit review package has no questions yet.",
-        "Goi on tap unit nay chua co cau hoi.",
+        "Gói ôn tập unit này chưa có câu hỏi.",
       )}
       startButtonLabel={copy("Start Review Test", "Bat dau bai on tap")}
       loadItems={loadUnitReviewItems}
       loadPackage={(item) => loadUnitReviewPackage(item, includeVipLessons)}
       getItemMeta={(item) =>
-        `${unitTitles[item.unitId] ?? `${copy("Unit", "Unit")} ${item.unitId}`} - ${item.questionIds.length} ${copy("question(s)", "cau hoi")}`
+        `${unitTitles[item.unitId] ?? `${copy("Unit", "Unit")} ${item.unitId}`} - ${item.questionIds.length} ${copy("question(s)", "câu hỏi")}`
       }
       preferredItemId={Number.isFinite(preferredItemId) && preferredItemId > 0 ? preferredItemId : null}
     />

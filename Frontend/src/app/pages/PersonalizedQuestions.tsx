@@ -78,7 +78,7 @@ function getGenerationErrorMessage(message: string | undefined, copy: CopyFn) {
   if (message.includes("No reusable multiple-choice wrong questions found")) {
     return copy(
       "This unit only has unsupported wrong-answer types. Please create wrong-answer history on multiple-choice questions first.",
-      "Unit nay chi co cac dang cau sai chua duoc ho tro. Hay tao lich su sai voi cau trac nghiem truoc.",
+      "Unit này chỉ có các dạng câu sai chưa được hỗ trợ. Hãy tạo lịch sử sai với câu trắc nghiệm trước.",
     );
   }
 
@@ -92,7 +92,7 @@ function getGenerationErrorMessage(message: string | undefined, copy: CopyFn) {
   if (message.includes("502")) {
     return copy(
       "AI service is temporarily unavailable. Please try again later.",
-      "Dich vu AI dang tam thoi gian doan. Vui long thu lai sau.",
+      "Dịch vụ AI đang tạm thời gián đoạn. Vui lòng thử lại sau.",
     );
   }
 
@@ -429,7 +429,7 @@ export function PersonalizedQuestions() {
             ) : (
               <>
                 <label className="block space-y-2">
-                  <span className="text-sm font-bold text-gray-700">{copy("Grade", "Lop")}</span>
+                  <span className="text-sm font-bold text-gray-700">{copy("Grade", "Lớp")}</span>
                   <select
                     value={form.gradeId}
                     onChange={(e) =>
@@ -480,7 +480,7 @@ export function PersonalizedQuestions() {
 
                 {selectedUnitProgress && (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                    {copy("Current unit progress:", "Tien do unit hien tai:")}{" "}
+                    {copy("Current unit progress:", "Tiến độ unit hiện tại:")}{" "}
                     <span className="font-bold text-[#155ca5]">
                       {Math.round(selectedUnitProgress.progressPercent)}%
                     </span>
