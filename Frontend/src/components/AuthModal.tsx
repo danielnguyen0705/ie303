@@ -8,6 +8,7 @@ type AuthModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onRegisterSuccess?: () => void;
+  onLoginSuccess?: (user: { role?: string }) => void;
   initialMode?: AuthMode;
 };
 
@@ -15,6 +16,7 @@ export default function AuthModal({
   isOpen,
   onClose,
   onRegisterSuccess,
+  onLoginSuccess,
   initialMode = "login",
 }: AuthModalProps) {
   const { login, register, loginWithGoogle, loading, error, clearError } =
@@ -135,11 +137,12 @@ export default function AuthModal({
       return;
     }
 
-    const isSuccess = await login(username.trim(), password);
+    const authenticatedUser = await login(username.trim(), password);
 
-    if (isSuccess) {
+    if (authenticatedUser) {
       resetForm();
       onClose();
+      onLoginSuccess?.(authenticatedUser);
     }
   };
 

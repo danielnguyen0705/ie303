@@ -22,27 +22,27 @@ spring:
             allowCredentials: true
       routes:
         - id: progress-api
-          uri: ${PROGRESS_SERVICE_BASE_URL:http://localhost:8087}
+          uri: lb://progress-service
           predicates:
             - Path=/api/progress/**,/api/user-question-histories/**,/api/users/me/activity-calendar
         - id: analysis-api
-          uri: ${PROGRESS_SERVICE_BASE_URL:http://localhost:8087}
+          uri: lb://progress-service
           predicates:
             - Path=/api/ai/learning-analysis/me,/api/ai/learning-analysis/me/history,/api/ai/learning-analysis/me/refresh
         - id: identity-api
-          uri: ${IDENTITY_SERVICE_BASE_URL:http://localhost:8084}
+          uri: lb://identity-service
           predicates:
             - Path=/api/auth/**,/oauth2/**,/login/oauth2/**,/api/users/**
         - id: payment-api
-          uri: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8083}
+          uri: lb://payment-service
           predicates:
             - Path=/api/payments/**
         - id: gamification-api
-          uri: ${GAMIFICATION_SERVICE_BASE_URL:http://localhost:8085}
+          uri: lb://gamification-service
           predicates:
             - Path=/api/shop-items/**,/api/leaderboards/**,/api/quests/**,/api/admin/quest-templates/**
         - id: content-api
-          uri: ${CONTENT_SERVICE_BASE_URL:http://localhost:8086}
+          uri: lb://content-service
           predicates:
             - Path=/api/grades/**,/api/units/**,/api/sections/**,/api/lessons/**,/api/questions/**,/api/question-groups/**,/api/question-options/**,/api/unit-reviews/**,/api/group-reviews/**,/api/semester-tests/**
           filters:
@@ -55,9 +55,16 @@ spring:
                   - java.net.ConnectException
                   - java.io.IOException
         - id: ai-api
-          uri: ${AI_SERVICE_BASE_URL:http://localhost:8088}
+          uri: lb://ai-service
           predicates:
             - Path=/api/ai/essay/**,/api/ai/speaking/**,/api/ai/personalized-questions
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
 
 server:
   port: ${PORT:8081}

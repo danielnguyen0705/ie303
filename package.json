@@ -11,7 +11,8 @@
   "scripts": {
     "dev": "concurrently -n frontend,backend \"npm run fe\" \"npm run be\"",
     "fe": "cd Frontend && npm run dev",
-    "be": "concurrently -n gateway,identity,payment,notification,gamification,content,progress,ai \"npm run gateway\" \"npm run identity\" \"npm run payment\" \"npm run notification\" \"npm run gamification\" \"npm run content\" \"npm run progress\" \"npm run ai\"",
+    "be": "concurrently -n eureka,gateway,identity,payment,notification,gamification,content,progress,ai,ml \"npm run eureka\" \"npm run gateway\" \"npm run identity\" \"npm run payment\" \"npm run notification\" \"npm run gamification\" \"npm run content\" \"npm run progress\" \"npm run ai\" \"npm run ml\"",
+    "eureka": "cd EurekaService && mvn spring-boot:run",
     "gateway": "cd GatewayService && mvn spring-boot:run",
     "identity": "cd IdentityService && mvn spring-boot:run",
     "payment": "cd PaymentService && mvn spring-boot:run",

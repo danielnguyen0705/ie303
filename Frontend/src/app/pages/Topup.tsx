@@ -677,34 +677,6 @@ export function Topup() {
               <p className="font-semibold text-slate-700">{heroSubtitle}</p>
             </div>
           </div>
-
-          <div className="hidden lg:flex justify-center">
-            <div className="relative w-72 h-52 rounded-[1.75rem] bg-gradient-to-br from-[#1a5fa8] via-[#0f4f92] to-[#0a3f76] shadow-[0px_20px_40px_rgba(26,95,168,0.2)] p-4">
-              <div className="absolute inset-0 rounded-[1.75rem] bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_55%)]" />
-              <div className="relative h-full rounded-2xl border border-white/30 bg-white/10 backdrop-blur-sm flex flex-col justify-between p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold uppercase tracking-wider">
-                    UIFIVE VIP
-                  </span>
-                  <BadgeCheck className="w-5 h-5" />
-                </div>
-
-                <div>
-                  <div className="text-xs uppercase tracking-widest text-white/80">
-                    {copy("Coin Wallet", "Ví xu")}
-                  </div>
-                  <div className="text-3xl font-black mt-1">
-                    {balance.toLocaleString()}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-white/80 text-sm">
-                  <span>{copy("Premium Tier", "Hạng Premium")}</span>
-                  <span>{copy("Gold", "Vàng")}</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 

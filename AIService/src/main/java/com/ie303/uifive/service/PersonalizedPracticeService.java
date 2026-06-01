@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -39,10 +40,7 @@ public class PersonalizedPracticeService {
     private static final int TARGET_AUTO_QUESTION_COUNT = 20;
     private static final int QUESTIONS_PER_WRONG_REFERENCE = 4;
     private static final int MAX_QUESTION_COUNT = 15;
-    private static final Set<QuestionType> REUSABLE_SOURCE_TYPES = Set.of(
-            QuestionType.QUALITATIVE_MC,
-            QuestionType.CLOZE_MC
-    );
+    private static final Set<QuestionType> REUSABLE_SOURCE_TYPES = Set.copyOf(Arrays.asList(QuestionType.values()));
     private static final Set<QuestionType> SUPPORTED_PERSONALIZED_TYPES = Set.of(
             QuestionType.QUALITATIVE_MC
     );
@@ -177,17 +175,19 @@ public class PersonalizedPracticeService {
     }
 
     private boolean isQuestionReusableForPersonalizedSet(Question question) {
-        if (!isOptionBasedType(question.getQuestionType())) {
-            return false;
-        }
-
         List<QuestionOption> options = questionOptionRepo.findByQuestionId(question.getId());
-        if (options.size() != 4) {
-            return false;
+        if (isOptionBasedType(question.getQuestionType())) {
+            if (!hasSupportedOptionCount(question.getQuestionType(), options.size())) {
+                return false;
+            }
+
+            long correctCount = options.stream().filter(QuestionOption::isCorrect).count();
+            if (correctCount != 1) {
+                return false;
+            }
         }
 
-        long correctCount = options.stream().filter(QuestionOption::isCorrect).count();
-        return correctCount == 1;
+        return hasReusablePrompt(question) || hasReusableAnswer(question, options);
     }
 
     private List<AiGenerationService.GeneratedPersonalizedQuestionDraft> filterValidPersonalizedDrafts(
@@ -214,6 +214,10 @@ public class PersonalizedPracticeService {
             return false;
         }
 
+        if (!isMeaningfulPrompt(draft.content())) {
+            return false;
+        }
+
         if (hasDetachedBlankPrompt(draft.content())) {
             return false;
         }
@@ -234,6 +238,10 @@ public class PersonalizedPracticeService {
                     .collect(Collectors.toCollection(LinkedHashSet::new));
 
             if (optionKeys.size() != 4 || !optionKeys.containsAll(List.of("A", "B", "C", "D"))) {
+                return false;
+            }
+
+            if (!hasMeaningfulOptions(options)) {
                 return false;
             }
 
@@ -389,7 +397,27 @@ public class PersonalizedPracticeService {
 
     private boolean isOptionBasedType(QuestionType questionType) {
         return questionType == QuestionType.QUALITATIVE_MC
-                || questionType == QuestionType.CLOZE_MC;
+                || questionType == QuestionType.CLOZE_MC
+                || questionType == QuestionType.TRUE_FALSE_NG;
+    }
+
+    private boolean hasSupportedOptionCount(QuestionType questionType, int optionCount) {
+        if (questionType == QuestionType.TRUE_FALSE_NG) {
+            return optionCount == 3;
+        }
+
+        return optionCount == 4;
+    }
+
+    private boolean hasReusablePrompt(Question question) {
+        return isMeaningfulPrompt(question.getContent())
+                || isMeaningfulPrompt(question.getInstruction())
+                || !nullToEmpty(question.getExplanation()).isBlank();
+    }
+
+    private boolean hasReusableAnswer(Question question, List<QuestionOption> options) {
+        String targetAnswer = resolveTargetAnswer(question, options);
+        return targetAnswer != null && !targetAnswer.isBlank();
     }
 
     private boolean hasDetachedBlankPrompt(String content) {
@@ -403,11 +431,23 @@ public class PersonalizedPracticeService {
 
     private String buildFallbackContent(Question source) {
         String content = nullToEmpty(source.getContent()).trim();
-        if (!hasDetachedBlankPrompt(content)) {
+        if (isMeaningfulPrompt(content) && !hasDetachedBlankPrompt(content)) {
             return content;
         }
 
+        String instruction = nullToEmpty(source.getInstruction()).trim();
+        if (isMeaningfulPrompt(instruction)) {
+            return instruction;
+        }
+
         String explanation = nullToEmpty(source.getExplanation()).trim();
+        if (isMeaningfulPrompt(explanation)) {
+            return "Choose the best answer based on this clue: " + explanation;
+        }
+
+        if (!hasDetachedBlankPrompt(content)) {
+            return content;
+        }
         if (!explanation.isBlank()) {
             return "Choose the best answer based on this clue: " + explanation;
         }
@@ -666,6 +706,53 @@ public class PersonalizedPracticeService {
                 .replaceAll("[_-]+", " ")
                 .replaceAll("\\s+", " ")
                 .toLowerCase();
+    }
+
+    private boolean hasMeaningfulOptions(List<AiGenerationService.GeneratedMcqOptionDraft> options) {
+        Set<String> normalized = new LinkedHashSet<>();
+        for (AiGenerationService.GeneratedMcqOptionDraft option : options) {
+            if (option == null || option.content() == null) {
+                return false;
+            }
+
+            String content = option.content().trim();
+            if (content.isBlank() || !isMeaningfulOption(content)) {
+                return false;
+            }
+
+            normalized.add(normalizeComparableAnswer(content));
+        }
+
+        return normalized.size() == 4;
+    }
+
+    private boolean isMeaningfulOption(String value) {
+        String normalized = normalizeComparableAnswer(value);
+        if (normalized.isBlank()) {
+            return false;
+        }
+
+        return !normalized.equals("n/a")
+                && !normalized.equals("none")
+                && !normalized.equals("all of the above")
+                && !normalized.equals("choose the best answer")
+                && !normalized.equals("fill in the blank");
+    }
+
+    private boolean isMeaningfulPrompt(String value) {
+        String normalized = normalizeComparableAnswer(value);
+        if (normalized.isBlank()) {
+            return false;
+        }
+
+        if (normalized.equals("choose the best answer")
+                || normalized.equals("fill in the blank")
+                || normalized.equals("select the correct answer")
+                || normalized.equals("complete the sentence")) {
+            return false;
+        }
+
+        return normalized.length() >= 12;
     }
 
     private QuestionResponse toResponse(Question question) {

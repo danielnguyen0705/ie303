@@ -49,6 +49,15 @@ services:
       timeout: 5s
       retries: 10
 
+  eureka-service:
+    build:
+      context: ./EurekaService
+      dockerfile: Dockerfile
+    container_name: uifive-eureka
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+
   gateway-service:
     build:
       context: ./GatewayService
@@ -58,15 +67,11 @@ services:
     environment:
       PORT: "8081"
       FRONTEND_BASE_URL: "http://localhost:3000"
-      IDENTITY_SERVICE_BASE_URL: "http://identity-service:8084"
-      PAYMENT_SERVICE_BASE_URL: "http://payment-service:8083"
-      PROGRESS_SERVICE_BASE_URL: "http://progress-service:8087"
-      CONTENT_SERVICE_BASE_URL: "http://content-service:8086"
-      GAMIFICATION_SERVICE_BASE_URL: "http://gamification-service:8085"
-      AI_SERVICE_BASE_URL: "http://ai-service:8088"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
     ports:
       - "8081:8081"
     depends_on:
+      - eureka-service
       - identity-service
       - payment-service
       - progress-service
@@ -88,6 +93,7 @@ services:
       DB_USERNAME: "postgres"
       DB_PASSWORD: "postgres"
       CLOUDAMQP_URL: "amqp://guest:guest@rabbitmq:5672/%2F"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
       JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
       JWT_EXPIRATION: "86400000"
       FRONTEND_BASE_URL: "http://localhost:3000"
@@ -100,6 +106,8 @@ services:
     ports:
       - "8084:8084"
     depends_on:
+      eureka-service:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -121,6 +129,7 @@ services:
       DB_USERNAME: "postgres"
       DB_PASSWORD: "postgres"
       CLOUDAMQP_URL: "amqp://guest:guest@rabbitmq:5672/%2F"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
       JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
       JWT_EXPIRATION: "86400000"
       FRONTEND_BASE_URL: "http://localhost:3000"
@@ -139,6 +148,8 @@ services:
     ports:
       - "8083:8083"
     depends_on:
+      eureka-service:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -156,6 +167,7 @@ services:
       DB_USERNAME: "postgres"
       DB_PASSWORD: "postgres"
       CLOUDAMQP_URL: "amqp://guest:guest@rabbitmq:5672/%2F"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
       NOTIFICATION_TIME_ZONE: "Asia/Ho_Chi_Minh"
       NOTIFICATION_VIP_REMINDER_CRON: "0 0 9 * * *"
       NOTIFICATION_VIP_REMINDER_DAYS_BEFORE: "3"
@@ -166,6 +178,8 @@ services:
     ports:
       - "8082:8082"
     depends_on:
+      eureka-service:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -183,6 +197,7 @@ services:
       DB_USERNAME: "postgres"
       DB_PASSWORD: "postgres"
       CLOUDAMQP_URL: "amqp://guest:guest@rabbitmq:5672/%2F"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
       JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
       JWT_EXPIRATION: "86400000"
       REDIS_URL: "redis://redis:6379"
@@ -194,6 +209,8 @@ services:
     ports:
       - "8085:8085"
     depends_on:
+      eureka-service:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -214,6 +231,7 @@ services:
       DB_URL: "jdbc:postgresql://postgres:5432/uifive"
       DB_USERNAME: "postgres"
       DB_PASSWORD: "postgres"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
       JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
       JWT_EXPIRATION: "86400000"
       REDIS_URL: "redis://redis:6379"
@@ -226,6 +244,8 @@ services:
     ports:
       - "8086:8086"
     depends_on:
+      eureka-service:
+        condition: service_started
       postgres:
         condition: service_healthy
       redis:
@@ -242,6 +262,7 @@ services:
       DB_URL: "jdbc:postgresql://postgres:5432/uifive"
       DB_USERNAME: "postgres"
       DB_PASSWORD: "postgres"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
       JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
       JWT_EXPIRATION: "86400000"
       REDIS_URL: "redis://redis:6379"
@@ -250,6 +271,8 @@ services:
     ports:
       - "8087:8087"
     depends_on:
+      eureka-service:
+        condition: service_started
       postgres:
         condition: service_healthy
       redis:
@@ -268,6 +291,7 @@ services:
       DB_URL: "jdbc:postgresql://postgres:5432/uifive"
       DB_USERNAME: "postgres"
       DB_PASSWORD: "postgres"
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
       JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
       JWT_EXPIRATION: "86400000"
       REDIS_URL: "redis://redis:6379"
@@ -279,6 +303,8 @@ services:
     ports:
       - "8088:8088"
     depends_on:
+      eureka-service:
+        condition: service_started
       postgres:
         condition: service_healthy
       redis:

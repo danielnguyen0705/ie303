@@ -69,20 +69,20 @@ public class AiGenerationService {
 
     public WritingEvaluationResponse evaluateEssay(String topic, String explanation, String answerText) {
         validateConfiguration();
-        validateEssayAnswer(answerText);
+        validateEssayAnswer(answerText, null);
 
         String normalizedExplanation = (explanation == null || explanation.isBlank())
                 ? "Không có giải thích tham chiếu."
                 : explanation.trim();
 
-        String prompt = buildEssayEvaluationPrompt(topic, normalizedExplanation, answerText);
+        String prompt = buildEssayEvaluationPrompt(topic, normalizedExplanation, answerText, false);
         String raw = callChatModel(nvidiaTextModel, prompt, 512);
         return normalize(readJsonObject(raw, WritingEvaluationResponse.class));
     }
 
     public WritingEvaluationResponse evaluateEssay(String topic, String explanation, String answerText, String imageUrl) {
         validateConfiguration();
-        validateEssayAnswer(answerText);
+        validateEssayAnswer(answerText, imageUrl);
 
         String normalizedExplanation = (explanation == null || explanation.isBlank())
                 ? "Không có giải thích tham chiếu."
@@ -92,7 +92,7 @@ public class AiGenerationService {
             return evaluateEssay(topic, explanation, answerText);
         }
 
-        String prompt = buildEssayEvaluationPrompt(topic, normalizedExplanation, answerText)
+        String prompt = buildEssayEvaluationPrompt(topic, normalizedExplanation, answerText, true)
                 + """
 
                 Hình ảnh bài làm của học sinh đã được đính kèm trong request.
@@ -355,8 +355,9 @@ public class AiGenerationService {
                 || normalized.contains("gợi ý cải thiện...");
     }
 
-    private String buildEssayEvaluationPrompt(String topic, String explanation, String answerText) {
+    private String buildEssayEvaluationPrompt(String topic, String explanation, String answerText, boolean hasImage) {
         String normalizedTopic = normalizeTopic(topic);
+        String normalizedAnswer = normalizeEssayAnswer(answerText, hasImage);
         return """
                 Bạn là một giáo viên tiếng Anh chuyên nghiệp và khắt khe, có nhiều năm kinh nghiệm chấm bài Writing.
 
@@ -395,7 +396,7 @@ public class AiGenerationService {
                   "score": 0.0,
                   "feedback": "Tổng quan...\\nTask response...\\nCoherence and cohesion...\\nLexical resource...\\nGrammatical range and accuracy...\\nGợi ý cải thiện..."
                 }
-                """.formatted(normalizedTopic, explanation, answerText);
+                """.formatted(normalizedTopic, explanation, normalizedAnswer);
     }
 
     private String buildSpeakingEvaluationPrompt(String topic, String explanation, String transcriptText) {
@@ -666,10 +667,24 @@ public class AiGenerationService {
         }
     }
 
-    private void validateEssayAnswer(String answerText) {
-        if (answerText == null || answerText.isBlank()) {
+    private void validateEssayAnswer(String answerText, String imageUrl) {
+        boolean hasText = answerText != null && !answerText.isBlank();
+        boolean hasImage = imageUrl != null && !imageUrl.isBlank();
+        if (!hasText && !hasImage) {
             throw new AppException(ErrorCode.INVALID_ESSAY_ANSWER);
         }
+    }
+
+    private String normalizeEssayAnswer(String answerText, boolean hasImage) {
+        if (answerText != null && !answerText.isBlank()) {
+            return answerText.trim();
+        }
+
+        if (hasImage) {
+            return "[Khong co phan text duoc nhap. Hay doc va cham bai chu yeu tu hinh anh dinh kem.]";
+        }
+
+        return "";
     }
 
     private String trimTrailingSlash(String value) {

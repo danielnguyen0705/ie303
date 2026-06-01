@@ -377,12 +377,9 @@ export function LessonSelection() {
         </button>
 
         <div className="learner-tech-panel mt-3 rounded-[2rem] px-6 py-6 md:px-8">
-          <span className="inline-block px-3 py-1 rounded-full bg-[#73aaf9]/20 text-[#155ca5] text-xs font-bold uppercase tracking-wider">
+          <h3 className="text-2xl md:text-3xl font-black text-[#1e2e51]">
             {sectionTitle ?? `Section ${sectionDisplayNumber ?? sectionId}`}
-          </span>
-          <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
-            {copy("Choose a Lesson", "Chọn Lesson")}
-          </h1>
+          </h3>
           <p className="text-gray-600 mt-2 text-lg">
             {copy(
               "Current lessons are orange, completed lessons are green, and locked lessons are gray.",

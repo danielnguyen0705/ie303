@@ -21,7 +21,8 @@ export type QuestionType =
 export interface Grade {
   id: number;
   gradeNumber?: number;
-  title: string;
+  name?: string;
+  title?: string;
   description?: string;
   totalUnits?: number;
   progress?: number;
