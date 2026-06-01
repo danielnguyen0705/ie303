@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useNavigate } from "react-router";
 import AuthModal from "@/components/AuthModal";
 import { useLanguage } from "@/context/LanguageContext";
 import { NotificationPopup } from "@/utils/NotificationPopup";
@@ -7,6 +8,7 @@ import { useNotificationPopup } from "@/utils/useNotificationPopup";
 type AuthMode = "login" | "register";
 
 export function PublicLanding() {
+  const navigate = useNavigate();
   const { language, setLanguage, copy } = useLanguage();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
@@ -29,6 +31,15 @@ export function PublicLanding() {
       ),
     });
   }, [authPopup, copy]);
+
+  const handleLoginSuccess = useCallback(
+    (authenticatedUser: { role?: string }) => {
+      if (authenticatedUser.role === "ADMIN") {
+        navigate("/admin/users", { replace: true });
+      }
+    },
+    [navigate],
+  );
 
   return (
     <div className="min-h-screen bg-[#f6f6ff] text-[#1e2e51] selection:bg-[#73aaf9] selection:text-[#002a54]">
@@ -193,6 +204,7 @@ export function PublicLanding() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onRegisterSuccess={handleRegisterSuccess}
+        onLoginSuccess={handleLoginSuccess}
         initialMode={authMode}
       />
 

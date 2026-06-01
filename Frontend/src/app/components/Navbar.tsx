@@ -1,5 +1,14 @@
 ﻿import { Link, useLocation, useNavigate } from "react-router";
-import { Flame, Coins, User, LogOut, History, Package, X } from "lucide-react";
+import {
+  Flame,
+  Coins,
+  User,
+  LogOut,
+  History,
+  Package,
+  X,
+  ShieldCheck,
+} from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/context/AuthContext";
@@ -113,6 +122,17 @@ function getAvatarInitials(username: string | undefined): string {
   return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
 }
 
+function isVipActive(profile: Record<string, unknown> | null): boolean {
+  const expiresAt = profile?.vipExpiredAt;
+
+  if (typeof expiresAt === "string" && expiresAt.length > 0) {
+    const expiresAtTime = new Date(expiresAt).getTime();
+    return Number.isFinite(expiresAtTime) && expiresAtTime > Date.now();
+  }
+
+  return Boolean(profile?.isVip);
+}
+
 export function Navbar() {
   return <NavbarContent />;
 }
@@ -136,8 +156,7 @@ function NavbarContent() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const { language, setLanguage, copy } = useLanguage();
   const userProfile = (user ?? null) as Record<string, unknown> | null;
-  const isVipUser =
-    Boolean(userProfile?.isVip) || Boolean(userProfile?.vipExpiredAt);
+  const isVipUser = isVipActive(userProfile);
   const userAvatar =
     typeof user?.avatar === "string" && user.avatar.length > 0
       ? user.avatar
@@ -266,6 +285,12 @@ function NavbarContent() {
     setIsInventoryModalOpen(true);
   };
 
+  const handleLoginSuccess = (authenticatedUser: { role?: string }) => {
+    if (authenticatedUser.role === "ADMIN") {
+      navigate("/admin/users", { replace: true });
+    }
+  };
+
   return (
     <>
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl shadow-sm">
@@ -376,10 +401,6 @@ function NavbarContent() {
 
             {isAuthenticated && user ? (
               <>
-                <span className="hidden lg:block text-sm font-semibold text-slate-700">
-                  {copy("Hello", "Xin chào")}
-                </span>
-
                 <div className="relative" ref={dropdownRef}>
                   <button
                     type="button"
@@ -412,7 +433,17 @@ function NavbarContent() {
                   </button>
 
                   {isDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+                      {user.role === "ADMIN" && (
+                        <button
+                          type="button"
+                          onClick={() => handleNavigateAndClose("/admin/users")}
+                          className="w-full px-4 py-2.5 text-left hover:bg-slate-100 text-slate-700 font-medium text-sm transition-colors flex items-center gap-3"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-[#155ca5]" />
+                          {copy("Admin Console", "Trang quản trị")}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleNavigateAndClose("/profile")}
@@ -512,6 +543,7 @@ function NavbarContent() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onRegisterSuccess={handleRegisterSuccess}
+        onLoginSuccess={handleLoginSuccess}
         initialMode={authMode}
       />
 

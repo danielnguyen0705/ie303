@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from "react-router";
+import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -16,6 +16,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Target,
+  GraduationCap,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { equipAvatar, equipBackground, getMyShopItems } from "@/api/shop";
@@ -52,6 +53,7 @@ const sortCosmeticOptions = (options: CosmeticOption[]): CosmeticOption[] =>
 
 export function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -160,6 +162,11 @@ export function AdminLayout() {
     }
 
     setIsUserMenuOpen(false);
+  };
+
+  const handleSwitchToUserView = (): void => {
+    setIsUserMenuOpen(false);
+    navigate("/");
   };
 
   const openCustomizeModal = (): void => {
@@ -422,7 +429,15 @@ export function AdminLayout() {
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 top-11 w-44 rounded-lg border border-slate-200 bg-white shadow-lg p-2">
+                  <div className="absolute right-0 top-11 w-48 rounded-lg border border-slate-200 bg-white shadow-lg p-2">
+                    <button
+                      type="button"
+                      onClick={handleSwitchToUserView}
+                      className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                      <GraduationCap size={16} className="text-[#155ca5]" />
+                      User View
+                    </button>
                     <button
                       type="button"
                       onClick={openCustomizeModal}

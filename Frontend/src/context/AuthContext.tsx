@@ -44,7 +44,7 @@ type AuthContextValue = {
   error: string | null;
   isAuthenticated: boolean;
   refreshCurrentUser: (showError?: boolean) => Promise<boolean>;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<AuthUser | null>;
   register: (
     username: string,
     email: string,
@@ -252,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (username: string, password: string): Promise<boolean> => {
+    async (username: string, password: string): Promise<AuthUser | null> => {
       setLoading(true);
       setError(null);
 
@@ -261,19 +261,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!response.success) {
           setError(response.error?.message ?? "Login failed.");
-          return false;
+          return null;
         }
 
         clearCache();
-        const success = await loadCurrentUser(true);
-        if (success) {
-          return true;
+        const currentUserResponse = await getCurrentUser();
+
+        if (currentUserResponse.success && currentUserResponse.data) {
+          const resolvedUser = extractUser(currentUserResponse.data);
+
+          if (resolvedUser) {
+            setUser(resolvedUser);
+            storeUser(resolvedUser);
+            return resolvedUser;
+          }
         }
 
-        return false;
+        await loadCurrentUser(true);
+        return null;
       } catch (unknownError: unknown) {
         setError(getErrorMessage(unknownError));
-        return false;
+        return null;
       } finally {
         setLoading(false);
       }
