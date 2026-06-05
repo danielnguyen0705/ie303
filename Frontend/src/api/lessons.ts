@@ -96,6 +96,7 @@ export async function completeLesson(
 
   if (response.success) {
     clearCachePrefix("progress:");
+    clearCachePrefix("leaderboard:");
   }
 
   return response;

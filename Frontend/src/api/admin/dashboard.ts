@@ -1,185 +1,252 @@
-// Admin Dashboard API
+import { request } from "../utils/http";
+import type { AdminApiResponse, Grade, Lesson, Question, Unit } from "./types";
 
-import { dashboardStats, analytics } from '@/data/mockDataAdmin';
-import { simulateApiCall } from '../client';
-import type { AdminApiResponse } from './types';
-import type { DashboardStats, Analytics } from '@/data/mockDataAdmin';
+export interface DashboardStats {
+  totalUsers: number;
+  activeUsers: number;
+  newUsersToday: number;
+  newUsersThisWeek: number;
+  newUsersThisMonth: number;
+  totalLessons: number;
+  totalUnits: number;
+  totalQuestions: number;
+  totalTests: number;
+  averageCompletionRate: number;
+  averageAccuracy: number;
+  totalRevenue: number;
+  revenueThisMonth: number;
+  vipSubscriptions: {
+    premium: number;
+    elite: number;
+    total: number;
+  };
+  systemHealth: {
+    status: "healthy" | "warning" | "critical";
+    uptime: number;
+    responseTime: number;
+    errorRate: number;
+  };
+}
 
-/**
- * Get dashboard statistics
- */
+export interface Analytics {
+  period: "today" | "week" | "month" | "year";
+  userGrowth: Array<{ date: string; count: number }>;
+  engagement: Array<{ date: string; activeUsers: number; totalSessions: number }>;
+  revenue: Array<{ date: string; amount: number }>;
+  topUnits: Array<{ unitId: number; title: string; completions: number; rating: number }>;
+  topQuestions: Array<{ questionId: string; question: string; attempts: number; successRate: number }>;
+  deviceBreakdown: { desktop: number; mobile: number; tablet: number };
+  browserBreakdown: Record<string, number>;
+}
+
+type RawUser = {
+  id: number | string;
+  vipExpiredAt?: string | null;
+  createdAt?: string;
+  lastStudyDate?: string | null;
+};
+
+type PaymentTransaction = {
+  amount?: number;
+  status?: string;
+  createdAt?: string;
+};
+
+function isSameMonth(date?: string): boolean {
+  if (!date) return false;
+  const parsed = new Date(date);
+  const now = new Date();
+  return parsed.getMonth() === now.getMonth() && parsed.getFullYear() === now.getFullYear();
+}
+
+function isVipActive(user: RawUser): boolean {
+  return Boolean(user.vipExpiredAt && new Date(user.vipExpiredAt).getTime() > Date.now());
+}
+
 export async function getDashboardStats(): Promise<AdminApiResponse<DashboardStats>> {
-  return simulateApiCall(dashboardStats);
+  const [usersRes, gradesRes, unitsRes, lessonsRes, questionsRes, paymentsRes] =
+    await Promise.all([
+      request<RawUser[]>("/users", { method: "GET" }),
+      request<Grade[]>("/grades", { method: "GET" }),
+      request<Unit[]>("/units", { method: "GET" }),
+      request<Lesson[]>("/lessons", { method: "GET" }),
+      request<Question[]>("/questions", { method: "GET" }),
+      request<PaymentTransaction[]>("/payments/transactions", { method: "GET" }),
+    ]);
+
+  const firstError = [usersRes, gradesRes, unitsRes, lessonsRes, questionsRes].find(
+    (response) => !response.success,
+  );
+
+  if (firstError) {
+    return firstError as AdminApiResponse<DashboardStats>;
+  }
+
+  const users = usersRes.data ?? [];
+  const payments = paymentsRes.success ? paymentsRes.data ?? [] : [];
+  const completedPayments = payments.filter(
+    (payment) => payment.status === "SUCCESS" || payment.status === "COMPLETED",
+  );
+  const vipUsers = users.filter(isVipActive).length;
+
+  return {
+    success: true,
+    data: {
+      totalUsers: users.length,
+      activeUsers: users.filter((user) => Boolean(user.lastStudyDate)).length,
+      newUsersToday: 0,
+      newUsersThisWeek: 0,
+      newUsersThisMonth: users.filter((user) => isSameMonth(user.createdAt)).length,
+      totalLessons: lessonsRes.data?.length ?? 0,
+      totalUnits: unitsRes.data?.length ?? 0,
+      totalQuestions: questionsRes.data?.length ?? 0,
+      totalTests: 0,
+      averageCompletionRate: 0,
+      averageAccuracy: 0,
+      totalRevenue: completedPayments.reduce((sum, payment) => sum + (payment.amount ?? 0), 0),
+      revenueThisMonth: completedPayments
+        .filter((payment) => isSameMonth(payment.createdAt))
+        .reduce((sum, payment) => sum + (payment.amount ?? 0), 0),
+      vipSubscriptions: {
+        premium: vipUsers,
+        elite: 0,
+        total: vipUsers,
+      },
+      systemHealth: {
+        status: "healthy",
+        uptime: 100,
+        responseTime: 0,
+        errorRate: 0,
+      },
+    },
+  };
 }
 
-/**
- * Get analytics data
- */
 export async function getAnalytics(
-  period?: 'today' | 'week' | 'month' | 'year'
+  period: "today" | "week" | "month" | "year" = "month",
 ): Promise<AdminApiResponse<Analytics>> {
-  return simulateApiCall({
-    ...analytics,
-    period: period || 'month',
-  });
+  return {
+    success: true,
+    data: {
+      period,
+      userGrowth: [],
+      engagement: [],
+      revenue: [],
+      topUnits: [],
+      topQuestions: [],
+      deviceBreakdown: { desktop: 0, mobile: 0, tablet: 0 },
+      browserBreakdown: {},
+    },
+  };
 }
 
-/**
- * Get real-time statistics
- */
+export async function getUserActivity(params: {
+  days?: number;
+}): Promise<
+  AdminApiResponse<
+    Array<{
+      date: string;
+      activeUsers: number;
+      newUsers: number;
+      sessions: number;
+    }>
+  >
+> {
+  const days = params.days ?? 7;
+  const usersRes = await request<RawUser[]>("/users", { method: "GET" });
+
+  if (!usersRes.success || !usersRes.data) {
+    return usersRes as AdminApiResponse<
+      Array<{ date: string; activeUsers: number; newUsers: number; sessions: number }>
+    >;
+  }
+
+  const users = usersRes.data;
+  const data = Array.from({ length: days }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (days - 1 - index));
+    const day = date.toISOString().slice(0, 10);
+
+    return {
+      date: day,
+      activeUsers: users.filter((user) => user.lastStudyDate === day).length,
+      newUsers: users.filter((user) => user.createdAt?.startsWith(day)).length,
+      sessions: 0,
+    };
+  });
+
+  return { success: true, data };
+}
+
 export async function getRealTimeStats(): Promise<
   AdminApiResponse<{
     onlineUsers: number;
     activeTests: number;
     activeExercises: number;
     recentSignups: number;
-    serverLoad: number; // percentage
-    avgResponseTime: number; // ms
+    serverLoad: number;
+    avgResponseTime: number;
   }>
 > {
-  return simulateApiCall({
-    onlineUsers: 1234,
-    activeTests: 45,
-    activeExercises: 123,
-    recentSignups: 8,
-    serverLoad: 45.8,
-    avgResponseTime: 145,
-  });
+  return {
+    success: true,
+    data: {
+      onlineUsers: 0,
+      activeTests: 0,
+      activeExercises: 0,
+      recentSignups: 0,
+      serverLoad: 0,
+      avgResponseTime: 0,
+    },
+  };
 }
 
-/**
- * Get growth metrics
- */
-export async function getGrowthMetrics(
-  period: 'week' | 'month' | 'quarter' | 'year'
-): Promise<
+export async function getGrowthMetrics(): Promise<
   AdminApiResponse<{
-    userGrowth: number; // percentage
+    userGrowth: number;
     revenueGrowth: number;
     engagementGrowth: number;
     completionRateGrowth: number;
-    trend: 'up' | 'down' | 'stable';
+    trend: "up" | "down" | "stable";
   }>
 > {
-  return simulateApiCall({
-    userGrowth: 12.5,
-    revenueGrowth: 15.2,
-    engagementGrowth: 8.3,
-    completionRateGrowth: 5.7,
-    trend: 'up',
-  });
+  return {
+    success: true,
+    data: {
+      userGrowth: 0,
+      revenueGrowth: 0,
+      engagementGrowth: 0,
+      completionRateGrowth: 0,
+      trend: "stable",
+    },
+  };
 }
 
-/**
- * Get KPI summary
- */
-export async function getKPISummary(): Promise<
-  AdminApiResponse<{
-    retention: {
-      daily: number;
-      weekly: number;
-      monthly: number;
-    };
-    engagement: {
-      avgSessionTime: number; // minutes
-      avgDailyUsers: number;
-      avgTestsPerUser: number;
-    };
-    revenue: {
-      mrr: number; // Monthly Recurring Revenue
-      arr: number; // Annual Recurring Revenue
-      churnRate: number;
-      ltv: number; // Lifetime Value
-    };
-    content: {
-      avgCompletionRate: number;
-      avgRating: number;
-      totalViews: number;
-    };
-  }>
-> {
-  return simulateApiCall({
-    retention: {
-      daily: 45.2,
-      weekly: 62.8,
-      monthly: 71.5,
-    },
-    engagement: {
-      avgSessionTime: 42,
-      avgDailyUsers: 8234,
-      avgTestsPerUser: 2.5,
-    },
-    revenue: {
-      mrr: 34500,
-      arr: 414000,
-      churnRate: 3.2,
-      ltv: 1250,
-    },
-    content: {
-      avgCompletionRate: 68.5,
-      avgRating: 4.6,
-      totalViews: 234567,
-    },
-  });
+export async function getKPISummary(): Promise<AdminApiResponse<Record<string, never>>> {
+  return { success: true, data: {} };
 }
 
-/**
- * Get recent activities
- */
-export async function getRecentActivities(limit: number = 10): Promise<
+export async function getRecentActivities(): Promise<
   AdminApiResponse<
     Array<{
       id: string;
-      type: 'user' | 'content' | 'system';
+      type: "user" | "content" | "system";
       message: string;
       timestamp: string;
-      severity: 'info' | 'warning' | 'error';
+      severity: "info" | "warning" | "error";
     }>
   >
 > {
-  return simulateApiCall([
-    {
-      id: 'act-001',
-      type: 'user',
-      message: '45 new users registered today',
-      timestamp: '2026-04-07T16:00:00Z',
-      severity: 'info',
-    },
-    {
-      id: 'act-002',
-      type: 'content',
-      message: 'Unit 6 published successfully',
-      timestamp: '2026-04-07T15:30:00Z',
-      severity: 'info',
-    },
-    {
-      id: 'act-003',
-      type: 'system',
-      message: 'Database backup completed',
-      timestamp: '2026-04-07T14:00:00Z',
-      severity: 'info',
-    },
-  ].slice(0, limit));
+  return { success: true, data: [] };
 }
 
-/**
- * Export dashboard data
- */
-export async function exportDashboardData(
-  format: 'csv' | 'json' | 'pdf'
-): Promise<
-  AdminApiResponse<{
-    fileUrl: string;
-    fileName: string;
-    fileSize: number; // bytes
-  }>
-> {
-  return simulateApiCall(
-    {
-      fileUrl: `/exports/dashboard-${Date.now()}.${format}`,
-      fileName: `dashboard-report-${new Date().toISOString().split('T')[0]}.${format}`,
-      fileSize: 1024000,
+export async function exportDashboardData(): Promise<AdminApiResponse<never>> {
+  return {
+    success: false,
+    error: {
+      name: "ApiError",
+      code: "UNSUPPORTED",
+      message: "Dashboard export is not supported by the current backend contract",
     },
-    1500
-  );
+  };
 }

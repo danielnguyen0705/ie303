@@ -20,6 +20,9 @@ import {
   BrainCircuit,
   AlertTriangle,
   Sparkles,
+  Music,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
   changePassword as changePasswordApi,
@@ -27,11 +30,28 @@ import {
   equipBackground,
   getActiveShopItems,
   getCurrentUser,
+  getMyLearningAnalysisHistory,
   getMyShopItems,
 } from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import { ActivityCalendar } from "@/app/components/ActivityCalendar";
 import { useLanguage } from "@/context/LanguageContext";
+import { USER_BACKGROUND_CHANGED_EVENT } from "@/app/utils/backgroundEvents";
+import {
+  getAudioSettings,
+  saveAudioSettings,
+  type AudioSettings,
+} from "@/app/utils/audioSettings";
+import type { AILearningAnalysis } from "@/api/types";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 type CurrentUserProfile = {
   id: number;
@@ -102,6 +122,15 @@ type StudyingGrade = {
   progressPercent: number;
 };
 
+type AnalysisPoint = {
+  label: string;
+  generatedAt: string;
+  trendLabel: string | null;
+  trendScore: number;
+  strongSkill: string | null;
+  weakSkill: string | null;
+};
+
 type StreakStatus = {
   label: string;
   description: string;
@@ -129,6 +158,28 @@ const sortCosmeticOptions = (options: CosmeticOption[]): CosmeticOption[] => {
     }
     return a.name.localeCompare(b.name);
   });
+};
+
+const getTrendScore = (trendLabel?: string | null): number => {
+  switch (trendLabel) {
+    case "IMPROVING":
+      return 1;
+    case "DECLINING":
+      return -1;
+    default:
+      return 0;
+  }
+};
+
+const getTrendDisplay = (trendLabel?: string | null): string => {
+  switch (trendLabel) {
+    case "IMPROVING":
+      return "Improving";
+    case "DECLINING":
+      return "Declining";
+    default:
+      return trendLabel || "Stable";
+  }
 };
 
 function getStreakStatus(user: ProfileUser | null): StreakStatus {
@@ -181,6 +232,13 @@ export function Profile() {
   const [backgroundOptions, setBackgroundOptions] = useState<CosmeticOption[]>(
     [],
   );
+  const [analysisHistory, setAnalysisHistory] = useState<AILearningAnalysis[]>(
+    [],
+  );
+  const [loadingAnalysisHistory, setLoadingAnalysisHistory] = useState(false);
+  const [analysisHistoryError, setAnalysisHistoryError] = useState<string | null>(
+    null,
+  );
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [selectedAvatarId, setSelectedAvatarId] = useState<number | null>(null);
   const [selectedBackgroundId, setSelectedBackgroundId] = useState<
@@ -193,10 +251,46 @@ export function Profile() {
   const [isAvatarPickerModalOpen, setIsAvatarPickerModalOpen] = useState(false);
   const [isBackgroundPickerModalOpen, setIsBackgroundPickerModalOpen] =
     useState(false);
+  const [audioSettings, setAudioSettings] = useState<AudioSettings>(() =>
+    getAudioSettings(),
+  );
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   useEffect(() => {
     loadProfileData();
   }, []);
+
+  useEffect(() => {
+    saveAudioSettings(audioSettings);
+  }, [audioSettings]);
+
+  useEffect(() => {
+    if (!user?.isVip) {
+      setAnalysisHistory([]);
+      setAnalysisHistoryError(null);
+      setLoadingAnalysisHistory(false);
+      return;
+    }
+
+    const loadAnalysisHistory = async () => {
+      setLoadingAnalysisHistory(true);
+      const response = await getMyLearningAnalysisHistory();
+
+      if (response.success) {
+        setAnalysisHistory(response.data ?? []);
+        setAnalysisHistoryError(null);
+      } else {
+        setAnalysisHistory([]);
+        setAnalysisHistoryError(
+          response.error?.message || copy("Could not load ML history.", "Không thể tải lịch sử ML."),
+        );
+      }
+
+      setLoadingAnalysisHistory(false);
+    };
+
+    void loadAnalysisHistory();
+  }, [user?.isVip, copy]);
 
   useEffect(() => {
     if (!isPasswordModalOpen || !passwordSuccess) {
@@ -281,6 +375,7 @@ export function Profile() {
                 0,
               ) / currentUser.studyingGrades.length
             : 0;
+        const nextStudyingGrades = currentUser.studyingGrades ?? [];
 
         setUser({
           id: Number(currentUser.id),
@@ -304,6 +399,7 @@ export function Profile() {
           weakSkill: currentUser.weakSkill ?? null,
           trendLabel: currentUser.trendLabel ?? null,
         });
+        setStudyingGrades(nextStudyingGrades);
 
         setStats((prev) => ({
           ...prev,
@@ -341,6 +437,17 @@ export function Profile() {
       year: "numeric",
     });
   };
+
+  const analysisChartData: AnalysisPoint[] = [...analysisHistory]
+    .reverse()
+    .map((snapshot, index) => ({
+      label: `${index + 1}`,
+      generatedAt: snapshot.generatedAt,
+      trendLabel: snapshot.trendLabel,
+      trendScore: getTrendScore(snapshot.trendLabel),
+      strongSkill: snapshot.strongSkill ?? null,
+      weakSkill: snapshot.weakSkill ?? null,
+    }));
 
   const handleChangePassword = async () => {
     setPasswordError(null);
@@ -514,6 +621,14 @@ export function Profile() {
           : prev,
       );
 
+      if (backgroundChanged) {
+        window.dispatchEvent(
+          new CustomEvent(USER_BACKGROUND_CHANGED_EVENT, {
+            detail: { imageUrl: selectedBackground?.imageUrl || null },
+          }),
+        );
+      }
+
       setIsCustomizeModalOpen(false);
     } catch (err) {
       console.error("Failed to save customization:", err);
@@ -540,6 +655,26 @@ export function Profile() {
         ),
       );
     }
+  };
+
+  const updateBackgroundAudioEnabled = (backgroundEnabled: boolean) => {
+    setAudioSettings((prev) => ({ ...prev, backgroundEnabled }));
+  };
+
+  const updateFeedbackAudioEnabled = (feedbackEnabled: boolean) => {
+    setAudioSettings((prev) => ({ ...prev, feedbackEnabled }));
+  };
+
+  const updateLessonCompleteAudioEnabled = (lessonCompleteEnabled: boolean) => {
+    setAudioSettings((prev) => ({ ...prev, lessonCompleteEnabled }));
+  };
+
+  const updateAudioVolume = (volume: number) => {
+    setAudioSettings((prev) => ({ ...prev, volume }));
+  };
+
+  const closeSettingsModal = () => {
+    setIsSettingsModalOpen(false);
   };
 
   if (loading) {
@@ -665,7 +800,11 @@ export function Profile() {
             >
               {copy("Edit Profile", "Chỉnh hồ sơ")}
             </button>
-            <button className="bg-gray-100 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors">
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="bg-gray-100 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors"
+            >
               <Settings className="w-5 h-5 inline mr-2" />
               {copy("Settings", "Cài đặt")}
             </button>
@@ -791,6 +930,115 @@ export function Profile() {
             </div>
           </div>
         </div>
+
+        {user.isVip && (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#155ca5]">
+                  {copy("Trend Chart", "Biểu đồ xu hướng")}
+                </p>
+                <h3 className="mt-1 text-xl font-black text-slate-900">
+                  {copy("Recent learning snapshots", "Snapshot học gần đây")}
+                </h3>
+              </div>
+              <div className="text-xs font-bold text-slate-500">
+                {analysisHistory.length > 0
+                  ? copy(
+                      `${analysisHistory.length} snapshots`,
+                      `${analysisHistory.length} snapshot`,
+                    )
+                  : copy("No history yet", "Chưa có lịch sử")}
+              </div>
+            </div>
+
+            {loadingAnalysisHistory ? (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                <div className="mt-2">
+                  {copy("Loading chart data...", "Đang tải dữ liệu biểu đồ...")}
+                </div>
+              </div>
+            ) : analysisHistoryError ? (
+              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                {analysisHistoryError}
+              </div>
+            ) : analysisChartData.length > 0 ? (
+              <div className="mt-5 space-y-4">
+                <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                  <span className="rounded-full bg-green-50 px-3 py-1 text-green-700">
+                    {copy("Improving = +1", "Tiến bộ = +1")}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1">
+                    {copy("Stable = 0", "Ổn định = 0")}
+                  </span>
+                  <span className="rounded-full bg-red-50 px-3 py-1 text-red-700">
+                    {copy("Declining = -1", "Giảm = -1")}
+                  </span>
+                </div>
+
+                <div className="h-72 w-full rounded-2xl bg-white p-3 shadow-sm">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={analysisChartData}
+                      margin={{ top: 10, right: 20, left: 24, bottom: 10 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis
+                        dataKey="label"
+                        stroke="#64748b"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={10}
+                      />
+                      <YAxis
+                        width={96}
+                        domain={[-1, 1]}
+                        ticks={[-1, 0, 1]}
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={12}
+                        tickFormatter={(value) => {
+                          if (value === 1) return "Improving";
+                          if (value === -1) return "Declining";
+                          return "Stable";
+                        }}
+                      />
+                      <Tooltip
+                        labelFormatter={(_, payload) => {
+                          const item = payload?.[0]?.payload as AnalysisPoint | undefined;
+                          return item ? formatDate(item.generatedAt) : "";
+                        }}
+                        formatter={(value, _name, props) => {
+                          const item = props.payload as AnalysisPoint | undefined;
+                          return [
+                            getTrendDisplay(item?.trendLabel),
+                            copy("Trend", "Xu hướng"),
+                          ] as [string, string];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="trendScore"
+                        stroke="#155ca5"
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 2, fill: "#ffffff" }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+                {copy(
+                  "No chart yet. Refresh ML a few times to build a trend line.",
+                  "Chưa có biểu đồ. Hãy làm mới ML vài lần để tạo đường xu hướng.",
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="bg-white rounded-lg shadow-sm p-8">
@@ -962,6 +1210,156 @@ export function Profile() {
           )}
         </div>
       </section>
+
+      {isSettingsModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] px-4 flex items-center justify-center"
+          onClick={closeSettingsModal}
+        >
+          <div
+            className="w-full max-w-xl bg-white rounded-xl shadow-xl p-6 space-y-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="font-black text-2xl text-slate-900 flex items-center gap-3">
+                <Settings className="w-6 h-6 text-[#155ca5]" />
+                {copy("Settings", "Cài đặt")}
+              </h3>
+              <button
+                type="button"
+                onClick={closeSettingsModal}
+                className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-200"
+              >
+                {copy("Close", "Đóng")}
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-black text-slate-900 flex items-center gap-2">
+                    <Music className="w-5 h-5 text-[#155ca5]" />
+                    {copy("Background Music", "Nhạc nền")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateBackgroundAudioEnabled(
+                      !audioSettings.backgroundEnabled,
+                    )
+                  }
+                  className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-bold transition-colors ${
+                    audioSettings.backgroundEnabled
+                      ? "bg-[#155ca5] text-white hover:bg-[#0f4c88]"
+                      : "bg-white text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {audioSettings.backgroundEnabled ? (
+                    <Volume2 className="w-5 h-5" />
+                  ) : (
+                    <VolumeX className="w-5 h-5" />
+                  )}
+                  {audioSettings.backgroundEnabled
+                    ? copy("On", "Bật")
+                    : copy("Off", "Tắt")}
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-black text-slate-900 flex items-center gap-2">
+                    <Volume2 className="w-5 h-5 text-[#155ca5]" />
+                    {copy("Answer Feedback Sounds", "Âm đúng/sai khi làm bài")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateFeedbackAudioEnabled(!audioSettings.feedbackEnabled)
+                  }
+                  className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-bold transition-colors ${
+                    audioSettings.feedbackEnabled
+                      ? "bg-[#155ca5] text-white hover:bg-[#0f4c88]"
+                      : "bg-white text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {audioSettings.feedbackEnabled ? (
+                    <Volume2 className="w-5 h-5" />
+                  ) : (
+                    <VolumeX className="w-5 h-5" />
+                  )}
+                  {audioSettings.feedbackEnabled
+                    ? copy("On", "Bật")
+                    : copy("Off", "Tắt")}
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-black text-slate-900 flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-[#155ca5]" />
+                    {copy(
+                      "Lesson Completion Sound",
+                      "Âm thanh hoàn thành lesson",
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateLessonCompleteAudioEnabled(
+                      !audioSettings.lessonCompleteEnabled,
+                    )
+                  }
+                  className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-bold transition-colors ${
+                    audioSettings.lessonCompleteEnabled
+                      ? "bg-[#155ca5] text-white hover:bg-[#0f4c88]"
+                      : "bg-white text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {audioSettings.lessonCompleteEnabled ? (
+                    <Volume2 className="w-5 h-5" />
+                  ) : (
+                    <VolumeX className="w-5 h-5" />
+                  )}
+                  {audioSettings.lessonCompleteEnabled
+                    ? copy("On", "Bật")
+                    : copy("Off", "Tắt")}
+                </button>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="font-black text-slate-900">
+                    {copy("Volume", "Âm lượng")}
+                  </span>
+                  <span className="rounded-lg bg-slate-50 px-4 py-2 text-center font-mono font-black text-[#155ca5]">
+                    {Math.round(audioSettings.volume * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  disabled={
+                    !audioSettings.backgroundEnabled &&
+                    !audioSettings.feedbackEnabled &&
+                    !audioSettings.lessonCompleteEnabled
+                  }
+                  value={Math.round(audioSettings.volume * 100)}
+                  onChange={(event) =>
+                    updateAudioVolume(Number(event.target.value) / 100)
+                  }
+                  className="w-full accent-[#155ca5] disabled:opacity-50"
+                  aria-label={copy("Audio volume", "Âm lượng")}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isPasswordModalOpen && (
         <div

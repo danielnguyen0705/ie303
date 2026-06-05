@@ -30,35 +30,9 @@ const computeCategoryCount = (entry: {
 const leaderboardCacheKey = (scope: string, limit: number): string =>
   `leaderboard:${scope}:${limit}`;
 
-const ensureAuthenticated = async (): Promise<ApiResponse<true>> => {
-  const response = await request<{ id: number }>("/users/me", {
-    method: "GET",
-  }, {
-    key: "users:current-user",
-    ttlMs: 60 * 1000,
-  });
-
-  if (!response.success) {
-    return createError(
-      "Vui long dang nhap de xem bang xep hang",
-      "AUTH_REQUIRED",
-    );
-  }
-
-  return { success: true, data: true };
-};
-
 export async function getCoinLeaderboard(
   limit: number = DEFAULT_LIMIT,
 ): Promise<ApiResponse<CoinLeaderboardResponse>> {
-  const authResponse = await ensureAuthenticated();
-  if (!authResponse.success) {
-    return createError(
-      authResponse.error?.message || "Vui long dang nhap de xem bang xep hang",
-      authResponse.error?.code || "AUTH_REQUIRED",
-    );
-  }
-
   const safeLimit = normalizeLimit(limit);
   const response = await request<CoinLeaderboardResponse>(
     `/leaderboards/coins?limit=${safeLimit}`,
@@ -98,14 +72,6 @@ export async function getCoinLeaderboard(
 export async function getCollectorLeaderboard(
   limit: number = DEFAULT_LIMIT,
 ): Promise<ApiResponse<CollectorLeaderboardResponse>> {
-  const authResponse = await ensureAuthenticated();
-  if (!authResponse.success) {
-    return createError(
-      authResponse.error?.message || "Vui long dang nhap de xem bang xep hang",
-      authResponse.error?.code || "AUTH_REQUIRED",
-    );
-  }
-
   const safeLimit = normalizeLimit(limit);
   const response = await request<CollectorLeaderboardRawResponse>(
     `/leaderboards/collectors?limit=${safeLimit}`,
@@ -175,14 +141,6 @@ export async function getCollectorLeaderboard(
 export async function getExpLeaderboard(
   limit: number = DEFAULT_LIMIT,
 ): Promise<ApiResponse<ExpLeaderboardResponse>> {
-  const authResponse = await ensureAuthenticated();
-  if (!authResponse.success) {
-    return createError(
-      authResponse.error?.message || "Vui long dang nhap de xem bang xep hang",
-      authResponse.error?.code || "AUTH_REQUIRED",
-    );
-  }
-
   const safeLimit = normalizeLimit(limit);
   const response = await request<ExpLeaderboardResponse>(
     `/leaderboards/exp?limit=${safeLimit}`,

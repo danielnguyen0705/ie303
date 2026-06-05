@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, Crown, Mail, Calendar, Trash2, Edit, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { adminApi } from '@/api';
-import type { User } from '@/data/mockData';
+import type { AdminUser } from '@/api/admin/users';
+import { NotificationPopup } from '@/utils/NotificationPopup';
+import { useNotificationPopup } from '@/utils/useNotificationPopup';
 
 export function UserManagement() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'free' | 'premium' | 'elite'>('all');
+  const [filterRole, setFilterRole] = useState<'all' | 'free' | 'premium'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
+  const popup = useNotificationPopup({
+    autoClose: true,
+    autoCloseDuration: 2200,
+  });
   const pageSize = 10;
 
   useEffect(() => {
@@ -27,14 +33,16 @@ export function UserManagement() {
       const response = await adminApi.getAllUsers({
         page: currentPage,
         pageSize,
-        search: searchTerm || undefined,
+        searchTerm: searchTerm || undefined,
         vipStatus: filterRole === 'all' ? undefined : filterRole,
-      }, currentPage, pageSize);
+      });
 
-      if (response.success) {
+      if (response.success && response.data) {
         setUsers(response.data.data);
         setTotalPages(Math.ceil(response.data.total / pageSize));
         setTotalUsers(response.data.total);
+      } else {
+        setError(response.error?.message ?? 'Failed to load users');
       }
     } catch (err) {
       console.error('Error loading users:', err);
@@ -50,24 +58,44 @@ export function UserManagement() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) {
-      return;
-    }
+    popup.warning({
+      title: 'Delete user',
+      message: 'Are you sure you want to delete this user?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      showCancelButton: true,
+      autoClose: false,
+      onConfirm: async () => {
+        try {
+          setDeletingUser(userId);
+          const response = await adminApi.deleteUser(userId);
 
-    try {
-      setDeletingUser(userId);
-      const response = await adminApi.deleteUser(userId);
-
-      if (response.success) {
-        alert('User deleted successfully');
-        loadUsers();
+          if (response.success) {
+            popup.success({
+              title: 'Deleted successfully',
+              message: 'User has been deleted.',
+              showCancelButton: false,
+            });
+            void loadUsers();
+          } else {
+            popup.error({
+              title: 'Delete failed',
+              message: response.error?.message ?? 'Failed to delete user',
+              showCancelButton: false,
+            });
+          }
+        } catch (err) {
+          console.error('Error deleting user:', err);
+          popup.error({
+            title: 'Delete failed',
+            message: 'Failed to delete user',
+            showCancelButton: false,
+          });
+        } finally {
+          setDeletingUser(null);
+        }
       }
-    } catch (err) {
-      console.error('Error deleting user:', err);
-      alert('Failed to delete user');
-    } finally {
-      setDeletingUser(null);
-    }
+    });
   };
 
   const getVIPBadge = (vipStatus: string) => {
@@ -161,7 +189,6 @@ export function UserManagement() {
             <option value="all">All Users</option>
             <option value="free">Free</option>
             <option value="premium">Premium</option>
-            <option value="elite">Elite</option>
           </select>
         </div>
       </div>
@@ -326,6 +353,7 @@ export function UserManagement() {
           </div>
         </div>
       </div>
+      <NotificationPopup {...popup.notification} onClose={popup.close} />
     </div>
   );
 }

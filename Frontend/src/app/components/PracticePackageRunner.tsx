@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ENV } from "@/config/env";
 import { useLanguage } from "@/context/LanguageContext";
+import { playUiSound } from "@/app/utils/audioSettings";
 import type { QuestionDto, QuestionGroupDto, QuestionType } from "@/api/questions";
 
 type UserAnswer = string | string[] | Record<string, string>;
@@ -37,6 +38,24 @@ type LoadedPracticePackage<TItem> = {
   questions: QuestionDto[];
   questionGroups: Record<number, QuestionGroupDto>;
 };
+
+const RIGHT_SOUND_SRC = "/audio/right.wav";
+const WRONG_SOUND_SRC = "/audio/false.wav";
+const PARTIAL_SOUND_SRC = "/audio/partial.mp3";
+
+function playBatchAnswerFeedbackSound(correctCount: number, gradedCount: number) {
+  if (gradedCount === 0) {
+    return;
+  }
+
+  if (correctCount === gradedCount) {
+    playUiSound(RIGHT_SOUND_SRC);
+  } else if (correctCount === 0) {
+    playUiSound(WRONG_SOUND_SRC);
+  } else {
+    playUiSound(PARTIAL_SOUND_SRC);
+  }
+}
 
 type PracticePackageRunnerProps<TItem extends { id: number; title: string }> = {
   badgeLabel: string;
@@ -189,7 +208,7 @@ function renderFormattedInlineText(value: string): ReactNode[] {
         return (
           <u
             key={`${underlinedText}-${index}`}
-            className="font-semibold decoration-2 underline-offset-2"
+            className="font-semibold underline decoration-2 underline-offset-2"
           >
             {underlinedText}
           </u>
@@ -805,6 +824,7 @@ export function PracticePackageRunner<TItem extends { id: number; title: string 
       scorePercent:
         gradedAnswers.length > 0 ? Math.round((correctCount / gradedAnswers.length) * 100) : 0,
     });
+    playBatchAnswerFeedbackSound(correctCount, gradedAnswers.length);
     setSubmitting(false);
   };
 

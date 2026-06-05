@@ -1,4 +1,5 @@
 import { request, createError } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
 import type { ApiResponse } from "./types";
 
 export type QuestionGroupType =
@@ -83,6 +84,70 @@ export interface QuestionHistorySubmissionResult {
   questionId: number;
 }
 
+const TRUE_FALSE_OPTION_KEYS = ["A", "B", "C"] as const;
+const TRUE_FALSE_OPTION_VALUES = ["True", "False", "Not Given"] as const;
+
+function normalizeAnswerToken(value?: string | null): string {
+  return String(value || "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function normalizeTrueFalseQuestion(question: QuestionDto): QuestionDto {
+  if (question.questionType !== "TRUE_FALSE_NG") {
+    return question;
+  }
+
+  const normalizedCorrect = normalizeAnswerToken(question.correctAnswer);
+  const options = TRUE_FALSE_OPTION_VALUES.map((content, index) => {
+    const optionKey = TRUE_FALSE_OPTION_KEYS[index];
+    const existing = question.options.find(
+      (option) =>
+        normalizeAnswerToken(option.optionKey) === optionKey ||
+        normalizeAnswerToken(option.content) === normalizeAnswerToken(content),
+    );
+
+    return {
+      id: existing?.id ?? -(question.id * 10 + index + 1),
+      optionKey,
+      content,
+      isCorrect:
+        Boolean(existing?.isCorrect) ||
+        normalizeAnswerToken(existing?.content) === normalizedCorrect ||
+        normalizeAnswerToken(existing?.optionKey) === normalizedCorrect ||
+        normalizeAnswerToken(content) === normalizedCorrect,
+    };
+  });
+
+  return {
+    ...question,
+    options,
+  };
+}
+
+function normalizeQuestion(question: QuestionDto): QuestionDto {
+  return normalizeTrueFalseQuestion(question);
+}
+
+function normalizeQuestionGroup(group: QuestionGroupDto): QuestionGroupDto {
+  return {
+    ...group,
+    questions: (group.questions ?? []).map(normalizeQuestion),
+  };
+}
+
+function normalizeLessonQuestionResponse(
+  response: LessonQuestionResponse,
+): LessonQuestionResponse {
+  return {
+    ...response,
+    singleQuestions: (response.singleQuestions ?? []).map(normalizeQuestion),
+    questionGroups: (response.questionGroups ?? []).map(normalizeQuestionGroup),
+  };
+}
+
 export async function getQuestionById(
   questionId: number,
 ): Promise<ApiResponse<QuestionDto>> {
@@ -90,12 +155,21 @@ export async function getQuestionById(
     return createError("Invalid questionId", "INVALID_QUESTION_ID");
   }
 
-  return request<QuestionDto>(`/questions/${questionId}`, {
+  const response = await request<QuestionDto>(`/questions/${questionId}`, {
     method: "GET",
   }, {
     key: `questions:by-id:${questionId}`,
     ttlMs: 10 * 60 * 1000,
   });
+
+  if (response.success && response.data) {
+    return {
+      ...response,
+      data: normalizeQuestion(response.data),
+    };
+  }
+
+  return response;
 }
 
 export async function getQuestionGroupById(
@@ -105,12 +179,21 @@ export async function getQuestionGroupById(
     return createError("Invalid questionGroupId", "INVALID_QUESTION_GROUP_ID");
   }
 
-  return request<QuestionGroupDto>(`/question-groups/${questionGroupId}`, {
+  const response = await request<QuestionGroupDto>(`/question-groups/${questionGroupId}`, {
     method: "GET",
   }, {
     key: `question-groups:by-id:${questionGroupId}`,
     ttlMs: 10 * 60 * 1000,
   });
+
+  if (response.success && response.data) {
+    return {
+      ...response,
+      data: normalizeQuestionGroup(response.data),
+    };
+  }
+
+  return response;
 }
 
 export async function getQuestionsByLesson(
@@ -120,9 +203,18 @@ export async function getQuestionsByLesson(
     return createError("Invalid lessonId", "INVALID_LESSON_ID");
   }
 
-  return request<LessonQuestionResponse>(`/questions/lesson/${lessonId}`, {
+  const response = await request<LessonQuestionResponse>(`/questions/lesson/${lessonId}`, {
     method: "GET",
   });
+
+  if (response.success && response.data) {
+    return {
+      ...response,
+      data: normalizeLessonQuestionResponse(response.data),
+    };
+  }
+
+  return response;
 }
 
 export async function submitQuestionHistory(
@@ -136,8 +228,14 @@ export async function submitQuestionHistory(
     return createError("Answer text is required", "INVALID_ANSWER_TEXT");
   }
 
-  return request<QuestionHistorySubmissionResult>("/user-question-histories/submit", {
+  const response = await request<QuestionHistorySubmissionResult>("/user-question-histories/submit", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+  if (response.success) {
+    clearCachePrefix("leaderboard:");
+  }
+
+  return response;
 }

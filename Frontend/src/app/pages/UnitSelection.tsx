@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { getGrade } from "@/api/grades";
 import { request } from "@/api/utils/http";
-import type { ApiResponse } from "@/api/types";
 import type { Unit } from "../../api/content";
 import { LoadingState } from "../../components/LoadingState";
 import { EmptyState } from "../../components/EmptyState";
@@ -10,17 +10,34 @@ import { ContentBreadcrumb } from "../../components/ContentBreadcrumb";
 export function UnitSelection() {
   const { gradeId } = useParams();
   const [units, setUnits] = useState<Unit[]>([]);
+  const [gradeLabel, setGradeLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const loadGradeMeta = async () => {
+      const parsedGradeId = Number(gradeId);
+
+      if (!parsedGradeId || Number.isNaN(parsedGradeId)) {
+        setGradeLabel(null);
+        return;
+      }
+
+      const response = await getGrade(parsedGradeId);
+      setGradeLabel(
+        response.success
+          ? response.data?.description ?? response.data?.name ?? response.data?.title ?? null
+          : null,
+      );
+    };
+
     const loadUnits = async () => {
       if (!gradeId) return;
 
       setLoading(true);
       setError(null);
 
-      const res = await request<Unit[]>(`/api/units/grade/${gradeId}`, {
+      const res = await request<Unit[]>(`/units/grade/${gradeId}`, {
         method: "GET",
       });
 
@@ -33,7 +50,8 @@ export function UnitSelection() {
       setLoading(false);
     };
 
-    loadUnits();
+    void loadGradeMeta();
+    void loadUnits();
   }, [gradeId]);
 
   if (loading) return <LoadingState text="Loading units..." />;
@@ -44,7 +62,7 @@ export function UnitSelection() {
       <ContentBreadcrumb
         items={[
           { label: "Grades", to: "/grades" },
-          { label: `Grade ${gradeId}` },
+          { label: gradeLabel ?? `Grade ${gradeId}` },
         ]}
       />
 

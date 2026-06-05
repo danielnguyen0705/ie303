@@ -4,9 +4,7 @@ import {
   Flame,
   Loader2,
   Palette,
-  Settings,
   Sparkles,
-  Trophy,
   Users,
 } from "lucide-react";
 import {
@@ -136,34 +134,28 @@ export function Leaderboard() {
   }
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden bg-[#f5f7ff] pb-24 md:bg-transparent md:px-6 md:py-10 md:pb-12">
-      <section className="sticky top-0 z-10 flex items-center justify-between bg-white px-6 py-5 shadow-sm md:static md:mb-8 md:rounded-3xl">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-slate-100 ring-4 ring-slate-200">
-            <Trophy className="h-7 w-7 text-[#155ca5]" />
-          </div>
-
-          <h1 className="truncate text-3xl font-black tracking-tight text-[#155ca5] md:text-5xl">
+    <main className="mx-auto min-h-screen w-full max-w-7xl space-y-6 overflow-x-hidden px-4 py-6 pb-24 sm:space-y-8 sm:px-6 sm:py-10 md:pb-12">
+      <section className="space-y-5 rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-[0_18px_48px_rgba(45,88,133,0.12)] backdrop-blur-md sm:p-7">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#155ca5] sm:text-xs">
+            {copy("Rankings", "Xếp hạng")}
+          </p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-[#155ca5] sm:text-4xl lg:text-5xl">
             {copy("Leaderboard", "Bảng xếp hạng")}
           </h1>
+          <p className="mt-2 text-sm font-medium leading-6 text-gray-600 sm:text-lg">
+            {copy(
+              "Top 10 Coins, EXP and Collection.",
+              "Top 10 xu, EXP và bộ sưu tập.",
+            )}
+          </p>
         </div>
 
-        <Settings className="h-8 w-8 shrink-0 text-slate-500 md:hidden" />
-      </section>
-
-      <section className="mx-auto w-full max-w-7xl space-y-8 px-5 py-10 md:px-0 md:py-0">
-        <p className="text-center text-2xl font-semibold text-slate-700 md:text-left md:text-xl">
-          {copy(
-            "Top 10 Coins, EXP and Collection.",
-            "Top 10 xu, EXP và bộ sưu tập.",
-          )}
-        </p>
-
-        <div className="grid grid-cols-3 rounded-[2rem] bg-white/70 p-2 shadow-sm md:inline-grid md:w-auto">
+        <div className="grid grid-cols-3 rounded-2xl bg-white p-2 shadow-sm sm:inline-grid sm:w-auto">
           <TabButton
             active={activeTab === "coin"}
             onClick={() => setActiveTab("coin")}
-            icon={<Coins className="h-5 w-5" />}
+            icon={<Coins className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
             Coin
           </TabButton>
@@ -171,7 +163,7 @@ export function Leaderboard() {
           <TabButton
             active={activeTab === "exp"}
             onClick={() => setActiveTab("exp")}
-            icon={<Sparkles className="h-5 w-5" />}
+            icon={<Sparkles className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
             EXP
           </TabButton>
@@ -179,11 +171,20 @@ export function Leaderboard() {
           <TabButton
             active={activeTab === "collection"}
             onClick={() => setActiveTab("collection")}
-            icon={<Palette className="h-5 w-5" />}
+            icon={<Palette className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />}
           >
             {copy("Collection", "Sưu tập")}
           </TabButton>
         </div>
+      </section>
+
+      <section className="space-y-8">
+        <p className="sr-only">
+          {copy(
+            "Top 10 Coins, EXP and Collection.",
+            "Top 10 xu, EXP và bộ sưu tập.",
+          )}
+        </p>
 
         <div className="space-y-6 md:hidden">
           {activeData.map((entry) => (

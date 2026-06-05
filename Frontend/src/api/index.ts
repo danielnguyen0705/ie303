@@ -22,9 +22,6 @@ export * as unitApi from "./units";
 // Lessons API
 export * as lessonApi from "./lessons";
 
-// Exercises API
-export * as exerciseApi from "./exercises";
-
 // Quests & Achievements API
 export * as questApi from "./quests";
 
@@ -115,12 +112,6 @@ export {
   completeLesson,
   getLessonById,
 } from "./lessons";
-
-export {
-  // Exercises
-  getExercise,
-  submitExercise,
-} from "./exercises";
 
 export {
   // Quests

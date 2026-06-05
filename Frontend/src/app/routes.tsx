@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { Root } from "./Root";
 import { Dashboard } from "./pages/Dashboard";
 import { UnitView } from "./pages/UnitView";
@@ -26,24 +26,27 @@ import { UserUnitReviews } from "./pages/UserUnitReviews";
 import { UserGroupReviews } from "./pages/UserGroupReviews";
 import { UserSemesterTests } from "./pages/UserSemesterTests";
 import { AdminLayout } from "./components/AdminLayout";
-import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { UserManagement } from "./pages/admin/UserManagement";
 import { ContentManagement } from "./pages/admin/ContentManagement";
 import { QuestionBank } from "./pages/admin/QuestionBank";
 // Unit/Group admin pages removed; use Lesson with isReviewLesson
 import { SemesterTests } from "./pages/SemesterTests";
-import { Reports } from "./pages/admin/Reports";
-import { VIPManagement } from "./pages/admin/VIPManagement";
 import { PaymentOffers } from "./pages/admin/PaymentOffers";
-import { Notifications } from "./pages/admin/Notifications";
-import { Settings } from "./pages/admin/Settings";
 import { ShopManagement } from "./pages/admin/ShopManagement";
+import { QuestManagement } from "./pages/admin/QuestManagement";
 import { RequireAuth } from "./components/RequireAuth";
 import { Forbidden } from "./pages/Forbidden";
 import { NotFound } from "./pages/NotFound";
 import { VerifyEmail } from "./pages/VerifyEmail";
+import { OAuth2Callback } from "./pages/OAuth2Callback";
+
+const RedirectToAdminUsers = () => <Navigate to="/admin/users" replace />;
 
 export const router = createBrowserRouter([
+  {
+    path: "/oauth2/callback",
+    Component: OAuth2Callback,
+  },
   {
     path: "/verify-email",
     Component: VerifyEmail,
@@ -94,19 +97,16 @@ export const router = createBrowserRouter([
         path: "/admin",
         Component: AdminLayout,
         children: [
-          { index: true, Component: AdminDashboard },
+          { index: true, Component: RedirectToAdminUsers },
           { path: "users", Component: UserManagement },
           { path: "content", Component: ContentManagement },
           { path: "content/preview/:lessonId", Component: LessonRunner },
           { path: "questions", Component: QuestionBank },
           // Unit/Group review admin pages removed (use Lesson with isReviewLesson)
           { path: "semester-tests", Component: SemesterTests },
-          { path: "reports", Component: Reports },
-          { path: "vip", Component: VIPManagement },
           { path: "payments", Component: PaymentOffers },
           { path: "shop", Component: ShopManagement },
-          { path: "notifications", Component: Notifications },
-          { path: "settings", Component: Settings },
+          { path: "quests", Component: QuestManagement },
           { path: "*", Component: NotFound },
         ],
       },

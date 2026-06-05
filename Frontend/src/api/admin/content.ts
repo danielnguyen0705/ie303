@@ -461,12 +461,13 @@ export async function getLessonsBySection(params: {
     return createError("Section id is required", "VALIDATION_ERROR");
   }
 
-  const response = await request<RawLesson[]>(
-    `/progress/sections/${params.sectionId}/lessons`,
-    { method: "GET" },
-  );
+  const response = await request<RawLesson[]>("/lessons", { method: "GET" });
 
-  return mapResponseData(response, (items) => items.map(mapLesson));
+  return mapResponseData(response, (items) =>
+    items
+      .map(mapLesson)
+      .filter((lesson) => lesson.sectionId === params.sectionId),
+  );
 }
 
 export async function getLesson(params: {

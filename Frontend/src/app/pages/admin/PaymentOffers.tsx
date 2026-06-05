@@ -167,25 +167,31 @@ export function PaymentOffers() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Hide this offer? (soft delete: active=false)")) {
-      return;
-    }
+    popup.warning({
+      title: "Hide offer",
+      message: "Hide this offer? This will soft delete it by setting active=false.",
+      confirmText: "Hide",
+      cancelText: "Cancel",
+      showCancelButton: true,
+      autoClose: false,
+      onConfirm: async () => {
+        setSubmitting(true);
+        const response = await adminApi.softDeletePaymentOffer(id);
+        if (!response.success) {
+          setError(response.error?.message || "Failed to delete offer");
+          setSubmitting(false);
+          return;
+        }
 
-    setSubmitting(true);
-    const response = await adminApi.softDeletePaymentOffer(id);
-    if (!response.success) {
-      setError(response.error?.message || "Failed to delete offer");
-      setSubmitting(false);
-      return;
-    }
+        await loadOffers();
+        setSubmitting(false);
 
-    await loadOffers();
-    setSubmitting(false);
-
-    popup.success({
-      title: "Deleted successfully",
-      message: "Payment offer has been hidden from active usage.",
-      description: `Offer ID: ${id}`,
+        popup.success({
+          title: "Deleted successfully",
+          message: "Payment offer has been hidden from active usage.",
+          description: `Offer ID: ${id}`,
+        });
+      },
     });
   };
 

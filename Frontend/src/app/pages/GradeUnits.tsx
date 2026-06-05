@@ -9,7 +9,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { getGrade, getSemesterTests, getUnitsByGradeProgress } from "@/api";
 import type { SemesterTestResponse } from "@/api/types";
+import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { hasVipAccess } from "./practicePackageData";
 
 type UnitProgressItem = {
   unitId: number;
@@ -167,6 +169,7 @@ function buildUnitPath(
 
 export function GradeUnits() {
   const { copy } = useLanguage();
+  const { user } = useAuth();
   const { gradeId } = useParams();
   const navigate = useNavigate();
   const [units, setUnits] = useState<UnitProgressItem[]>([]);
@@ -176,6 +179,7 @@ export function GradeUnits() {
   const [error, setError] = useState<string | null>(null);
 
   const gradeIdNumber = useMemo(() => Number(gradeId), [gradeId]);
+  const includeVipLessons = hasVipAccess(user);
 
   useEffect(() => {
     const loadGradeMeta = async () => {
@@ -185,7 +189,11 @@ export function GradeUnits() {
       }
 
       const response = await getGrade(gradeIdNumber);
-      setGradeTitle(response.success && response.data ? response.data.title : null);
+      setGradeTitle(
+        response.success && response.data
+          ? response.data.description ?? response.data.name ?? response.data.title ?? null
+          : null,
+      );
     };
 
     void loadGradeMeta();
@@ -231,6 +239,11 @@ export function GradeUnits() {
         return;
       }
 
+      if (!includeVipLessons) {
+        setSemesterTests([]);
+        return;
+      }
+
       const response = await getSemesterTests();
       if (!response.success || !response.data) {
         setSemesterTests([]);
@@ -241,7 +254,7 @@ export function GradeUnits() {
     };
 
     void loadSemesterTests();
-  }, [gradeIdNumber]);
+  }, [gradeIdNumber, includeVipLessons]);
 
   const layout = useMemo(() => {
     const count = units.length;
@@ -363,27 +376,9 @@ export function GradeUnits() {
         </button>
 
         <div className="learner-tech-panel mt-3 rounded-[2rem] px-6 py-6 md:px-8">
-          
-          <h1 className="text-4xl md:text-5xl font-black text-[#1e2e51] mt-3">
-            {copy("Choose a Unit", "Chọn Unit")}
-          </h1>
-          <p className="text-gray-600 mt-2 text-lg">
-            {copy(
-              "Follow the learning path. Units are ordered and track progress individually.",
-              "Đi theo lộ trình học. Các unit được sắp theo thứ tự và có progress riêng.",
-            )}
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#4b6f97]">
-            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
-              Guided route
-            </span>
-            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
-              Unit progress
-            </span>
-            <span className="lesson-tech-badge rounded-full border border-white/70 px-4 py-2">
-              Exam ready
-            </span>
-          </div>
+          <h3 className="text-2xl md:text-3xl font-black text-[#1e2e51]">
+            {gradeTitle ?? `Grade ${gradeId}`}
+          </h3>
         </div>
       </section>
 

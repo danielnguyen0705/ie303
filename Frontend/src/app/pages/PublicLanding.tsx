@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useNavigate } from "react-router";
 import AuthModal from "@/components/AuthModal";
 import { useLanguage } from "@/context/LanguageContext";
 import { NotificationPopup } from "@/utils/NotificationPopup";
@@ -7,6 +8,7 @@ import { useNotificationPopup } from "@/utils/useNotificationPopup";
 type AuthMode = "login" | "register";
 
 export function PublicLanding() {
+  const navigate = useNavigate();
   const { language, setLanguage, copy } = useLanguage();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
@@ -29,6 +31,15 @@ export function PublicLanding() {
       ),
     });
   }, [authPopup, copy]);
+
+  const handleLoginSuccess = useCallback(
+    (authenticatedUser: { role?: string }) => {
+      if (authenticatedUser.role === "ADMIN") {
+        navigate("/admin/users", { replace: true });
+      }
+    },
+    [navigate],
+  );
 
   return (
     <div className="min-h-screen bg-[#f6f6ff] text-[#1e2e51] selection:bg-[#73aaf9] selection:text-[#002a54]">
@@ -64,19 +75,13 @@ export function PublicLanding() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => openAuthModal("login")}
-              className="font-['Lexend'] text-sm font-medium text-slate-600 transition-colors hover:text-blue-800"
-            >
-              {copy("Login", "Đăng nhập")}
-            </button>
+            
             <button
               type="button"
               onClick={() => openAuthModal("register")}
               className="rounded-full bg-[#155ca5] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#155ca5]/20 transition-transform duration-200 active:scale-95"
             >
-              {copy("Sign Up", "Đăng ký")}
+              {copy("Sign Up/Log In", "Đăng ký/Đăng Nhập")}
             </button>
           </div>
         </div>
@@ -113,16 +118,7 @@ export function PublicLanding() {
                 >
                   {copy("Start Learning Now", "Bắt đầu học ngay")}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => openAuthModal("login")}
-                  className="group flex items-center gap-2 font-bold text-[#155ca5]"
-                >
-                  {copy("Login", "Đăng nhập")}
-                  <span className="transition-transform group-hover:translate-x-1">
-                    →
-                  </span>
-                </button>
+
               </div>
             </div>
 
@@ -208,6 +204,7 @@ export function PublicLanding() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onRegisterSuccess={handleRegisterSuccess}
+        onLoginSuccess={handleLoginSuccess}
         initialMode={authMode}
       />
 

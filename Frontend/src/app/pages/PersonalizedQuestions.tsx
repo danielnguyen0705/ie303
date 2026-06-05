@@ -20,6 +20,11 @@ import type { UnitProgressItem } from "@/api/units";
 import { useLanguage } from "@/context/LanguageContext";
 import { NotificationPopup } from "@/utils/NotificationPopup";
 import { useNotificationPopup } from "@/utils/useNotificationPopup";
+import { playUiSound } from "@/app/utils/audioSettings";
+
+const RIGHT_SOUND_SRC = "/audio/right.wav";
+const WRONG_SOUND_SRC = "/audio/false.wav";
+const PARTIAL_SOUND_SRC = "/audio/partial.mp3";
 
 const initialForm: PersonalizedQuestionsRequest = {
   questionCount: 10,  // Reduced from 20 to 10 for better API stability
@@ -33,7 +38,7 @@ function getGenerationErrorMessage(message: string | undefined, copy: CopyFn) {
   if (!message) {
     return copy(
       "Could not generate questions. Please ensure you have wrong-answer history in this unit.",
-      "Khong the tao cau hoi. Hay dam bao ban co lich su tra loi sai trong unit nay.",
+      "Không thể tạo câu hỏi. Hãy đảm bảo bạn có lịch sử trả lời sai trong unit này.",
     );
   }
 
@@ -66,14 +71,14 @@ function getGenerationErrorMessage(message: string | undefined, copy: CopyFn) {
   if (message.includes("No wrong questions found")) {
     return copy(
       "No wrong-answer history available. Practice some questions and answer them incorrectly first.",
-      "Chua co lich su tra loi sai. Hay luyen mot vai cau va tra loi sai truoc.",
+      "Chưa có lịch sử trả lời sai. Hãy luyện một vài câu và trả lời sai trước.",
     );
   }
 
   if (message.includes("No reusable multiple-choice wrong questions found")) {
     return copy(
       "This unit only has unsupported wrong-answer types. Please create wrong-answer history on multiple-choice questions first.",
-      "Unit nay chi co cac dang cau sai chua duoc ho tro. Hay tao lich su sai voi cau trac nghiem truoc.",
+      "Unit này chỉ có các dạng câu sai chưa được hỗ trợ. Hãy tạo lịch sử sai với câu trắc nghiệm trước.",
     );
   }
 
@@ -87,7 +92,7 @@ function getGenerationErrorMessage(message: string | undefined, copy: CopyFn) {
   if (message.includes("502")) {
     return copy(
       "AI service is temporarily unavailable. Please try again later.",
-      "Dich vu AI dang tam thoi gian doan. Vui long thu lai sau.",
+      "Dịch vụ AI đang tạm thời gián đoạn. Vui lòng thử lại sau.",
     );
   }
 
@@ -108,6 +113,43 @@ function isOptionCorrect(question: QuestionDto, option: QuestionDto["options"][0
 
   // Fallback to isCorrect flag
   return option.isCorrect ?? false;
+}
+
+function playBatchAnswerFeedbackSound(correctCount: number, gradedCount: number) {
+  if (gradedCount === 0) {
+    return;
+  }
+
+  if (correctCount === gradedCount) {
+    playUiSound(RIGHT_SOUND_SRC);
+  } else if (correctCount === 0) {
+    playUiSound(WRONG_SOUND_SRC);
+  } else {
+    playUiSound(PARTIAL_SOUND_SRC);
+  }
+}
+
+function normalizeTextValue(value: string | null | undefined) {
+  return (value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getDisplayQuestionContent(question: QuestionDto) {
+  const content = question.content?.trim() || "";
+  if (!content) return "";
+  if (content.includes("____")) return content;
+  if (question.questionType !== "QUALITATIVE_MC") return content;
+
+  const answerText = normalizeTextValue(question.correctAnswer);
+  if (!answerText) return content;
+
+  const pattern = new RegExp(`\\b${escapeRegExp(answerText)}\\b`, "i");
+  if (!pattern.test(content)) return content;
+
+  return content.replace(pattern, "____");
 }
 
 export function PersonalizedQuestions() {
@@ -146,8 +188,8 @@ export function PersonalizedQuestions() {
         }
       } else {
         popup.error({
-          title: copy("Load failed", "Tai that bai"),
-          message: response.error?.message || copy("Could not load grades.", "Khong the tai lop hoc."),
+          title: copy("Load failed", "Tải thất bại"),
+          message: response.error?.message || copy("Could not load grades.", "Không thể tải lớp học."),
         });
       }
 
@@ -183,10 +225,10 @@ export function PersonalizedQuestions() {
       } else {
         setUnits([]);
         popup.error({
-          title: copy("Load failed", "Tai that bai"),
+          title: copy("Load failed", "Tải thất bại"),
           message: response.error?.message || copy(
             "Could not load units for this grade.",
-            "Khong the tai unit cho lop nay.",
+            "Không thể tải unit cho lớp này.",
           ),
         });
       }
@@ -236,10 +278,10 @@ export function PersonalizedQuestions() {
   const handleGenerate = async () => {
     if (!form.gradeId) {
       popup.warning({
-        title: copy("Missing grade", "Chua chon lop"),
+        title: copy("Missing grade", "Chưa chọn lớp"),
         message: copy(
           "Please choose a grade before generating questions.",
-          "Vui long chon lop truoc khi tao cau hoi.",
+          "Vui lòng chọn lớp trước khi tạo câu hỏi.",
         ),
       });
       return;
@@ -247,10 +289,10 @@ export function PersonalizedQuestions() {
 
     if (!form.unitNumber) {
       popup.warning({
-        title: copy("Missing unit", "Chua chon unit"),
+        title: copy("Missing unit", "Chưa chọn unit"),
         message: copy(
           "Please choose a unit before generating questions.",
-          "Vui long chon unit truoc khi tao cau hoi.",
+          "Vui lòng chọn unit trước khi tạo câu hỏi.",
         ),
       });
       return;
@@ -286,15 +328,24 @@ export function PersonalizedQuestions() {
       });
 
       popup.success({
-        title: copy("Generated", "Da tao"),
+        title: copy("Generated", "Đã tạo"),
         message: copy(
           `Created ${response.data.length} personalized questions.`,
-          `Da tao ${response.data.length} cau hoi ca nhan hoa.`,
+          `Đã tạo ${response.data.length} câu hỏi cá nhân hóa.`,
         ),
       });
+      if (response.data.length < form.questionCount) {
+        popup.warning({
+          title: copy("Generated", "Đã tạo"),
+          message: copy(
+            `Created ${response.data.length} questions based on your wrong-answer history.`,
+            `Đã tạo được ${response.data.length} câu hỏi dựa trên số câu sai trong lịch sử của bạn.`,
+          ),
+        });
+      }
     } else {
       popup.error({
-        title: copy("Generation failed", "Tao cau hoi that bai"),
+        title: copy("Generation failed", "Tạo câu hỏi thất bại"),
         message: getGenerationErrorMessage(response.error?.message, copy),
       });
     }
@@ -306,16 +357,19 @@ export function PersonalizedQuestions() {
     const answeredQuestions = questions.filter((question) => Boolean(answers[question.id]));
     if (answeredQuestions.length === 0) {
       popup.warning({
-        title: copy("No answers yet", "Chua co cau tra loi"),
+        title: copy("No answers yet", "Chưa có câu trả lời"),
         message: copy(
           "Choose at least one answer before submitting the mini test.",
-          "Hay chon it nhat mot cau tra loi truoc khi nop bai mini test.",
+          "Hãy chọn ít nhất một câu trả lời trước khi nộp bài mini test.",
         ),
       });
       return;
     }
 
     setSubmitting(true);
+    let correctCount = 0;
+    let gradedCount = 0;
+
     await Promise.all(
       answeredQuestions.map(async (question) => {
         const selectedKey = answers[question.id];
@@ -325,6 +379,11 @@ export function PersonalizedQuestions() {
         });
         if (!selectedOption) return;
 
+        gradedCount += 1;
+        if (isOptionCorrect(question, selectedOption)) {
+          correctCount += 1;
+        }
+
         await submitQuestionHistory({
           questionId: question.id,
           answer_text: selectedOption.content,
@@ -332,6 +391,7 @@ export function PersonalizedQuestions() {
       }),
     );
     setSubmitted(true);
+    playBatchAnswerFeedbackSound(correctCount, gradedCount);
     setSubmitting(false);
   };
 
@@ -343,12 +403,12 @@ export function PersonalizedQuestions() {
           {copy("AI Practice", "Luyen tap AI")}
         </div>
         <h1 className="text-4xl font-black tracking-tight text-[#155ca5] md:text-5xl">
-          {copy("Personalized Questions", "Cau hoi ca nhan hoa")}
+          {copy("Personalized Questions", "Câu hỏi cá nhân hóa")}
         </h1>
         <p className="max-w-3xl font-medium text-gray-600">
           {copy(
             "Use AI to generate extra practice questions from your wrong-answer history in a selected unit.",
-            "Dung AI de tao cau hoi luyen tap them tu lich su tra loi sai cua ban trong unit da chon.",
+            "Dùng AI để tạo câu hỏi luyện tập thêm từ lịch sử trả lời sai của bạn trong unit đã chọn.",
           )}
         </p>
       </section>
@@ -358,18 +418,18 @@ export function PersonalizedQuestions() {
           <div className="space-y-4 rounded-3xl bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2 text-lg font-black text-[#155ca5]">
               <Brain className="h-5 w-5" />
-              {copy("Generate Set", "Tao bo cau hoi")}
+              {copy("Generate Set", "Tạo bộ câu hỏi")}
             </div>
 
             {loadingGrades ? (
               <div className="flex items-center justify-center py-8 text-gray-500">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {copy("Loading grades...", "Dang tai lop...")}
+                {copy("Loading grades...", "Đang tải lớp...")}
               </div>
             ) : (
               <>
                 <label className="block space-y-2">
-                  <span className="text-sm font-bold text-gray-700">{copy("Grade", "Lop")}</span>
+                  <span className="text-sm font-bold text-gray-700">{copy("Grade", "Lớp")}</span>
                   <select
                     value={form.gradeId}
                     onChange={(e) =>
@@ -381,7 +441,7 @@ export function PersonalizedQuestions() {
                     className="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-[#155ca5]"
                   >
                     {grades.length === 0 && (
-                      <option value={0}>{copy("No grades available", "Khong co lop nao")}</option>
+                      <option value={0}>{copy("No grades available", "Không có lớp nào")}</option>
                     )}
                     {grades.map((grade) => (
                       <option key={grade.id} value={grade.id}>
@@ -405,9 +465,9 @@ export function PersonalizedQuestions() {
                     className="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-[#155ca5]"
                   >
                     {loadingUnits ? (
-                      <option value={form.unitNumber || 0}>{copy("Loading units...", "Dang tai unit...")}</option>
+                      <option value={form.unitNumber || 0}>{copy("Loading units...", "Đang tải unit...")}</option>
                     ) : units.length === 0 ? (
-                      <option value={form.unitNumber || 0}>{copy("No units found", "Khong tim thay unit")}</option>
+                      <option value={form.unitNumber || 0}>{copy("No units found", "Không tìm thấy unit")}</option>
                     ) : (
                       units.map((unit) => (
                         <option key={unit.unitId} value={unit.unitNumber}>
@@ -420,7 +480,7 @@ export function PersonalizedQuestions() {
 
                 {selectedUnitProgress && (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                    {copy("Current unit progress:", "Tien do unit hien tai:")}{" "}
+                    {copy("Current unit progress:", "Tiến độ unit hiện tại:")}{" "}
                     <span className="font-bold text-[#155ca5]">
                       {Math.round(selectedUnitProgress.progressPercent)}%
                     </span>
@@ -429,35 +489,10 @@ export function PersonalizedQuestions() {
 
                 <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 text-sm text-[#1e2e51]">
                   {copy(
-                    "AI practice is generated from your wrong-question history. Question count defaults to 10 (max 15), and if the external AI provider is down the backend falls back to a retry set built from your own missed questions.",
-                    "Luyen tap AI duoc tao tu lich su cau sai cua ban. So cau mac dinh la 10 (toi da 15), va neu nha cung cap AI ben ngoai bi gian doan, backend se dung bo cau hoi lam lai tu cac cau ban da sai.",
+                    "AI practice is generated from your wrong-question history.",
+                    "Luyện tập câu hỏi sai với AI.",
                   )}
                 </div>
-
-                <label className="block space-y-2">
-                  <span className="text-sm font-bold text-gray-700">
-                    {copy("Question Count", "So cau hoi")}
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={15}
-                    value={form.questionCount}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        questionCount: Math.min(15, Math.max(1, Number(e.target.value) || 10)),
-                      }))
-                    }
-                    onBlur={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        questionCount: Math.min(15, Math.max(1, prev.questionCount || 10)),
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-[#155ca5]"
-                  />
-                </label>
 
                 <button
                   type="button"
@@ -466,8 +501,8 @@ export function PersonalizedQuestions() {
                   className="w-full rounded-2xl bg-[#155ca5] py-3 font-bold text-white hover:bg-[#0f4c88] disabled:opacity-60"
                 >
                   {generating
-                    ? copy("Generating...", "Dang tao...")
-                    : copy("Generate Questions", "Tao cau hoi")}
+                    ? copy("Generating...", "Đang tạo...")
+                    : copy("Generate Questions", "Tạo câu hỏi")}
                 </button>
               </>
             )}
@@ -475,45 +510,18 @@ export function PersonalizedQuestions() {
         </div>
 
         <div className="rounded-3xl border border-[#dbeafe] bg-[#f8fbff] p-6 text-[#1e2e51]">
-          <div className="text-sm font-black uppercase tracking-[0.18em] text-[#155ca5]">
-            {copy("How it works", "Cach hoat dong")}
-          </div>
-          <div className="mt-3 space-y-3 text-sm leading-7 text-slate-700">
-            <p>
-              {copy(
-                "Pick a grade and a unit, then choose how many questions you want to generate.",
-                "Chon lop va unit, sau do chon so cau hoi ban muon tao.",
-              )}
-            </p>
-            <p>
-              {copy(
-                "The system uses your wrong-answer history in that unit to create a focused mini test around the knowledge you missed.",
-                "He thong dung lich su tra loi sai trong unit do de tao mini test tap trung vao phan kien thuc ban con thieu.",
-              )}
-            </p>
-            <p>
-              {copy(
-                "This page is only for AI-generated practice. ML learning insights are now shown separately on the dashboard for VIP users.",
-                "Trang nay chi dung cho luyen tap do AI tao. Phan tich ML hien duoc hien rieng tren dashboard cho nguoi dung VIP.",
-              )}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-black text-[#1e2e51]">
-              {copy("Generated Result", "Ket qua da tao")}
+              {copy("Generated Result", "Kết quả đã tạo")}
             </h2>
             <p className="text-sm text-gray-500">
               {questions.length > 0
                 ? copy(
                   `${questions.length} question(s) ready`,
-                  `${questions.length} cau hoi san sang`,
+                  `${questions.length} câu hỏi sẵn sàng`,
                 )
-                : copy("No personalized questions yet", "Chua co cau hoi ca nhan hoa")}
+                : copy("No personalized questions yet", "Chưa có câu hỏi cá nhân hóa")}
             </p>
           </div>
 
@@ -524,16 +532,17 @@ export function PersonalizedQuestions() {
               className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
             >
               <RefreshCcw className="h-4 w-4" />
-              {copy("Clear", "Xoa")}
+              {copy("Clear", "Xóa")}
             </button>
           )}
         </div>
+        <div className="mt-4 max-h-[54vh] space-y-4 overflow-y-auto pr-1">
 
         {questions.length === 0 ? (
           <div className="rounded-3xl bg-white p-10 text-center text-gray-500 shadow-sm">
             {copy(
               "Generate a set to start a personalized mini-test from your wrong-answer history.",
-              "Tao mot bo cau hoi de bat dau mini test ca nhan hoa tu lich su cau sai cua ban.",
+              "Tạo một bộ câu hỏi để bắt đầu mini test cá nhân hóa từ lịch sử câu sai của bạn.",
             )}
           </div>
         ) : (
@@ -542,25 +551,25 @@ export function PersonalizedQuestions() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-xl font-black text-[#1e2e51]">
-                    {copy("Personalized Mini Test", "Mini test ca nhan hoa")}
+                    {copy("Personalized Mini Test", "Mini test cá nhân hóa")}
                   </h3>
                   <p className="text-sm text-gray-500">
                     {copy(
                       "Answer each generated question, then submit the whole test.",
-                      "Tra loi tung cau hoi da tao, sau do nop ca bai test.",
+                      "Trả lời từng câu hỏi đã tạo, sau đó nộp cả bài test.",
                     )}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="rounded-full bg-[#f8fbff] px-4 py-2 text-sm font-bold text-[#155ca5]">
-                    {copy("Answered", "Da tra loi")} {answeredCount}/{questions.length}
+                    {copy("Answered", "Đã trả lời")} {answeredCount}/{questions.length}
                   </div>
                   <button
                     type="button"
                     onClick={() => setFlashcardMode((s) => !s)}
                     className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-bold text-gray-700 hover:bg-gray-50"
                   >
-                    {flashcardMode ? copy("List view", "Dang danh sach") : copy("Flashcard", "The ghi nho")}
+                    {flashcardMode ? copy("List view", "Dạng danh sách") : copy("Flashcard", "Thẻ ghi nhớ")}
                   </button>
                 </div>
               </div>
@@ -577,13 +586,13 @@ export function PersonalizedQuestions() {
                   <article key={question.id} className="space-y-4 rounded-3xl bg-white p-6 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <span className="inline-flex rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#155ca5]">
-                        {copy("Question", "Cau")} {currentIndex + 1} / {questions.length}
+                        {copy("Question", "Câu")} {currentIndex + 1} / {questions.length}
                       </span>
                       <span className="text-xs font-bold text-gray-500">{question.questionType}</span>
                     </div>
 
                     <h3 className="question-text-unified text-[#1e2e51]">
-                      {question.content || copy("(No question text provided)", "(Chua co noi dung cau hoi)")}
+                      {getDisplayQuestionContent(question) || copy("(No question text provided)", "(Chưa có nội dung câu hỏi)")}
                     </h3>
 
                     {question.options?.length > 0 && (
@@ -640,7 +649,7 @@ export function PersonalizedQuestions() {
                           <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-green-800">
                             <div className="flex items-center gap-2 font-bold">
                               <CheckCircle2 className="h-4 w-4" />
-                              {copy("Correct", "Dung")}
+                              {copy("Correct", "Đúng")}
                             </div>
                           </div>
                         ) : (
@@ -650,7 +659,7 @@ export function PersonalizedQuestions() {
                               {copy("Incorrect", "Sai")}
                             </div>
                             <div className="mt-2 text-sm">
-                              {copy("Correct answer:", "Dap an dung:")} {formatCorrectAnswer(question)}
+                              {copy("Correct answer:", "Đáp án đúng:")} {formatCorrectAnswer(question)}
                             </div>
                           </div>
                         )}
@@ -661,13 +670,13 @@ export function PersonalizedQuestions() {
 
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} disabled={currentIndex === 0} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">{copy("Previous", "Cau truoc")}</button>
-                        <button type="button" onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))} disabled={currentIndex >= questions.length - 1} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">{copy("Next", "Cau sau")}</button>
+                        <button type="button" onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))} disabled={currentIndex === 0} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">{copy("Previous", "Câu trước")}</button>
+                        <button type="button" onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))} disabled={currentIndex >= questions.length - 1} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">{copy("Next", "Câu sau")}</button>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => { const nextAnswers = { ...answers }; delete nextAnswers[question.id]; setAnswers(nextAnswers); }} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">{copy("Clear Answer", "Xoa cau tra loi")}</button>
-                        <button type="button" onClick={() => setFlashcardMode(false)} className="rounded-2xl bg-[#155ca5] px-4 py-2 text-sm font-bold text-white hover:bg-[#0f4c88]">{copy("Finish & List", "Xong va xem danh sach")}</button>
+                        <button type="button" onClick={() => { const nextAnswers = { ...answers }; delete nextAnswers[question.id]; setAnswers(nextAnswers); }} className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">{copy("Clear Answer", "Xóa câu trả lời")}</button>
+                        <button type="button" onClick={() => setFlashcardMode(false)} className="rounded-2xl bg-[#155ca5] px-4 py-2 text-sm font-bold text-white hover:bg-[#0f4c88]">{copy("Finish & List", "Xong và xem danh sách")}</button>
                       </div>
                     </div>
                   </article>
@@ -678,13 +687,13 @@ export function PersonalizedQuestions() {
                 <article key={question.id} className="space-y-4 rounded-3xl bg-white p-6 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="inline-flex rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#155ca5]">
-                      {copy("Question", "Cau")} {index + 1}
+                      {copy("Question", "Câu")} {index + 1}
                     </span>
                     <span className="text-xs font-bold text-gray-500">{question.questionType}</span>
                   </div>
 
                   <h3 className="question-text-unified text-[#1e2e51]">
-                    {question.content || copy("(No question text provided)", "(Chua co noi dung cau hoi)")}
+                    {getDisplayQuestionContent(question) || copy("(No question text provided)", "(Chưa có nội dung câu hỏi)")}
                   </h3>
 
                   {question.options?.length > 0 && (
@@ -726,7 +735,7 @@ export function PersonalizedQuestions() {
                         <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-green-800">
                           <div className="flex items-center gap-2 font-bold">
                             <CheckCircle2 className="h-4 w-4" />
-                            {copy("Correct", "Dung")}
+                            {copy("Correct", "Đúng")}
                           </div>
                         </div>
                       ) : (
@@ -736,7 +745,7 @@ export function PersonalizedQuestions() {
                             {copy("Incorrect", "Sai")}
                           </div>
                           <div className="mt-2 text-sm">
-                            {copy("Correct answer:", "Dap an dung:")} {formatCorrectAnswer(question)}
+                            {copy("Correct answer:", "Đáp án đúng:")} {formatCorrectAnswer(question)}
                           </div>
                         </div>
                       )}
@@ -750,13 +759,15 @@ export function PersonalizedQuestions() {
 
             <div className="flex items-center justify-end gap-3">
               {submitted ? (
-                <button type="button" onClick={() => { setAnswers({}); setSubmitted(false); }} className="rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 hover:bg-gray-50">{copy("Retry Mini Test", "Lam lai mini test")}</button>
+                <button type="button" onClick={() => { setAnswers({}); setSubmitted(false); }} className="rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 hover:bg-gray-50">{copy("Retry Mini Test", "Làm lại mini test")}</button>
               ) : (
-                <button type="button" onClick={() => void handleSubmitTest()} disabled={submitting} className="rounded-2xl bg-[#155ca5] px-5 py-3 font-bold text-white hover:bg-[#0f4c88] disabled:opacity-60">{submitting ? copy("Submitting...", "Dang nop...") : copy("Submit Mini Test", "Nop mini test")}</button>
+                <button type="button" onClick={() => void handleSubmitTest()} disabled={submitting} className="rounded-2xl bg-[#155ca5] px-5 py-3 font-bold text-white hover:bg-[#0f4c88] disabled:opacity-60">{submitting ? copy("Submitting...", "Đang nộp...") : copy("Submit Mini Test", "Nộp mini test")}</button>
               )}
             </div>
           </div>
         )}
+        </div>
+        </div>
       </section>
 
       <NotificationPopup {...popup.notification} onClose={popup.close} />

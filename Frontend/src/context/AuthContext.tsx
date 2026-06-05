@@ -44,7 +44,7 @@ type AuthContextValue = {
   error: string | null;
   isAuthenticated: boolean;
   refreshCurrentUser: (showError?: boolean) => Promise<boolean>;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<AuthUser | null>;
   register: (
     username: string,
     email: string,
@@ -152,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initialStoredUser] = useState<AuthUser | null>(() => readStoredUser());
   const [user, setUser] = useState<AuthUser | null>(() => initialStoredUser);
   const [loading, setLoading] = useState<boolean>(() => !initialStoredUser);
-  const [isReady, setIsReady] = useState<boolean>(Boolean(initialStoredUser));
+  const [isReady, setIsReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const isAuthenticated = Boolean(user);
@@ -224,8 +224,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [initialStoredUser, loadCurrentUser]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleAuthExpired = () => {
+      setUser(null);
+      storeUser(null);
+      clearCache();
+      setError(null);
+      setLoading(false);
+      setIsReady(true);
+    };
+
+    window.addEventListener("uifive:auth-expired", handleAuthExpired);
+
+    return () => {
+      window.removeEventListener("uifive:auth-expired", handleAuthExpired);
+    };
+  }, []);
+
   const login = useCallback(
-    async (username: string, password: string): Promise<boolean> => {
+    async (username: string, password: string): Promise<AuthUser | null> => {
       setLoading(true);
       setError(null);
 
@@ -234,19 +255,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!response.success) {
           setError(response.error?.message ?? "Login failed.");
-          return false;
+          return null;
         }
 
         clearCache();
-        const success = await loadCurrentUser(true);
-        if (success) {
-          return true;
+        const currentUserResponse = await getCurrentUser();
+
+        if (currentUserResponse.success && currentUserResponse.data) {
+          const resolvedUser = extractUser(currentUserResponse.data);
+
+          if (resolvedUser) {
+            setUser(resolvedUser);
+            storeUser(resolvedUser);
+            return resolvedUser;
+          }
         }
 
-        return false;
+        await loadCurrentUser(true);
+        return null;
       } catch (unknownError: unknown) {
         setError(getErrorMessage(unknownError));
-        return false;
+        return null;
       } finally {
         setLoading(false);
       }

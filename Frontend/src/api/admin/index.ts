@@ -30,6 +30,9 @@ export * as adminSettingsApi from "./settings";
 // Shop Item Management API
 export * as adminShopApi from "./shop";
 
+// Quest Template Management API
+export * as adminQuestApi from "./quests";
+
 // Activity Logs API
 export * as adminActivityApi from "./activityLogs";
 
@@ -174,6 +177,15 @@ export {
   getShopItemByIdAdmin,
   getAllShopItemsAdmin,
 } from "./shop";
+
+export {
+  // Quest templates
+  getQuestTemplates,
+  getQuestTemplateById,
+  createQuestTemplate,
+  updateQuestTemplate,
+  deactivateQuestTemplate,
+} from "./quests";
 
 export {
   // Activity Logs

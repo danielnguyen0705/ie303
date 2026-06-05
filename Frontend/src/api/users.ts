@@ -82,9 +82,6 @@ function buildDefaultAvatar(seed: string): string {
 export async function getCurrentUser(): Promise<ApiResponse<any>> {
   return request<any>("/users/me", {
     method: "GET",
-  }, {
-    key: "users:current-user",
-    ttlMs: 60 * 1000,
   });
 }
 

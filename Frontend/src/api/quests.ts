@@ -1,23 +1,58 @@
-// Quests & Achievements API
-//
-// This module is intentionally minimal for now.
-// The backend does not expose a quest/achievement API yet, so we keep the
-// frontend contract stable while returning empty data with a development note.
+import { request } from "./utils/http";
+import { createError } from "./utils/http";
+import { clearCachePrefix } from "./utils/cache";
+import type {
+  ApiResponse,
+  ClaimQuestRequest,
+  QuestFilter,
+  ShopItemType,
+} from "./types";
 
-import { createSuccessResponse } from "./client";
-import type { ApiResponse, ClaimQuestRequest, QuestFilter } from "./types";
+export interface QuestRewardItem {
+  shopItemId: number;
+  name: string;
+  imageUrl: string;
+  type: ShopItemType;
+  quantity: number;
+}
 
 export interface Quest {
   id: string;
   title: string;
   description: string;
   type: "daily" | "weekly" | "special";
+  questType?:
+    | "LESSON_COMPLETION"
+    | "QUESTION_ANSWERING"
+    | "SKIP_USAGE"
+    | "LESSON_COMPLETION_WEEKLY"
+    | "QUESTION_ANSWERING_WEEKLY"
+    | "SKIP_USAGE_WEEKLY";
   progress: number;
   target: number;
   xpReward: number;
   coinsReward: number;
   expiresAt: string;
   status: "active" | "completed" | "claimed";
+  rewardItems?: QuestRewardItem[];
+}
+
+export interface QuestStats {
+  totalCompleted: number;
+  totalActive: number;
+  totalXPEarned: number;
+  totalCoinsEarned: number;
+  streakDays: number;
+  completionRate: number;
+}
+
+export interface QuestClaimResponse {
+  quest: Quest;
+  rewards: {
+    xp: number;
+    coins: number;
+    items?: QuestRewardItem[];
+  };
 }
 
 export interface Achievement {
@@ -32,105 +67,147 @@ export interface Achievement {
   unlockedAt?: string;
 }
 
-const DEVELOPMENT_NOTE = "Quests are currently under development.";
-
-function emptyQuests(): Quest[] {
-  return [];
-}
-
-function emptyAchievements(): Achievement[] {
-  return [];
-}
+const DEVELOPMENT_NOTE = "Achievements are currently under development.";
 
 export async function getAllQuests(
   _filter?: QuestFilter,
 ): Promise<ApiResponse<Quest[]>> {
-  return createSuccessResponse(emptyQuests(), DEVELOPMENT_NOTE);
+  const response = await request<Quest[]>("/quests", { method: "GET" });
+
+  if (!response.success) {
+    return response;
+  }
+
+  let quests = response.data ?? [];
+
+  if (_filter?.type) {
+    quests = quests.filter((quest) => quest.type === _filter.type);
+  }
+
+  if (_filter?.status) {
+    quests = quests.filter((quest) => quest.status === _filter.status);
+  }
+
+  return {
+    success: true,
+    data: quests,
+  };
 }
 
 export async function getActiveQuestsApi(): Promise<ApiResponse<Quest[]>> {
-  return createSuccessResponse(emptyQuests(), DEVELOPMENT_NOTE);
+  return getAllQuests();
 }
 
 export async function getDailyQuests(): Promise<ApiResponse<Quest[]>> {
-  return createSuccessResponse(emptyQuests(), DEVELOPMENT_NOTE);
+  return getAllQuests({ type: "daily" });
 }
 
 export async function getWeeklyQuests(): Promise<ApiResponse<Quest[]>> {
-  return createSuccessResponse(emptyQuests(), DEVELOPMENT_NOTE);
+  return getAllQuests({ type: "weekly" });
 }
 
 export async function getQuest(
-  _questId: string,
+  questId: string,
 ): Promise<ApiResponse<Quest>> {
-  return createSuccessResponse(null as never, DEVELOPMENT_NOTE);
+  const response = await request<Quest>(`/quests/${questId}`, { method: "GET" });
+
+  if (!response.success || !response.data) {
+    return createError(
+      response.error?.message || "Quest not found",
+      response.error?.code || "NOT_FOUND",
+    );
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
 }
 
 export async function updateQuestProgress(
-  _questId: string,
+  questId: string,
   _progress: number,
 ): Promise<ApiResponse<Quest>> {
-  return createSuccessResponse(null as never, DEVELOPMENT_NOTE);
+  return getQuest(questId);
 }
 
 export async function claimQuestReward(
-  _data: ClaimQuestRequest,
-): Promise<
-  ApiResponse<{
-    quest: Quest;
-    rewards: {
-      xp: number;
-      coins: number;
-      items?: string[];
-    };
-  }>
-> {
-  return createSuccessResponse(null as never, DEVELOPMENT_NOTE);
+  data: ClaimQuestRequest,
+): Promise<ApiResponse<QuestClaimResponse>> {
+  const response = await request<QuestClaimResponse>(
+    `/quests/${data.questId}/claim`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!response.success || !response.data) {
+    return createError(
+      response.error?.message || "Failed to claim quest reward",
+      response.error?.code || "API_ERROR",
+    );
+  }
+
+  const claimedQuest = response.data;
+
+  clearCachePrefix("leaderboard:");
+  clearCachePrefix("users:");
+
+  return {
+    success: true,
+    data: claimedQuest,
+  };
 }
 
-export async function getQuestStats(): Promise<
-  ApiResponse<{
-    totalCompleted: number;
-    totalActive: number;
-    totalXPEarned: number;
-    totalCoinsEarned: number;
-    streakDays: number;
-    completionRate: number;
-  }>
-> {
-  return createSuccessResponse(
-    {
-      totalCompleted: 0,
-      totalActive: 0,
-      totalXPEarned: 0,
-      totalCoinsEarned: 0,
-      streakDays: 0,
-      completionRate: 0,
-    },
-    DEVELOPMENT_NOTE,
-  );
+export async function getQuestStats(): Promise<ApiResponse<QuestStats>> {
+  const response = await request<QuestStats>("/quests/stats", {
+    method: "GET",
+  });
+
+  if (!response.success || !response.data) {
+    return createError(
+      response.error?.message || "Failed to fetch quest stats",
+      response.error?.code || "API_ERROR",
+    );
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
 }
 
 export async function getAllAchievements(): Promise<ApiResponse<Achievement[]>> {
-  return createSuccessResponse(emptyAchievements(), DEVELOPMENT_NOTE);
+  const response = await request<Achievement[]>("/quests/badges", {
+    method: "GET",
+  });
+
+  if (!response.success) {
+    return response;
+  }
+
+  return {
+    success: true,
+    data: response.data ?? [],
+  };
 }
 
 export async function getUnlockedAchievementsApi(): Promise<
   ApiResponse<Achievement[]>
 > {
-  return createSuccessResponse(emptyAchievements(), DEVELOPMENT_NOTE);
+  return getAllAchievements();
 }
 
 export async function getAchievementsByCategory(
   _category: "learning" | "social" | "streak" | "mastery" | "special",
 ): Promise<ApiResponse<Achievement[]>> {
-  return createSuccessResponse(emptyAchievements(), DEVELOPMENT_NOTE);
+  return getAllAchievements();
 }
 
 export async function getAchievement(
   _achievementId: string,
 ): Promise<ApiResponse<Achievement>> {
-  return createSuccessResponse(null as never, DEVELOPMENT_NOTE);
+  return createError("Achievements are currently under development.", "NOT_SUPPORTED");
 }
 
 export async function unlockAchievement(
@@ -145,7 +222,7 @@ export async function unlockAchievement(
     };
   }>
 > {
-  return createSuccessResponse(null as never, DEVELOPMENT_NOTE);
+  return createError("Achievements are currently under development.", "NOT_SUPPORTED");
 }
 
 export async function getAchievementProgress(
@@ -159,16 +236,7 @@ export async function getAchievementProgress(
     isUnlocked: boolean;
   }>
 > {
-  return createSuccessResponse(
-    {
-      achievementId: "",
-      progress: 0,
-      requirement: 0,
-      percentage: 0,
-      isUnlocked: false,
-    },
-    DEVELOPMENT_NOTE,
-  );
+  return createError("Achievements are currently under development.", "NOT_SUPPORTED");
 }
 
 export async function getAchievementStats(): Promise<
@@ -181,15 +249,5 @@ export async function getAchievementStats(): Promise<
     nextToUnlock: Achievement[];
   }>
 > {
-  return createSuccessResponse(
-    {
-      totalAchievements: 0,
-      unlockedCount: 0,
-      lockedCount: 0,
-      completionRate: 0,
-      recentUnlocks: [],
-      nextToUnlock: [],
-    },
-    DEVELOPMENT_NOTE,
-  );
+  return createError("Achievements are currently under development.", "NOT_SUPPORTED");
 }

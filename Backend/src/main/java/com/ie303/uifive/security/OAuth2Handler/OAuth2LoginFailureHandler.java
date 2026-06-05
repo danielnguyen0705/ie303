@@ -26,7 +26,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
         response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie("", 0, request));
 
-        String redirectUrl = frontendBaseUrl + "/?oauth_error="
+        String redirectUrl = frontendBaseUrl + "/oauth2/callback?status=error&error="
                 + URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8);
 
         response.sendRedirect(redirectUrl);

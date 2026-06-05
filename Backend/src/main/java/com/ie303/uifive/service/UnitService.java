@@ -68,6 +68,17 @@ public class UnitService {
         return responses;
     }
 
+    @Cacheable(cacheNames = "units", key = "'grade:' + #gradeId")
+    public List<UnitResponse> getByGradeId(Long gradeId) {
+        if (!gradeRepo.existsById(gradeId)) {
+            throw new AppException(ErrorCode.GRADE_NOT_FOUND);
+        }
+
+        return unitRepo.findByGradeIdOrderByUnitNumberAsc(gradeId).stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
+
     @CacheEvict(cacheNames = {
             "units",
             "sections",

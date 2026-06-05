@@ -15,6 +15,8 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 @Component
 @RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
@@ -43,6 +45,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         response.addHeader("Set-Cookie", AuthCookieUtil.buildAuthCookie(token, 86400, request));
 
-        response.sendRedirect(frontendBaseUrl + "/");
+        String redirectUrl = frontendBaseUrl + "/oauth2/callback?status=success&returnTo="
+                + URLEncoder.encode("/", StandardCharsets.UTF_8);
+
+        response.sendRedirect(redirectUrl);
     }
 }

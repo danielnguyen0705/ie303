@@ -44,6 +44,14 @@ public class UnitController {
                 .build();
     }
 
+    @GetMapping("/grade/{gradeId}")
+    public ApiResponse<List<UnitResponse>> getByGradeId(@PathVariable Long gradeId) {
+        return ApiResponse.<List<UnitResponse>>builder()
+                .code(1000)
+                .result(service.getByGradeId(gradeId))
+                .build();
+    }
+
     @PutMapping("/{id}")
     @RolesAllowed("ADMIN")
     public ApiResponse<UnitResponse> update(@PathVariable Long id,

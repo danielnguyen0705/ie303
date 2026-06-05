@@ -61,39 +61,65 @@ export function UserSemesterTests() {
       }
 
       setGradeTitles(
-        Object.fromEntries(response.data.map((grade) => [grade.id, grade.title])),
+        Object.fromEntries(
+          response.data.map((grade) => [
+            grade.id,
+            grade.description ?? grade.name ?? grade.title ?? `Grade ${grade.id}`,
+          ]),
+        ),
       );
     };
 
     void loadGradeTitles();
   }, []);
 
+  if (!includeVipLessons) {
+    return (
+      <main className="mx-auto max-w-4xl px-4 py-10">
+        <section className="rounded-[1.75rem] border border-[#f5d39b] bg-[#fff8eb] p-6 md:p-8">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#d29b2a]">
+            {copy("VIP only", "Chỉ dành cho VIP")}
+          </p>
+          <h1 className="mt-2 text-3xl font-black text-[#8d5c06]">
+            {copy("Semester tests are locked", "Bài kiểm tra học kỳ đang bị khóa")}
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#8d5c06]">
+            {copy(
+              "Upgrade to VIP to open semester test packages and the questions inside them.",
+              "Nâng cấp VIP để mở các gói kiểm tra học kỳ và làm các câu hỏi bên trong.",
+            )}
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <PracticePackageRunner<SemesterTestResponse>
-      badgeLabel={copy("VIP Semester Test", "Bai kiem tra hoc ky VIP")}
+      badgeLabel={copy("VIP Semester Test", "Bài kiểm tra học kỳ VIP")}
       pageTitle={copy("Semester Test Packages", "Goi kiem tra hoc ky")}
       pageDescription={copy(
         "Semester tests are larger mixed packages created by admin from question groups, standalone questions, and optional AI items.",
-        "Bai kiem tra hoc ky la goi lon hon do admin tao tu nhom cau hoi, cau hoi le va cau hoi AI neu co.",
+        "Bài kiểm tra học kỳ là gói lớn hơn do admin tạo từ nhóm câu hỏi, câu hỏi lẻ và câu hỏi AI nếu có.",
       )}
       packageKindLabel={copy("Semester Test", "Kiem tra hoc ky")}
       introText={copy(
         "Start a semester test package to work through the selected questions in one continuous runner. Review feedback will appear after you submit.",
-        "Bat dau goi kiem tra hoc ky de lam cac cau hoi da chon trong mot runner lien tuc. Nhan xet se hien sau khi ban nop bai.",
+        "Bắt đầu gói kiểm tra học kỳ để làm các câu hỏi đã chọn trong một runner liên tục. Nhận xét sẽ hiện sau khi bạn nộp bài.",
       )}
-      emptyListText={copy("No semester tests available yet.", "Chua co bai kiem tra hoc ky nao.")}
+      emptyListText={copy("No semester tests available yet.", "Chưa có bài kiểm tra học kỳ nào.")}
       emptyQuestionsText={copy(
         "This semester test package has no questions yet.",
-        "Goi kiem tra hoc ky nay chua co cau hoi.",
+        "Gói kiểm tra học kỳ này chưa có câu hỏi.",
       )}
       startButtonLabel={copy("Start Semester Test", "Bat dau kiem tra hoc ky")}
       loadItems={loadSemesterTestItems}
       loadPackage={(item) => loadSemesterTestPackage(item, includeVipLessons)}
       getItemMeta={(item) =>
-        `${gradeTitles[item.gradeId] ?? `${copy("Grade", "Lop")} ${item.gradeId}`} - ${copy("Units", "Unit")} ${item.startUnit} ${copy("to", "den")} ${item.endUnit} - ${item.timeLimit} ${copy("min", "phut")}`
+        `${gradeTitles[item.gradeId] ?? `${copy("Grade", "Lớp")} ${item.gradeId}`} - ${copy("Units", "Unit")} ${item.startUnit} ${copy("to", "đến")} ${item.endUnit} - ${item.timeLimit} ${copy("min", "phút")}`
       }
       getResultMeta={(item) =>
-        `${copy("Question groups:", "Nhom cau hoi:")} ${item.questionGroupIds.length} - ${copy("Single questions:", "Cau hoi le:")} ${item.questionIds.length}`
+        `${copy("Question groups:", "Nhóm câu hỏi:")} ${item.questionGroupIds.length} - ${copy("Single questions:", "Câu hỏi lẻ:")} ${item.questionIds.length}`
       }
       preferredItemId={Number.isFinite(preferredItemId) && preferredItemId > 0 ? preferredItemId : null}
     />
