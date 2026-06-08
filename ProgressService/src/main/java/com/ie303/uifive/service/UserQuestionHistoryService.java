@@ -122,6 +122,15 @@ public class UserQuestionHistoryService {
         return repo.findByUserId(userId).stream().map(this::toResponse).toList();
     }
 
+    public List<UserQuestionHistoryResponse> getByUsername(String username) {
+        User user = userRepo.findByUsername(username);
+        if (user == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return getByUserId(user.getId());
+    }
+
     public void delete(Long id) {
         if (!repo.existsById(id)) {
             throw new AppException(ErrorCode.QUESTION_NOT_FOUND);

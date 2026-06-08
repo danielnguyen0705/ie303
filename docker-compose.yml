@@ -292,6 +292,8 @@ services:
       DB_USERNAME: "postgres"
       DB_PASSWORD: "postgres"
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://eureka-service:8761/eureka/"
+      CONTENT_SERVICE_BASE_URL: "http://content-service:8086"
+      PROGRESS_SERVICE_BASE_URL: "http://progress-service:8087"
       JWT_SECRET: "local-dev-jwt-secret-change-me-1234567890"
       JWT_EXPIRATION: "86400000"
       REDIS_URL: "redis://redis:6379"
