@@ -1,13 +1,11 @@
 package com.ie303.uifive.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -70,10 +68,6 @@ public class User {
 
     @Column(name = "trend_label")
     private String trendLabel;
-
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<UserLessonProgress> lessonProgresses;
 
     @PostLoad
     @PrePersist

@@ -6,6 +6,7 @@ import com.ie303.uifive.dto.res.UserQuestionHistoryResponse;
 import com.ie303.uifive.service.UserQuestionHistoryService;
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -55,6 +56,14 @@ public class UserQuestionHistoryController {
         return ApiResponse.<List<UserQuestionHistoryResponse>>builder()
                 .code(1000)
                 .result(service.getByUserId(userId))
+                .build();
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<List<UserQuestionHistoryResponse>> getMyQuestionHistories(Authentication authentication) {
+        return ApiResponse.<List<UserQuestionHistoryResponse>>builder()
+                .code(1000)
+                .result(service.getByUsername(authentication.getName()))
                 .build();
     }
 

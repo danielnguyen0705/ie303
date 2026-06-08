@@ -31,9 +31,9 @@ public class AISpeakingEvaluation {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private User user;
+    @Column(name = "user_id")
+    private Long userId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Question question;
+    @Column(name = "question_id")
+    private Long questionId;
 }

@@ -161,6 +161,8 @@ services:
       PORT: "8088"
       REDIS_URL: ${REDIS_URL}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-service:8761/eureka/
+      CONTENT_SERVICE_BASE_URL: http://content-service:8086
+      PROGRESS_SERVICE_BASE_URL: http://progress-service:8087
     ports:
       - "8088:8088"
     depends_on:
