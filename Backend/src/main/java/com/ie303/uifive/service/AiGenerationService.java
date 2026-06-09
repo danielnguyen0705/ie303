@@ -39,6 +39,15 @@ public class AiGenerationService {
     @Value("${nvidia.vision-model:meta/llama-3.2-11b-vision-instruct}")
     private String nvidiaVisionModel;
 
+    @Value("${huggingface.api-key:}")
+    private String huggingFaceApiKey;
+
+    @Value("${huggingface.base-url:https://router.huggingface.co/v1}")
+    private String huggingFaceBaseUrl;
+
+    @Value("${huggingface.vision-model:meta-llama/Llama-3.2-11B-Vision-Instruct}")
+    private String huggingFaceVisionModel;
+
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -68,7 +77,7 @@ public class AiGenerationService {
     }
 
     public WritingEvaluationResponse evaluateEssay(String topic, String explanation, String answerText) {
-        validateConfiguration();
+        validateNvidiaConfiguration();
         validateEssayAnswer(answerText);
 
         String normalizedExplanation = (explanation == null || explanation.isBlank())
@@ -81,18 +90,23 @@ public class AiGenerationService {
     }
 
     public WritingEvaluationResponse evaluateEssay(String topic, String explanation, String answerText, String imageUrl) {
-        validateConfiguration();
-        validateEssayAnswer(answerText);
-
         String normalizedExplanation = (explanation == null || explanation.isBlank())
                 ? "Không có giải thích tham chiếu."
                 : explanation.trim();
 
-        if (imageUrl == null || imageUrl.isBlank()) {
-            return evaluateEssay(topic, explanation, answerText);
+        String normalizedAnswer = answerText == null ? "" : answerText.trim();
+        boolean hasImage = imageUrl != null && !imageUrl.isBlank();
+
+        if (!hasImage) {
+            validateEssayAnswer(normalizedAnswer);
+            return evaluateEssay(topic, explanation, normalizedAnswer);
         }
 
-        String prompt = buildEssayEvaluationPrompt(topic, normalizedExplanation, answerText)
+        if (normalizedAnswer.isBlank()) {
+            normalizedAnswer = "[Không có phần answerText từ người dùng. Hãy đọc nội dung bài viết trực tiếp từ ảnh đính kèm.]";
+        }
+
+        String prompt = buildImageEssayEvaluationPrompt(topic, normalizedExplanation, normalizedAnswer)
                 + """
 
                 Hình ảnh bài làm của học sinh đã được đính kèm trong request.
@@ -105,7 +119,7 @@ public class AiGenerationService {
     }
 
     public SpeakingEvaluationResponse evaluateSpeaking(String topic, String explanation, String transcriptText) {
-        validateConfiguration();
+        validateNvidiaConfiguration();
         if (transcriptText == null || transcriptText.isBlank()) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Transcript text is required");
         }
@@ -121,7 +135,7 @@ public class AiGenerationService {
     }
 
     public List<GeneratedQuestionDraft> generateEssayQuestions(String context, int count, String topicHint) {
-        validateConfiguration();
+        validateNvidiaConfiguration();
         int safeCount = normalizeCount(count);
         String prompt = buildEssayQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
         return normalizeQuestionDrafts(readJsonArray(callChatModel(nvidiaTextModel, prompt, 1024),
@@ -130,7 +144,7 @@ public class AiGenerationService {
     }
 
     public List<GeneratedMcqDraft> generateMcqQuestions(String context, int count, String topicHint) {
-        validateConfiguration();
+        validateNvidiaConfiguration();
         int safeCount = normalizeCount(count);
         String prompt = buildMcqQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
         return normalizeMcqDrafts(readJsonArray(callChatModel(nvidiaTextModel, prompt, 1024),
@@ -139,7 +153,7 @@ public class AiGenerationService {
     }
 
     public List<GeneratedMcqDraft> generatePersonalizedMcqQuestions(String context, int count, String topicHint) {
-        validateConfiguration();
+        validateNvidiaConfiguration();
         int safeCount = normalizeCount(count);
         String prompt = buildPersonalizedMcqQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
         return normalizeMcqDrafts(readJsonArray(callChatModel(nvidiaTextModel, prompt, 1024),
@@ -148,7 +162,7 @@ public class AiGenerationService {
     }
 
     public List<GeneratedPersonalizedQuestionDraft> generatePersonalizedQuestions(String context, int count, String topicHint) {
-        validateConfiguration();
+        validateNvidiaConfiguration();
         int safeCount = normalizeCount(count);
         String prompt = buildPersonalizedMixedQuestionsPrompt(normalizeContext(context), safeCount, normalizeTopic(topicHint));
         
@@ -180,16 +194,14 @@ public class AiGenerationService {
         message.put("role", "user");
         message.put("content", prompt);
 
-        return sendChatRequest(body);
+        return sendChatRequest(body, nvidiaBaseUrl, nvidiaApiKey, "NVIDIA");
     }
 
     private String callVisionModel(String prompt, String imageUrl, int maxTokens) {
-        if (nvidiaApiKey == null || nvidiaApiKey.isBlank()) {
-            throw new AppException(ErrorCode.AI_NOT_CONFIGURED);
-        }
+        validateHuggingFaceConfiguration();
 
         ObjectNode body = objectMapper.createObjectNode();
-        body.put("model", nvidiaVisionModel);
+        body.put("model", huggingFaceVisionModel);
         body.put("temperature", 0.2);
         body.put("max_tokens", maxTokens);
 
@@ -207,15 +219,15 @@ public class AiGenerationService {
         ObjectNode imageObject = imagePart.putObject("image_url");
         imageObject.put("url", imageUrl);
 
-        return sendChatRequest(body);
+        return sendChatRequest(body, huggingFaceBaseUrl, huggingFaceApiKey, "Hugging Face");
     }
 
-    private String sendChatRequest(ObjectNode body) {
+    private String sendChatRequest(ObjectNode body, String baseUrl, String apiKey, String providerName) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(trimTrailingSlash(nvidiaBaseUrl) + "/chat/completions"))
+                    .uri(URI.create(trimTrailingSlash(baseUrl) + "/chat/completions"))
                     .timeout(Duration.ofSeconds(120))  // Increased from 90 to 120 seconds
-                    .header("Authorization", "Bearer " + nvidiaApiKey)
+                    .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
@@ -223,7 +235,7 @@ public class AiGenerationService {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new AppException(ErrorCode.AI_NOT_RESPONSE, "NVIDIA HTTP " + response.statusCode() + ": " + truncate(response.body()));
+                throw new AppException(ErrorCode.AI_NOT_RESPONSE, providerName + " HTTP " + response.statusCode() + ": " + truncate(response.body()));
             }
 
             JsonNode root = objectMapper.readTree(response.body());
@@ -355,6 +367,44 @@ public class AiGenerationService {
                 || normalized.contains("gợi ý cải thiện...");
     }
 
+    private String buildImageEssayEvaluationPrompt(String topic, String explanation, String answerText) {
+        String normalizedTopic = normalizeTopic(topic);
+        return """
+                You are a strict but fair English Writing examiner.
+
+                Evaluate the student's essay from the attached image. Use the typed answer below only as supporting text if it is present.
+                If the image is blurry, cropped, or handwriting is hard to read, mention that in feedback and grade only the readable content.
+
+                Scoring rules:
+                - Grade on a 0 to 10 scale.
+                - The score must end in .0 or .5.
+                - Round to the nearest 0.5.
+                - Evaluate these criteria: task response, coherence and cohesion, lexical resource, grammatical range and accuracy.
+                - Do not invent content that is not visible in the image.
+
+                Output rules:
+                - Return exactly one valid JSON object.
+                - Do not use markdown.
+                - Do not wrap the response in code fences.
+                - Do not include any text outside the JSON object.
+
+                Topic:
+                %s
+
+                Reference explanation:
+                %s
+
+                Typed answer, if any:
+                %s
+
+                Required JSON format:
+                {
+                  "score": 0.0,
+                  "feedback": "Overview: ...\\nTask response: ...\\nCoherence and cohesion: ...\\nLexical resource: ...\\nGrammatical range and accuracy: ...\\nSuggestions: ..."
+                }
+                """.formatted(normalizedTopic, explanation, answerText);
+    }
+
     private String buildEssayEvaluationPrompt(String topic, String explanation, String answerText) {
         String normalizedTopic = normalizeTopic(topic);
         return """
@@ -393,7 +443,7 @@ public class AiGenerationService {
                 Trả về đúng JSON theo format:
                 {
                   "score": 0.0,
-                  "feedback": "Tổng quan...\\nTask response...\\nCoherence and cohesion...\\nLexical resource...\\nGrammatical range and accuracy...\\nGợi ý cải thiện..."
+                                    "feedback": "Tổng quan: ...\\nTask response: ...\\nCoherence and cohesion: ...\\nLexical resource: ...\\nGrammatical range and accuracy: ...\\nGợi ý cải thiện: ..."
                 }
                 """.formatted(normalizedTopic, explanation, answerText);
     }
@@ -436,7 +486,7 @@ public class AiGenerationService {
                 Trả về đúng JSON theo format:
                 {
                   "score": 0.0,
-                  "feedback": "Tổng quan...\\nFluency and coherence...\\nLexical resources...\\nGrammatical range and accuracy...\\nPronunciation...\\nGợi ý cải thiện..."
+                                    "feedback": "Tổng quan: ...\\nFluency and coherence: ...\\nLexical resources: ...\\nGrammatical range and accuracy: ...\\nPronunciation: ...\\nGợi ý cải thiện: ..."
                 }
                 """.formatted(normalizedTopic, explanation, transcriptText);
     }
@@ -660,9 +710,15 @@ public class AiGenerationService {
         return (topicHint == null || topicHint.isBlank()) ? "General" : topicHint.trim();
     }
 
-    private void validateConfiguration() {
+    private void validateNvidiaConfiguration() {
         if (nvidiaApiKey == null || nvidiaApiKey.isBlank()) {
             throw new AppException(ErrorCode.AI_NOT_CONFIGURED, "NVIDIA API key is not configured");
+        }
+    }
+
+    private void validateHuggingFaceConfiguration() {
+        if (huggingFaceApiKey == null || huggingFaceApiKey.isBlank()) {
+            throw new AppException(ErrorCode.AI_NOT_CONFIGURED, "Hugging Face API key is not configured");
         }
     }
 

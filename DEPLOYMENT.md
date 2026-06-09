@@ -54,6 +54,9 @@ Kết nối thư mục `Backend/` với Render:
   - `CORS_ALLOWED_ORIGINS=https://uifive.io.vn`
   - `BACKEND_PUBLIC_BASE_URL=<your-render-backend-url>`
   - `ML_API_URL=<your-render-ml-service-url>/predict`
+  - `HUGGINGFACE_API_KEY=<your-hugging-face-token>`
+  - `HUGGINGFACE_BASE_URL=https://router.huggingface.co/v1`
+  - `HUGGINGFACE_VISION_MODEL=CohereLabs/command-a-vision-07-2025:cohere`
 
 ---
 

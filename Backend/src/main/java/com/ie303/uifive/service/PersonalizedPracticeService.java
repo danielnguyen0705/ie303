@@ -106,6 +106,11 @@ public class PersonalizedPracticeService {
 
             log.warn("Falling back to retry-set personalized questions: {}", exception.getMessage());
             return generateFallbackRetrySet(supportedWrongQuestions, count);
+        } catch (Exception exception) {
+            // AI providers occasionally return malformed payloads that may trigger non-AppException errors
+            // during parsing/filtering. In that case, keep the user flow alive with retry-set fallback.
+            log.warn("Unexpected error while generating personalized questions, using fallback set", exception);
+            return generateFallbackRetrySet(supportedWrongQuestions, count);
         }
 
         List<Question> generatedQuestions = validDrafts.stream()
