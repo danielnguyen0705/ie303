@@ -1,7 +1,6 @@
 package com.ie303.uifive.security;
 
-import com.ie303.uifive.service.JwtService;
-import com.ie303.uifive.service.UserService;
+import com.ie303.uifive.repo.RevokedTokenRepo;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -9,21 +8,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-@Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
-    private final UserService userService;
+    private final RevokedTokenRepo revokedTokenRepo;
 
     @Value("${app.cookie-secure:false}")
     private boolean cookieSecure;
@@ -52,7 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if ((token == null || token.isBlank()) && request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
-                if ("token".equals(cookie.getName())) {
+                if (AuthCookieUtil.ACCESS_COOKIE_NAME.equals(cookie.getName())) {
                     token = cookie.getValue();
                     break;
                 }
@@ -64,36 +57,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        try {
-            String username = jwtService.extractUsername(token);
-
-            if (username != null) {
-                UserDetails userDetails = userService.loadUserByUsername(username);
-
-                if (jwtService.isTokenValid(token, userDetails.getUsername())) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
-
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
-            }
-        } catch (Exception e) {
+        if (revokedTokenRepo.existsByToken(token)) {
             SecurityContextHolder.clearContext();
-            response.setHeader("Set-Cookie", "token=" + cookieAttributes(0));
+            response.setHeader("Set-Cookie",
+                    AuthCookieUtil.buildAuthCookie("", 0, request, cookieSecure, cookieSameSite));
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private String cookieAttributes(int maxAge) {
-        return "; HttpOnly"
-                + (cookieSecure ? "; Secure" : "")
-                + "; Path=/; Max-Age=" + maxAge
-                + "; SameSite=" + cookieSameSite;
     }
 }

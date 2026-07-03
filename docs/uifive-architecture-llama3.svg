@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .title { font: 700 22px Arial, Helvetica, sans-serif; fill: #1b2430; }
+      .sub { font: 14px Arial, Helvetica, sans-serif; fill: #334155; }
+      .boxTitle { font: 700 18px Arial, Helvetica, sans-serif; fill: #111827; }
+      .boxSub { font: 13px Arial, Helvetica, sans-serif; fill: #334155; }
+      .small { font: 12px Arial, Helvetica, sans-serif; fill: #475569; }
+      .label { font: 13px Arial, Helvetica, sans-serif; fill: #334155; }
+      .mini { font: 11px Arial, Helvetica, sans-serif; fill: #64748b; }
+      .white { fill: #fff; }
+      .blueStroke { stroke: #334f8d; stroke-width: 2; }
+      .greenStroke { stroke: #5b7c52; stroke-width: 2; }
+      .purpleStroke { stroke: #7b61a8; stroke-width: 2; }
+      .orangeStroke { stroke: #d46a00; stroke-width: 2; }
+      .yellowFill { fill: #fff8e8; }
+      .blueFill { fill: #eef5ff; }
+      .greenFill { fill: #f3fbef; }
+      .purpleFill { fill: #f8f3ff; }
+      .orangeFill { fill: #fff6ec; }
+      .lightFill { fill: #f8fafc; }
+    </style>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#334f8d" />
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#7b61a8" />
+    </marker>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#d46a00" />
+    </marker>
+    <marker id="arrowBlack" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#1f2937" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1000" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="800" y="20" text-anchor="middle" class="title">Sơ đồ cấu trúc UIFIVE với AIService và Llama 3</text>
+
+  <!-- Eureka -->
+  <rect x="585" y="40" rx="12" ry="12" width="430" height="78" fill="#f7fbff" class="blueStroke"/>
+  <text x="800" y="73" text-anchor="middle" class="boxTitle">EUREKA SERVER</text>
+  <text x="800" y="94" text-anchor="middle" class="boxSub">(Service Registry)</text>
+  <text x="320" y="90" text-anchor="middle" class="sub">Đăng ký / Heartbeat</text>
+  <text x="1260" y="90" text-anchor="middle" class="sub">Tìm kiếm dịch vụ</text>
+
+  <!-- User -->
+  <rect x="20" y="380" rx="12" ry="12" width="150" height="100" fill="#f9fafb" class="blueStroke"/>
+  <text x="95" y="418" text-anchor="middle" class="boxTitle">NGƯỜI DÙNG</text>
+  <text x="95" y="442" text-anchor="middle" class="boxSub">(Browser)</text>
+
+  <!-- Frontend -->
+  <rect x="200" y="350" rx="12" ry="12" width="190" height="150" fill="#f5fff6" class="greenStroke"/>
+  <text x="295" y="392" text-anchor="middle" class="boxTitle">UIFive</text>
+  <text x="295" y="415" text-anchor="middle" class="boxSub">Frontend Web</text>
+  <text x="295" y="437" text-anchor="middle" class="boxSub">(React + TypeScript)</text>
+
+  <!-- Gateway -->
+  <rect x="430" y="240" rx="12" ry="12" width="190" height="320" fill="#f7fbff" class="blueStroke"/>
+  <text x="525" y="295" text-anchor="middle" class="boxTitle">GATEWAY</text>
+  <text x="525" y="318" text-anchor="middle" class="boxTitle">SERVICE</text>
+  <text x="525" y="342" text-anchor="middle" class="boxSub">(Spring Cloud Gateway)</text>
+  <text x="462" y="388" class="small">• Route</text>
+  <text x="462" y="413" class="small">• Authentication</text>
+  <text x="462" y="438" class="small">• Rate Limiting</text>
+  <text x="462" y="463" class="small">• Global Filter</text>
+
+  <!-- Services stack -->
+  <g>
+    <rect x="675" y="150" rx="12" ry="12" width="250" height="58" fill="#f4fbf4" class="greenStroke"/>
+    <text x="800" y="184" text-anchor="middle" class="boxTitle">IDENTITY SERVICE</text>
+    <text x="800" y="205" text-anchor="middle" class="mini">(Port 8084)</text>
+
+    <rect x="675" y="228" rx="12" ry="12" width="250" height="58" fill="#f4fbf4" class="greenStroke"/>
+    <text x="800" y="262" text-anchor="middle" class="boxTitle">PAYMENT SERVICE</text>
+    <text x="800" y="283" text-anchor="middle" class="mini">(Port 8083)</text>
+
+    <rect x="675" y="306" rx="12" ry="12" width="250" height="58" fill="#f4fbf4" class="greenStroke"/>
+    <text x="800" y="340" text-anchor="middle" class="boxTitle">CONTENT SERVICE</text>
+    <text x="800" y="361" text-anchor="middle" class="mini">(Port 8086)</text>
+
+    <rect x="675" y="384" rx="12" ry="12" width="250" height="58" fill="#f4fbf4" class="greenStroke"/>
+    <text x="800" y="418" text-anchor="middle" class="boxTitle">PROGRESS SERVICE</text>
+    <text x="800" y="439" text-anchor="middle" class="mini">(Port 8087)</text>
+
+    <rect x="675" y="462" rx="12" ry="12" width="250" height="58" fill="#f4fbf4" class="greenStroke"/>
+    <text x="800" y="496" text-anchor="middle" class="boxTitle">GAMIFICATION SERVICE</text>
+    <text x="800" y="517" text-anchor="middle" class="mini">(Port 8085)</text>
+
+    <rect x="675" y="540" rx="12" ry="12" width="250" height="58" fill="#fff7ea" class="orangeStroke"/>
+    <text x="800" y="574" text-anchor="middle" class="boxTitle">AI SERVICE</text>
+    <text x="800" y="595" text-anchor="middle" class="mini">(Port 8088)</text>
+
+    <rect x="675" y="618" rx="12" ry="12" width="250" height="58" fill="#f8f3ff" class="purpleStroke"/>
+    <text x="800" y="652" text-anchor="middle" class="boxTitle">ML SERVICE</text>
+    <text x="800" y="673" text-anchor="middle" class="mini">(Python / FastAPI)</text>
+  </g>
+
+  <!-- Right side integration boxes -->
+  <rect x="1180" y="150" rx="12" ry="12" width="280" height="70" fill="#f7fbff" class="blueStroke"/>
+  <text x="1320" y="182" text-anchor="middle" class="boxTitle">GOOGLE OAUTH</text>
+  <text x="1320" y="205" text-anchor="middle" class="mini">(Google Accounts)</text>
+
+  <rect x="1180" y="265" rx="12" ry="12" width="280" height="70" fill="#f7fbff" class="blueStroke"/>
+  <text x="1320" y="297" text-anchor="middle" class="boxTitle">VNPAY</text>
+  <text x="1320" y="320" text-anchor="middle" class="mini">(Cổng thanh toán)</text>
+
+  <rect x="1180" y="392" rx="12" ry="12" width="280" height="88" fill="#fffaf5" class="orangeStroke"/>
+  <text x="1320" y="425" text-anchor="middle" class="boxTitle">RESEND</text>
+  <text x="1320" y="448" text-anchor="middle" class="mini">(Email Service)</text>
+
+  <rect x="1180" y="600" rx="12" ry="12" width="280" height="70" fill="#fffaf5" class="orangeStroke"/>
+  <text x="1320" y="633" text-anchor="middle" class="boxTitle">CLOUDINARY</text>
+  <text x="1320" y="656" text-anchor="middle" class="mini">(Media Storage)</text>
+
+  <!-- NVIDIA and Llama -->
+  <rect x="1180" y="520" rx="12" ry="12" width="280" height="70" fill="#f7fbff" class="blueStroke"/>
+  <text x="1320" y="552" text-anchor="middle" class="boxTitle">NVIDIA API</text>
+  <text x="1320" y="575" text-anchor="middle" class="mini">(AI Inference)</text>
+
+  <rect x="1188" y="705" rx="10" ry="10" width="128" height="48" fill="#eef5ff" class="blueStroke"/>
+  <text x="1252" y="734" text-anchor="middle" class="boxTitle" style="font-size:16px;">Llama 3.1</text>
+  <text x="1252" y="749" text-anchor="middle" class="mini">meta/llama-3.1-8b-instruct</text>
+
+  <rect x="1332" y="705" rx="10" ry="10" width="128" height="48" fill="#eef5ff" class="blueStroke"/>
+  <text x="1396" y="734" text-anchor="middle" class="boxTitle" style="font-size:16px;">Llama 3.2</text>
+  <text x="1396" y="749" text-anchor="middle" class="mini">vision-instruct</text>
+
+  <!-- Bottom databases -->
+  <rect x="250" y="830" rx="14" ry="14" width="260" height="115" fill="#ffffff" class="blueStroke" stroke-dasharray="8 7"/>
+  <text x="380" y="871" text-anchor="middle" class="boxTitle">POSTGRESQL</text>
+  <text x="380" y="894" text-anchor="middle" class="boxSub">(Database)</text>
+  <text x="380" y="918" text-anchor="middle" class="mini">Lưu trữ dữ liệu bền vững</text>
+
+  <rect x="560" y="830" rx="14" ry="14" width="200" height="115" fill="#ffffff" class="blueStroke" stroke-dasharray="8 7"/>
+  <text x="660" y="871" text-anchor="middle" class="boxTitle">REDIS</text>
+  <text x="660" y="894" text-anchor="middle" class="boxSub">(Cache / Session)</text>
+  <text x="660" y="918" text-anchor="middle" class="mini">Cache, tốc độ cao</text>
+
+  <rect x="810" y="830" rx="14" ry="14" width="210" height="115" fill="#ffffff" class="blueStroke" stroke-dasharray="8 7"/>
+  <text x="915" y="871" text-anchor="middle" class="boxTitle">RABBITMQ</text>
+  <text x="915" y="894" text-anchor="middle" class="boxSub">(Message Broker)</text>
+  <text x="915" y="918" text-anchor="middle" class="mini">Đối tượng bất đồng bộ, event-driven</text>
+
+  <!-- Main arrows -->
+  <line x1="170" y1="430" x2="200" y2="430" stroke="#1f2937" stroke-width="2.5" marker-end="url(#arrowBlack)"/>
+  <text x="185" y="418" text-anchor="middle" class="mini">HTTP/HTTPS</text>
+
+  <line x1="390" y1="425" x2="430" y2="425" stroke="#1f2937" stroke-width="2.5" marker-end="url(#arrowBlack)"/>
+  <text x="410" y="412" text-anchor="middle" class="mini">HTTP/HTTPS</text>
+
+  <!-- Gateway to services -->
+  <line x1="620" y1="170" x2="675" y2="179" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <line x1="620" y1="258" x2="675" y2="257" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <line x1="620" y1="334" x2="675" y2="335" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <line x1="620" y1="412" x2="675" y2="413" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <line x1="620" y1="490" x2="675" y2="491" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <line x1="620" y1="568" x2="675" y2="569" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <line x1="620" y1="646" x2="675" y2="647" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+
+  <!-- Eureka dashed discovery lines -->
+  <line x1="800" y1="118" x2="800" y2="150" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+  <line x1="720" y1="118" x2="720" y2="150" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+  <line x1="880" y1="118" x2="880" y2="150" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+  <line x1="760" y1="118" x2="760" y2="240" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+  <line x1="840" y1="118" x2="840" y2="306" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+  <line x1="920" y1="118" x2="920" y2="384" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+  <line x1="680" y1="118" x2="680" y2="462" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+  <line x1="960" y1="118" x2="960" y2="540" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+  <line x1="1000" y1="118" x2="1000" y2="618" stroke="#5b7c52" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowBlue)"/>
+
+  <!-- Gateway/service internal route note -->
+  <text x="645" y="160" text-anchor="end" class="mini">Feign / lb:// (Load Balanced)</text>
+
+  <!-- Identity / payment / content / progress / gamification external links -->
+  <line x1="925" y1="179" x2="1180" y2="185" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <text x="1055" y="168" text-anchor="middle" class="mini">OAuth2</text>
+
+  <line x1="925" y1="257" x2="1180" y2="300" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <text x="1055" y="258" text-anchor="middle" class="mini">Thanh toán (Redirect)</text>
+
+  <line x1="925" y1="335" x2="1180" y2="520" stroke="#d46a00" stroke-width="2.2" marker-end="url(#arrowOrange)"/>
+  <text x="1045" y="315" text-anchor="middle" class="mini">RabbitMQ Event (payment.completed)</text>
+
+  <line x1="925" y1="413" x2="1180" y2="440" stroke="#7b61a8" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowPurple)"/>
+  <text x="1070" y="400" text-anchor="middle" class="mini">Feign/lb://</text>
+
+  <line x1="925" y1="491" x2="1180" y2="440" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <text x="1075" y="472" text-anchor="middle" class="mini">Webhook / IPN</text>
+
+  <!-- AI links -->
+  <line x1="925" y1="569" x2="1180" y2="555" stroke="#1f2937" stroke-width="2.2" marker-end="url(#arrowBlack)"/>
+  <text x="1035" y="540" text-anchor="middle" class="mini">AI Inference (API)</text>
+
+  <line x1="925" y1="594" x2="1180" y2="635" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <text x="1060" y="620" text-anchor="middle" class="mini">Upload / Quản lý file (API)</text>
+
+  <!-- Llama model links -->
+  <line x1="1320" y1="590" x2="1252" y2="705" stroke="#334f8d" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <line x1="1320" y1="590" x2="1396" y2="705" stroke="#334f8d" stroke-width="2" marker-end="url(#arrowBlue)"/>
+
+  <!-- AI service to DB -->
+  <line x1="800" y1="598" x2="800" y2="830" stroke="#7b61a8" stroke-width="2" marker-end="url(#arrowPurple)"/>
+
+  <!-- ML service interactions -->
+  <line x1="800" y1="676" x2="800" y2="830" stroke="#334f8d" stroke-width="2" marker-end="url(#arrowBlue)"/>
+
+  <!-- Service to bottom infra -->
+  <line x1="525" y1="560" x2="525" y2="830" stroke="#334f8d" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <line x1="735" y1="696" x2="735" y2="830" stroke="#334f8d" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <line x1="915" y1="774" x2="915" y2="830" stroke="#d46a00" stroke-width="2" marker-end="url(#arrowOrange)"/>
+
+  <!-- Bottom infra connectors -->
+  <line x1="380" y1="830" x2="380" y2="615" stroke="#334f8d" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <line x1="660" y1="830" x2="660" y2="560" stroke="#334f8d" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <line x1="915" y1="830" x2="915" y2="518" stroke="#d46a00" stroke-width="2" marker-end="url(#arrowOrange)"/>
+
+  <!-- Notification service block -->
+  <rect x="1010" y="390" rx="12" ry="12" width="150" height="82" fill="#fff7ef" class="orangeStroke"/>
+  <text x="1085" y="425" text-anchor="middle" class="boxTitle" style="font-size:16px;">NOTIFICATION</text>
+  <text x="1085" y="446" text-anchor="middle" class="boxTitle" style="font-size:16px;">SERVICE</text>
+  <text x="1085" y="466" text-anchor="middle" class="mini">(Port 8082)</text>
+  <line x1="1160" y1="431" x2="1180" y2="431" stroke="#1f2937" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  <text x="1173" y="419" text-anchor="middle" class="mini">Gửi Email</text>
+  <line x1="1075" y1="390" x2="1085" y2="360" stroke="#d46a00" stroke-width="2" marker-end="url(#arrowOrange)"/>
+  <text x="1115" y="374" class="mini">Consume (RabbitMQ Event)</text>
+
+  <!-- Minor legend -->
+  <rect x="1145" y="830" rx="12" ry="12" width="380" height="115" fill="#ffffff" class="blueStroke" stroke-dasharray="8 7"/>
+  <text x="1335" y="858" text-anchor="middle" class="boxTitle" style="font-size:16px;">CHÚ GIẢI</text>
+  <line x1="1168" y1="882" x2="1230" y2="882" stroke="#1f2937" stroke-width="2.5" marker-end="url(#arrowBlack)"/>
+  <text x="1240" y="886" class="mini">HTTP/HTTPS (Sync)</text>
+  <line x1="1168" y1="908" x2="1230" y2="908" stroke="#7b61a8" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowPurple)"/>
+  <text x="1240" y="912" class="mini">Feign / lb:// (Service-to-Service)</text>
+  <line x1="1168" y1="934" x2="1230" y2="934" stroke="#d46a00" stroke-width="2" marker-end="url(#arrowOrange)"/>
+  <text x="1240" y="938" class="mini">RabbitMQ Event (Async)</text>
+</svg>

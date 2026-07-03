@@ -26,6 +26,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import feign.FeignException;
@@ -296,6 +297,13 @@ public class UserService implements UserDetailsService {
             String name = oAuth2User.getAttribute("name");
             if (name != null && !name.isBlank()) {
                 return name;
+            }
+        }
+
+        if (principal instanceof Jwt jwt) {
+            String subject = jwt.getSubject();
+            if (subject != null && !subject.isBlank()) {
+                return subject;
             }
         }
 

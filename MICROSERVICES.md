@@ -13,7 +13,7 @@ Repo hiện tại đang ở trạng thái:
 - `GamificationService/`: service riêng cho shop items, inventory, leaderboards
 - `ContentService/`: service riêng cho grade/unit/section/lesson core, question bank và review/test
 - `ProgressService/`: service riêng cho progress / lesson completion, learning analysis, user question history và activity calendar
-- `AIService/`: service riêng cho writing/speaking evaluation và personalized questions
+- `AIService/`: service riêng cho writing/speaking evaluation, personalized questions và Llama 3 qua NVIDIA API
 - `MLService/`: FastAPI service riêng cho dự đoán học tập
 - `NotificationService/`: Spring Boot service riêng cho scheduler và email notification
 
@@ -50,10 +50,31 @@ graph TD
     ML --> MLDB[(ML models / artifacts)]
 
     CT --> Cloudinary[Cloudinary]
-    AI --> GenAI[LLM APIs]
+    AI --> GenAI[LLM APIs / NVIDIA API]
     PM --> PayGate[Payment Gateways]
     NT --> Email[Email Provider]
     PR --> Redis[(Redis / Cache / Events)]
+```
+
+## 2.1. Sơ đồ riêng cho AIService
+
+Bản vẽ SVG: [docs/uifive-architecture-llama3.svg](./docs/uifive-architecture-llama3.svg)
+
+```mermaid
+flowchart LR
+    U[Người dùng / Frontend] --> G[GatewayService]
+    G --> AI[AIService<br/>Port 8088]
+
+    AI -->|Gọi inference| NVIDIA[NVIDIA API]
+    NVIDIA -->|Text model| L31[Llama 3.1<br/>meta/llama-3.1-8b-instruct]
+    NVIDIA -->|Vision model| L32[Llama 3.2<br/>meta/llama-3.2-11b-vision-instruct]
+
+    AI -->|Upload / quản lý file| CLD[Cloudinary]
+    AI -->|Lưu kết quả đánh giá| AIDB[(PostgreSQL)]
+    AI -->|Cache / session| REDIS[(Redis)]
+    AI -.->|Service discovery| EUREKA[Eureka Server]
+    AI -->|Feign / nội bộ| CT[ContentService]
+    AI -->|Feign / nội bộ| PR[ProgressService]
 ```
 
 ## 3. Mapping từ code hiện tại sang service mục tiêu

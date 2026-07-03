@@ -21,6 +21,7 @@ public enum ErrorCode {
     VERIFICATION_TOKEN_EXPIRED(1015, "Verification token has expired", HttpStatus.BAD_REQUEST),
     INVALID_OLD_PASSWORD(1016, "Old password is incorrect", HttpStatus.BAD_REQUEST),
     SAME_PASSWORD(1017, "New password must be different", HttpStatus.BAD_REQUEST),
+    INVALID_REFRESH_TOKEN(1018, "Invalid refresh token", HttpStatus.UNAUTHORIZED),
     VALIDATION_ERROR(1038, "Validation failed", HttpStatus.BAD_REQUEST),
     INVALID_REQUEST_BODY(1039, "Request body is invalid", HttpStatus.BAD_REQUEST),
     MISSING_REQUEST_PART(1040, "Required request data is missing", HttpStatus.BAD_REQUEST),
