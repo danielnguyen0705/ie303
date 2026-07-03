@@ -57,4 +57,5 @@ class AuthCookieUtilTest {
         assertThat(cookie).doesNotContain("Secure");
         assertThat(cookie).contains("SameSite=Lax");
     }
+
 }

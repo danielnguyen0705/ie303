@@ -9,7 +9,7 @@ UIFIVE là một nền tảng học tập trực tuyến thông minh được th
 - **Xác thực & Bảo mật (Authentication)**: Hỗ trợ đăng nhập truyền thống (JWT) và Google OAuth2.
 - **Quản lý Học tập**: Hệ thống Unit, Section, Lesson và Question đa dạng.
 - **Gamification**: Tích hợp hệ thống điểm kinh nghiệm (EXP), Coin, chuỗi ngày học (Streak), Leaderboard và Cửa hàng vật phẩm (Shop Items).
-- **AI Tích hợp (Generative AI)**: Sử dụng các mô hình ngôn ngữ lớn (Gemini, Llama qua NVIDIA API, OpenAI, Anthropic) để hỗ trợ học viên.
+- **AI Tích hợp (Generative AI)**: Sử dụng các mô hình ngôn ngữ lớn, trong đó `AIService` đang gọi NVIDIA API với Llama 3 để hỗ trợ học viên.
 - **Machine Learning Insights**: Phân tích dữ liệu học tập và dự đoán kỹ năng mạnh, yếu, cùng xu hướng học tập của học viên.
 - **Thanh toán Trực tuyến**: Tích hợp cổng thanh toán VNPAY và VietQR cho các gói VIP/Premium.
 - **Cloud Storage**: Quản lý hình ảnh và đa phương tiện bằng Cloudinary.
@@ -31,7 +31,7 @@ Tóm tắt ngắn:
 - `ContentService/` là service riêng cho grade/unit/section/lesson core, question bank và các loại review/test.
 - `ProgressService/` là service riêng cho học tiến độ theo lesson/unit/section.
 - `ProgressService/` cũng giữ phần `learning-analysis`, `user-question-histories` và `activity-calendar` cho kết quả ML của học viên.
-- `AIService/` là service riêng cho chấm writing/speaking bằng LLM.
+- `AIService/` là service riêng cho chấm writing/speaking bằng LLM, hiện dùng Llama 3 qua NVIDIA API.
 - `AIService/` cũng xử lý `personalized-questions`.
 - `MLService/` là FastAPI service riêng cho dự đoán học tập.
 - `NotificationService/` là Spring Boot service riêng cho scheduler và email notification.

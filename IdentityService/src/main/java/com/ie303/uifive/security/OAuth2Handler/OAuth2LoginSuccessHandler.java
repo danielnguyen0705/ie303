@@ -14,6 +14,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.io.IOException;
 
 @Component
@@ -32,6 +33,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.cookie-same-site:Lax}")
     private String cookieSameSite;
 
+    @Value("${jwt.expiration}")
+    private long accessTokenExpirationMs;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
@@ -44,9 +48,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String displayName = name == null || name.isBlank() ? principal : name;
         User user = userService.findOrCreateOAuth2User(principal, displayName);
 
-        String token = jwtService.generateToken(user);
+        String token = jwtService.generateLoginToken(user);
         response.addHeader("Set-Cookie",
-                AuthCookieUtil.buildAuthCookie(token, 86400, request, cookieSecure, cookieSameSite));
+                AuthCookieUtil.buildAuthCookie(token, toSeconds(accessTokenExpirationMs), request, cookieSecure, cookieSameSite));
         response.sendRedirect(frontendBaseUrl + "/oauth2/callback?status=success");
     }
 
@@ -64,5 +68,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
 
         return "google-user";
+    }
+
+    private int toSeconds(long expirationMs) {
+        return Math.toIntExact(Duration.ofMillis(expirationMs).toSeconds());
     }
 }

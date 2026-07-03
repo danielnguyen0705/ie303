@@ -4,6 +4,7 @@ import com.ie303.uifive.dto.auth.LoginRequest;
 import com.ie303.uifive.dto.req.UserRequest;
 import com.ie303.uifive.dto.res.ApiResponse;
 import com.ie303.uifive.dto.res.UserResponse;
+import com.ie303.uifive.exception.AppException;
 import com.ie303.uifive.security.AuthCookieUtil;
 import com.ie303.uifive.service.AuthService;
 import com.ie303.uifive.service.UserService;
@@ -14,6 +15,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -29,6 +32,9 @@ public class AuthController {
     @Value("${app.cookie-same-site:Lax}")
     private String cookieSameSite;
 
+    @Value("${jwt.expiration}")
+    private long accessTokenExpirationMs;
+
     @PostMapping("/login")
     @PermitAll
     public ApiResponse<String> login(@RequestBody @Valid LoginRequest request,
@@ -36,12 +42,36 @@ public class AuthController {
                                      HttpServletResponse response) {
         String token = authService.login(request);
         response.addHeader("Set-Cookie",
-                AuthCookieUtil.buildAuthCookie(token, 86400, httpRequest, cookieSecure, cookieSameSite));
+                AuthCookieUtil.buildAuthCookie(token, toSeconds(accessTokenExpirationMs), httpRequest, cookieSecure, cookieSameSite));
 
         return ApiResponse.<String>builder()
                 .code(1000)
                 .message("Login successful")
                 .result("Logged in successfully")
+                .build();
+    }
+
+    @PostMapping("/refresh")
+    @PermitAll
+    public ApiResponse<String> refresh(HttpServletRequest httpRequest,
+                                       HttpServletResponse response) {
+        String token = AuthCookieUtil.getCookieValue(httpRequest, AuthCookieUtil.ACCESS_COOKIE_NAME);
+        String refreshedToken;
+        try {
+            refreshedToken = authService.refresh(token);
+        } catch (AppException exception) {
+            response.addHeader("Set-Cookie",
+                AuthCookieUtil.buildAuthCookie("", 0, httpRequest, cookieSecure, cookieSameSite));
+            throw exception;
+        }
+
+        response.addHeader("Set-Cookie",
+                AuthCookieUtil.buildAuthCookie(refreshedToken, toSeconds(accessTokenExpirationMs), httpRequest, cookieSecure, cookieSameSite));
+
+        return ApiResponse.<String>builder()
+                .code(1000)
+                .message("Token refreshed")
+                .result("Refreshed successfully")
                 .build();
     }
 
@@ -68,6 +98,9 @@ public class AuthController {
     @PermitAll
     public ApiResponse<String> logout(HttpServletRequest httpRequest,
                                       HttpServletResponse response) {
+        String token = AuthCookieUtil.getCookieValue(httpRequest, AuthCookieUtil.ACCESS_COOKIE_NAME);
+        authService.logout(token);
+
         response.addHeader("Set-Cookie",
                 AuthCookieUtil.buildAuthCookie("", 0, httpRequest, cookieSecure, cookieSameSite));
 
@@ -76,5 +109,9 @@ public class AuthController {
                 .message("Logout successful")
                 .result("Logged out")
                 .build();
+    }
+
+    private int toSeconds(long expirationMs) {
+        return Math.toIntExact(Duration.ofMillis(expirationMs).toSeconds());
     }
 }
